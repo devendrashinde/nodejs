@@ -1,0 +1,29 @@
+{
+  "name": "photo-gallery",
+  "version": "1.0.0",
+  "description": "Node js – Auto Generate a Photo Gallery from a Directory",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "arjun <arjunphp@gmail>",
+  "license": "ISC",
+  "dependencies": {
+    "@fancyapps/fancybox": "^3.5.7",
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "express-fileupload": "^1.1.7-alpha.3",
+    "gm": "^1.23.1",
+    "jquery-modal": "^0.9.2",
+    "mysql": "^2.18.1",
+    "pug": "^2.0.0-beta11",
+    "uuid": "^7.0.3"
+  },
+  "devDependencies": {
+    "curl": "^0.1.4",
+    "jquery": "^3.5.1",
+    "jsdom": "^16.2.2",
+    "nodemon": "^2.0.3"
+  }
+}

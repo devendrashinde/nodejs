@@ -1,0 +1,32 @@
+angular.module('PhotoService', [])
+
+	// super simple service
+	// each function returns a promise object 
+	.factory('PhotoService', ['$http',function($http) {
+		return {
+			getTagsByAlbum : function(id) {
+				return $http.get('/tags?id=' + id);
+			},
+			getTagsByTag : function(id) {
+				return $http.get('/tags?tag=' + id);
+			},
+			getPhotos : function(id) {
+				return $http.get('/photos?id=' + id);
+			},
+			create : function(photoData) {
+				return $http.post('/', photoData);
+			},
+			delete : function(id) {
+				return $http.delete('/api/photos/' + id);
+			},
+			upload : function(file, tags) {
+				var fd = new FormData();
+				fd.append('file', file);
+				fd.append('tags', tags);
+				return $http.post('/upload', fd, {
+					transformRequest: angular.identity,
+					headers: {'Content-Type': undefined}
+				});
+			}	
+		}
+	}]);

@@ -1,0 +1,30 @@
+        //div.page-content
+        //  div.container
+        //    div(class="container px-0")
+        //      div.pp-gallery
+        //        div.card-columns
+        //          each image in images
+        //            if !image.isAlbum
+        //              - var dg = '["' + image.getAlbumName() + '"]';
+        //              div(class="card" data-groups=dg)
+        //                span.caption
+        //                    //fancybox form, issue: unable to get the entered text from form
+        //                    //a(id="tag" + image.getId() class="btn" href='javascript:editTag("' + image.getId() + '","' + image.getPath() + '","' + image.getTag() +'");') #{image.getTag()}
+        //                    a(id="tag" + image.getId() class="btn" href="#form" + image.getId() rel="modal:open") #{image.getTag()}
+        //                    form(action="/" method="post" class="popup_form modal center" name="form" + image.getId() id="form" + image.getId() style="display:none;")
+        //                      h3 Update photo description
+        //                      p 
+        //                        input(type="hidden" name="albumName" value=image.getAlbumName())
+        //                        input(type="hidden" name="name" value=image.getPath())
+        //                        label Description
+        //                        textarea(name="tags" rows=4 column=50) #{image.getTag()}
+        //                      p
+        //                        //input(type="button" value="Update" onClick="submitAndClosePopup(" + "form" + image.getId()+ "," + "tag" + image.getId()+ "," + "close" + image.getId() + ");")
+        //                        a(href="javascript:submitAndClosePopup(" + "form" + image.getId()+ "," + "tag" + image.getId()+ "," + "close" + image.getId() + ");" class="btn" id="update" + image.getId()) Update
+        //                        a(href="#" class="btn" rel="modal:close" id="close" + image.getId()) Cancel
+        //                a(href=image.getPath() data-fancybox="gallery" data-caption=image.getTag())
+        //                  figure.pp-effect
+        //                    img(id="tag" + image.getId() class="img-fluid" src=image.getPath() alt=image.getAlbumName())
+        //                    figcaption
+        //                      div.h4(id="tag" + image.getId()) #{image.getTag()}
+        //                      p #{image.getAlbumName()}

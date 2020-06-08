@@ -1,0 +1,19 @@
+                            a(href="" class="btn btn-default btn-rounded" data-toggle="modal" data-target="#"+image.getId()) #{image.getTag()}
+                            // Modal: Form
+                            div(class="modal fade" id=image.getId() tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true")
+                              div(class="modal-dialog cascading-modal modal-avatar modal-sm" role="document")
+                                // Content
+                                div(class="modal-content")
+                                  // Header
+                                  div(class="modal-header")
+                                    img src=image.getPath() alt=image.getTag() class="rounded-circle img-responsive")
+                                  // Body-
+                                  div(class="modal-body text-center mb-1")
+                                    h5(class="mt-1 mb-2") Enter Description
+                                    div(class="md-form ml-0 mr-0")
+                                      input(type="hidden" name="albumName" value=image.getAlbumName())
+                                      input(type="hidden" name="name" value=image.getName())
+                                      input(type="text" name="tag" id="tag"+image.getName() class="form-control form-control-sm validate ml-0" value=image.getTag())
+                                    div(class="text-center mt-4")
+                                      button(class="btn btn-cyan mt-1") Update 
+                                       i(class="fas fa-sign-in ml-1")

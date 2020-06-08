@@ -1,0 +1,50 @@
+html
+  head
+   meta(charset="UTF-8")
+   meta(name="viewport" content="width=device-width, initial-scale=1")
+   meta(name="description" content="Your Image page description")
+   block styles
+    link(rel="stylesheet" href="https://fonts.googleapis.com/css?family=Arimo:400,600,700")
+    link(rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/latest/css/font-awesome.min.css")
+    link(rel="stylesheet" href="main.css")
+    title= title
+  body#top
+    div.page
+      - var photo
+      header
+        div.pp-header
+          nav(class="navbar navbar-expand-lg navbar-light")
+            div.container
+                a(href="/get-images"): img(src="/favicon.png")
+                a(class="navbar-brand" href="/get-images") Photo Perfect
+                button(class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation") 
+                   span.navbar-toggler-icon
+                div(class="collapse navbar-collapse" id="navbarNavAltMarkup")
+                  ul(class="navbar-nav ml-auto")
+                    each image in images
+                     if image.isAlbum
+                       li.nav-item
+                         a(class="nav-link" href="/get-images?id=" + image.getAlbumName()) #{image.getAlbumName()}
+                     else
+                       - photo = image
+                       
+      div.page-content
+          div.container
+            div(class="container pp-section")                
+              div(class="h3 font-weight-normal") Digital Photography Studio
+              img(class="img-fluid mt-4" src=photo.getPath() alt=photo.tag)
+              div(class="row mt-5")
+                div.col-md-3
+                  div.h5 Tags
+                  a(class="mr-1 badge badge-primary" href="#") #{photo.tag}
+                  div(class="h5 pt-4") 
+                   p #{photo.getAlbumName()}
+                   p photo year goes here               
+                div.col-md-9
+                  p photo description line1
+                  p photo description line2
+
+    script(src="https://code.jquery.com/jquery-3.2.1.min.js")
+    script(src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js")
+    script(src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js")
+    script(src="/main.js")            

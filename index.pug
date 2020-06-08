@@ -1,0 +1,85 @@
+html(ng-app="app")
+  head
+   block styles
+    link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.2.0/css/font-awesome.css")    
+    link(rel="stylesheet" href="https://fonts.googleapis.com/css?family=Arimo:400,600,700")
+    link(rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous")
+    link(rel="stylesheet" href="jquery.fancybox.min.css")
+    link(rel="stylesheet" href="modal.css")
+    link(rel="stylesheet" href="main.css")
+    link(rel="stylesheet" href="search.css")
+    
+    title= title
+  body#top
+    - var id = 0
+    div(class="page" id="controller" ng-controller="photoController")
+      header
+        div.pp-header
+         nav(class="navbar navbar-expand-lg navbar-light")
+          div.container
+            // add home link with icon
+            a(href="/get-images"): img(src="/favicon.png")
+            a(class="navbar-brand" href="/get-images") Home
+            
+            // add search box
+            div(class="search box")
+                input(type="text" class="searchbox input" name="search" ng-model="searchTag" placeholder="search")                 
+                button(type="button" class="btn btn-search" ng-click="search()")
+                    i(class="fa fa-search")     
+                button(type="button" class="btn btn-reset" ng-click="clearSearch()")
+                    i(class="fa fa-times")
+            
+            // file upload link
+            div(class="search box")
+                input(type="text" class="searchbox input" id="uploadFile" ng-click="selectUploadFile()" placeholder="Click to upload file")                 
+
+            // angular style file upload input box
+            //div
+            //    input(type="file" file-model="myFile" id="myFile")
+            //    i(class="fa fa-file-image-o" style="font-size:24px" onClick="$('#myFile').click();")
+            //    button(type="button" class="btn btn-search" value="Upload!" ng-Click="uploadFile()")
+            //        i(class="fa fa-upload" aria-hidden="true")                                    
+                
+            // add album links
+            button(class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation") 
+               span.navbar-toggler-icon
+            div(class="collapse navbar-collapse" id="navbarNavAltMarkup")
+              ul(class="navbar-nav ml-auto")
+                li(class="nav-item" ng-repeat="image in photos" ng-if="image.isAlbum")
+                  a(class="btn btn-outline-primary nav-link" href="?id={{image.path}}") {{image.album}}
+
+        div.page-content
+          div.container
+            div(class="container px-0")
+              div.pp-gallery
+                div.card-columns
+                  div(ng-repeat="image in photos")
+                      div(class="card" ng-if="!image.isAlbum")
+                        span.caption
+                          a(id="tag{{image.id}}" class="btn" ng-click="editImageTag(image)") {{image.tags}}
+                        a(href="{{image.path}}" data-fancybox="gallery" data-caption="{{image.tags}}")
+                          figure.pp-effect
+                            img(ng-id="tag{{image.id}}" class="img-fluid" ng-src="{{image.path}}" alt="{{image.tags}}")
+                            figcaption
+                              div.h4(id="tag{{image.id}}") {{image.tags}}
+                              p {{image.album}}
+
+        //div
+        //  ul
+        //    li(ng-repeat="image in photos" ng-if="!image.isAlbum")
+        //      a(class="btn btn-outline-primary nav-link" href="/thumb?id={{image.path}}") {{image.name}}
+        //      img(ng-id="tag{{image.id}}" class="img-fluid" ng-src="/thumb?id={{image.path}}" alt="{{image.tags}}")
+                  
+    script(src="https://code.jquery.com/jquery-3.5.1.min.js")
+    script(src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js")
+    script(src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js")
+    script(src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.2.18/angular-ui-router.min.js")
+    script(src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous")
+    script(src="/jquery.fancybox.min.js")
+    script(src="/main.js")    
+    script(src="js/ng-app.js") // load our main application
+    script(src="js/controllers/photoController.js") // load up our controller
+    script(src="js/directives/modalDirective.js")
+    script(src="js/directives/fileModelDirective.js")
+    script(src="js/services/photoService.js") // load our photo service
+    script(src="js/services/modalService.js") // load our photo service

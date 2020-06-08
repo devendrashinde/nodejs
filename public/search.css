@@ -1,0 +1,92 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  font-size: 12px;
+}
+
+.searchbox.input {
+  border: 1px solid #ccc;
+  font-size: 12px;
+  height: 30px;
+  padding: 4px 8px;
+  position: absolute;
+  width: 50%;
+}
+
+.searchbox.input:focus {
+  outline: none;
+}
+
+.searchbox.button {
+  text-align: center;
+}
+.searchbox.button:focus {
+  outline: none;
+}
+button.btn-search, button.btn-reset {
+  background: #568683;
+  border: none;
+  height: 30px;
+  font-size: 12px;
+  padding: 4px;
+  position: absolute;
+  width: 30px;
+}
+
+.search {
+  float: left;
+  height: 50px;
+  margin: 0 8%;
+  position: relative;
+  width: 34%;
+}
+.search.box input {
+  border-radius: 15px;
+  transition: all .6s ease-in-out .3s;
+  width: 120px;
+}
+.search.box input:focus {
+  transition-delay: 0;
+  width: 200px;
+}
+.search.box input:focus ~ button {
+  transform: rotateZ(360deg);
+}
+.search.box input:focus ~ button.btn-search {
+  background: #568683;
+  color: #fff;
+  left: 172px;
+  transition-delay: 0;
+}
+.search.box input:focus ~ button.btn-reset {
+  left: 202px;
+  transition-delay: .3s;
+}
+.search.box button {
+  transition: all .6s ease-in-out;
+}
+.search.box button.btn-search {
+  background: #ccc;
+  border-radius: 50%;
+  height: 26px;
+  left: 92px;
+  top: 2px;
+  transition-delay: .3s;
+  width: 26px;
+}
+.search.box button.btn-reset {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  font-size: 10px;
+  height: 20px;
+  left: 92px;
+  line-height: 20px;
+  padding: 0;
+  top: 5px;
+  width: 20px;
+  z-index: -1;
+}

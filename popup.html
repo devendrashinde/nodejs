@@ -1,0 +1,23 @@
+<html>
+<head>
+<script type="text/javascript">
+function init()
+{
+    popupWin = window.open('','popupWin','');
+    popupWin.document.writeln('<html><head><title>test</title></head><body><form><input type="text" id="popupTextBox"/></form></body></html>');
+    popupWin.document.close();
+    popupText = popupWin.document.getElementById("popupTextBox");
+    parentText = document.getElementById("parentTextBox");
+    transferText();
+}
+function transferText()
+{
+    popupText.value = parentText.value
+}
+</script>
+</head>
+<body>
+<input type="text" id="parentTextBox"/>
+<input type="button" onclick="init();"/>
+</body>
+</html>

@@ -8,7 +8,7 @@ var Photo = function(photo){
 };
 
 Photo.createPhoto = function (newPhoto, result) {    
-        sql.query("INSERT INTO PHOTOS set ? ON DUPLICATE KEY UPDATE tags = ?", [newPhoto, newPhoto.tags], function (err, res) {
+        sql.query("INSERT INTO photos set ? ON DUPLICATE KEY UPDATE tags = ?", [newPhoto, newPhoto.tags], function (err, res) {
                 				
                 if(err) {
                     console.log("error: ", err);
@@ -22,7 +22,7 @@ Photo.createPhoto = function (newPhoto, result) {
 };
 
 Photo.getPhotoById = function (id, result) {
-        sql.query("SELECT id, name, tags, album, path FROM PHOTOS WHERE id = ?", id, function (err, res) {
+        sql.query("SELECT id, name, tags, album, path FROM photos WHERE id = ?", id, function (err, res) {
                 if(err) {
                     console.log("error: ", err);
                     result(err, null);
@@ -35,7 +35,7 @@ Photo.getPhotoById = function (id, result) {
 };
 
 Photo.getPhotoByName = function (name, result) {
-        sql.query("SELECT id, name, tags, album, path FROM PHOTOS WHERE name = ?", name, function (err, res) {
+        sql.query("SELECT id, name, tags, album, path FROM photos WHERE name = ?", name, function (err, res) {
                 if(err) {
                     console.log("error: ", err);
                     result(err, null);
@@ -48,7 +48,7 @@ Photo.getPhotoByName = function (name, result) {
 };
 
 Photo.getPhotosByTag = function (tag, result) {
-        sql.query("SELECT id, name, tags, album, CONCAT( path, '/', album, '/', name ) AS path FROM PHOTOS WHERE tags like ?", "%" + tag + "%", function (err, res) {
+        sql.query("SELECT id, name, tags, album, CONCAT( path, '/', album, '/', name ) AS path FROM photos WHERE tags like ?", "%" + tag + "%", function (err, res) {
                 if(err) {
                     console.log("error: ", err);
                     result(err, null);
@@ -61,7 +61,7 @@ Photo.getPhotosByTag = function (tag, result) {
 };
 
 Photo.getPhotosByAlbum = function (album, result) {
-        sql.query("SELECT id, name, tags, album, path FROM PHOTOS WHERE album = ?", album, function (err, res) {
+        sql.query("SELECT id, name, tags, album, path FROM photos WHERE album = ?", album, function (err, res) {
                 if(err) {
                     console.log("error: ", err);
                     result(err, null);
@@ -74,7 +74,7 @@ Photo.getPhotosByAlbum = function (album, result) {
 };
 
 Photo.updateTag = function(changedTag, result){
-  sql.query("UPDATE PHOTOS SET tags = ? WHERE name = ? AND album = ?", [changedTag.tags, changedTag.name, changedTag.album], function (err, res) {
+  sql.query("UPDATE photos SET tags = ? WHERE name = ? AND album = ?", [changedTag.tags, changedTag.name, changedTag.album], function (err, res) {
           if(err) {
               console.log("error: ", err);
               result(null, err);
@@ -85,7 +85,7 @@ Photo.updateTag = function(changedTag, result){
         }); 
 };
 Photo.remove = function(id, result){
-     sql.query("DELETE FROM PHOTOS WHERE id = ?", id, function (err, res) {
+     sql.query("DELETE FROM photos WHERE id = ?", id, function (err, res) {
 
                 if(err) {
                     console.log("error: ", err);

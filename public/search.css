@@ -16,6 +16,15 @@ body {
   width: 50%;
 }
 
+.searchbox.select {
+  border: 1px solid #ccc;
+  font-size: 12px;
+  height: 30px;
+  padding: 4px 8px;
+  position: absolute;
+  width: 50%;
+}
+
 .searchbox.input:focus {
   outline: none;
 }

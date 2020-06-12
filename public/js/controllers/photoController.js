@@ -3,16 +3,18 @@ angular.module('photoController', [])
 	// inject the Photo service factory into our controller
 	.controller('photoController', ['$scope','$http','$location','PhotoService','ModalService', function($scope, $http, $location, PhotoService, ModalService) {
 		$scope.formData = {};
-		$scope.tags = {};
-		$scope.photos = {};
+		$scope.tags = [];
+		$scope.photos = [];
+		$scope.albums = [];
 		$scope.loading = true;
 		$scope.searchTag = "";
+		$scope.selectedAlbum = "";
 		$scope.uploadDetails = {};
 		
 		// GET =====================================================================
 		// when landing on the page, get all photos and tags and show them
 		// use the service to get all the photo tags
-		loadPhotosAndTags();
+		loadPhotos();
 
 		$scope.uploadFile = function(file, tags){
            PhotoService.upload(file, tags);
@@ -39,28 +41,6 @@ angular.module('photoController', [])
 				$scope.searchTag = "";
 			}
 		};
-		// CREATE ==================================================================
-		// when submitting the add form, send the text to the node API
-		$scope.createPhoto = function() {
-
-			// validate the formData to make sure that something is there
-			// if form is empty, nothing will happen
-			if ($scope.formData.text != undefined) {
-				$scope.loading = true;
-
-				// call the create function from our service (returns a promise object)
-				PhotoService.create($scope.formData)
-				// if successful creation, call our get function to get all the new photos
-				.then(function successCallback(response) {
-						$scope.loading = false;
-						$scope.formData = {}; // clear the form so our user is ready to enter another
-						$scope.photos = response.data; // assign our new list of photos
-				}, function errorCallback(response) {
-					// called asynchronously if an error occurs
-					// or server returns response with an error status.
-				});			
-			}
-		};
 
 		// GET  ==================================================================
 		// get photos
@@ -70,9 +50,8 @@ angular.module('photoController', [])
 			PhotoService.getPhotos(id)
 				// if successful creation, call our get function to get all the new photos
 				.then(function successCallback(response) {
-						$scope.loading = false;
-						$scope.photos = response.data; // assign our new list of photos
-						updatePhotoTagsFromDb();
+						$scope.loading = false;						
+						updatePhotoTagsFromDb(response.data);
 				}, function errorCallback(response) {
 					// called asynchronously if an error occurs
 					// or server returns response with an error status.
@@ -107,26 +86,17 @@ angular.module('photoController', [])
 			}
 		};
 		
-		// DELETE ==================================================================
-		// delete a photo after checking it
-		$scope.deletePhoto = function(id) {
-			$scope.loading = true;
-
-			PhotoService.delete(id)
-				// if successful creation, call our get function to get all the new photos
-				.then(function successCallback(response) {
-						$scope.loading = false;
-						$scope.photos = response.data; // assign our new list of photos
-				}, function errorCallback(response) {
-					// called asynchronously if an error occurs
-					// or server returns response with an error status.
-				});			
-		};
+		function loadPhotos() {
+			var id = getUrlParameter("id");
+			loadPhotosAndTags(id);
+		}
+		
+		$scope.loadAlbum = function () {
+			loadPhotosAndTags($scope.selectedAlbum.path == "Home"? "" : $scope.selectedAlbum.path);
+		}
 		
 		// load photos and respective tags
-		function loadPhotosAndTags() {
-			var id = getUrlParameter("id");
-								
+		function loadPhotosAndTags(id) {				
 			PhotoService.getTagsByAlbum(id)
 			.then(function successCallback(response) {
 				$scope.tags = response.data;
@@ -138,19 +108,33 @@ angular.module('photoController', [])
 			});			
 		}
 
-		function updatePhotoTagsFromDb(){
-			for (photo of $scope.photos) {
-				var album = getNameAndAlbum(photo.path);
+		function updatePhotoTagsFromDb(photos){
+			$scope.photos = [];
+			for (photo of photos) {
+				var albumDetails = getNameAndAlbum(photo.path);
 				for (tag of $scope.tags) {
-					if(tag.name == album.name && tag.album == album.album){
+					if(tag.name == albumDetails.name && tag.album == albumDetails.album){
 						photo.tags = (tag.tags.length ? tag.tags : photo.name);
 						break;
 					}
-				}				
+				}
+				if(photo.isAlbum){
+					found = false;
+					for (x of $scope.albums) {
+						if(x.path == photo.path && x.name == photo.name) {
+							found = true;
+							break;
+						}							
+					}
+					if(!found){
+						$scope.albums.push(photo);
+					}
+				} else {
+					$scope.photos.push(photo);
+				}
 			}
 			$scope.tags = {};
-		}
-		
+		}		
 		
 		function getUrlParameter(param) {
 			var sPageURL = $location.$$absUrl,

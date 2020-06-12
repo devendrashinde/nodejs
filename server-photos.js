@@ -72,7 +72,7 @@ app.get('/get-images?:id', (req, res) => {
         targetDir = path.join(picturesDir, album);
     }
     let images = {};    
-    res.render('index', { title: 'Node js – Auto Generate a Photo Gallery from a Directory', images: images })
+    res.render('index', { title: 'Our Photo Gallery', images: images })
 });
 
 app.get('/photos?:id', (req, res) => {
@@ -164,7 +164,9 @@ function getImagesFromDir(dirPath, album, idIndex, onlyDir) {
         var fileparts = album.split("/");
         albumName = fileparts[fileparts.length-1]
         allImages.push(new ImageDetails("album"+id, albumName, (root ? "" : album), true, albumName));
-    }
+    } else{
+		allImages.push(new ImageDetails("album"+id, album, "", true, album));
+	}
     for (file of files) {       
         let fileLocation = path.join(dirPath, file);
         var stat = fs.statSync(fileLocation);

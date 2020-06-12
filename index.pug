@@ -39,14 +39,17 @@ html(ng-app="app")
             //    i(class="fa fa-file-image-o" style="font-size:24px" onClick="$('#myFile').click();")
             //    button(type="button" class="btn btn-search" value="Upload!" ng-Click="uploadFile()")
             //        i(class="fa fa-upload" aria-hidden="true")                                    
-                
-            // add album links
-            button(class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation") 
-               span.navbar-toggler-icon
-            div(class="collapse navbar-collapse" id="navbarNavAltMarkup")
-              ul(class="navbar-nav ml-auto")
-                li(class="nav-item" ng-repeat="image in photos" ng-if="image.isAlbum")
-                  a(class="btn btn-outline-primary nav-link" href="?id={{image.path}}") {{image.album}}
+            
+            label Select Album:
+            select(name="albumList" id="albumList" ng-options="album.album for album in albums track by album.path" ng-model="selectedAlbum" ng-change="loadAlbum()")
+            
+            // add album as flat links 
+            //button(class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation") 
+            //   span.navbar-toggler-icon
+            //div(class="collapse navbar-collapse" id="navbarNavAltMarkup")
+            //  ul(class="navbar-nav ml-auto")
+            //    li(class="nav-item" ng-repeat="album in albums" ng-if="album.isAlbum")
+            //      a(class="btn btn-outline-primary nav-link" href="?id={{album.path}}") {{album.album}}
 
         div.page-content
           div.container
@@ -54,7 +57,7 @@ html(ng-app="app")
               div.pp-gallery
                 div.card-columns
                   div(ng-repeat="image in photos")
-                      div(class="card" ng-if="!image.isAlbum")
+                      div(class="card")
                         span.caption
                           a(id="tag{{image.id}}" class="btn" ng-click="editImageTag(image)") {{image.tags}}
                         a(href="{{image.path}}" data-fancybox="gallery" data-caption="{{image.tags}}")
@@ -63,12 +66,6 @@ html(ng-app="app")
                             figcaption
                               div.h4(id="tag{{image.id}}") {{image.tags}}
                               p {{image.album}}
-
-        //div
-        //  ul
-        //    li(ng-repeat="image in photos" ng-if="!image.isAlbum")
-        //      a(class="btn btn-outline-primary nav-link" href="/thumb?id={{image.path}}") {{image.name}}
-        //      img(ng-id="tag{{image.id}}" class="img-fluid" ng-src="/thumb?id={{image.path}}" alt="{{image.tags}}")
                   
     script(src="https://code.jquery.com/jquery-3.5.1.min.js")
     script(src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js")

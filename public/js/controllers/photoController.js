@@ -8,7 +8,7 @@ angular.module('photoController', [])
 		$scope.albums = [];
 		$scope.loading = true;
 		$scope.searchTag = "";
-		$scope.selectedAlbum = "";
+		$scope.selectedAlbum = {path:'Home',name:'Home'};
 		$scope.uploadDetails = {};
 		
 		// GET =====================================================================

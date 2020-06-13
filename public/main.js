@@ -13,7 +13,20 @@ $('[data-fancybox="gallery"]').fancybox({
   }
 });
 
+// Create templates for buttons
+$.fancybox.defaults.btnTpl.exif = '<button data-fancybox-exif class="fancybox-button fancybox-button--exif" title="Show/Hide EXIF data (camera settings)"  onClick="javascript:toggleExif()" >' +
+'<img src="res/exif.svg"  class="roundbutton"  alt="Show/Hide EXIF data (camera settings)" title="Show/Hide EXIF data (camera settings)" >'  +
+  '</button>';
+
 $('[data-fancybox="gallery"]').fancybox({
+    buttons : [
+    'zoom',
+    'slideShow',
+    'exif',
+    'thumbs',
+    'close'
+  ]
+	/*
 	caption : function( instance, item ) {
         var caption = $(this).data('caption') || '';
 
@@ -24,7 +37,9 @@ $('[data-fancybox="gallery"]').fancybox({
         }
         return caption;
     }
+	*/
 });
+
 
 function editTag(photoId, photoPath, photoTag) {
 

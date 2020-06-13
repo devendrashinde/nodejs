@@ -7,16 +7,18 @@ body {
   font-size: 12px;
 }
 
-.searchbox.input {
+.searchbox.select {
   border: 1px solid #ccc;
   font-size: 12px;
   height: 30px;
   padding: 4px 8px;
   position: absolute;
-  width: 50%;
+  border-radius: 15px;
+  transition: all .6s ease-in-out .3s;
+  width: 100%;
 }
 
-.searchbox.select {
+.searchbox.input {
   border: 1px solid #ccc;
   font-size: 12px;
   height: 30px;

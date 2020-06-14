@@ -163,9 +163,10 @@ angular.module('photoController', [])
 
 		  var html = '<div class="message">';
 		  html += '<form action="/" method="post" id="form' + photo.id + '">';
-		  html += '<h3> Update photo description</h3>';		  
+		  html += '<h3> Update photo description</h3>';
+		  html += '<img class="img-fluid" id="selectedFile" src="'+ photo.path +'" width=225 height=150/>';		  
 		  html += '<p><input type="hidden" name="name" value="' + photo.path + '"/>';
-		  html += '<textarea name="tags" rows=4 column=80>' +  photo.tags + '</textarea></p>';
+		  html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80>' +  photo.tags + '</textarea></p>';
 		  html += '<p><input type="button" value="Update" onClick="submitFancyBoxForm(form' + photo.id + ',tag' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>';
 		  html += '<input type="button" value="Cancel" onClick="closeFancyBoxForm();"/></p>';
 		  html += '</form></div>';
@@ -180,7 +181,7 @@ angular.module('photoController', [])
 		  html += '<input type="file" name="myFile" id="uploadFile" onClick="this.value = null" onChange="displayUploadedFile(this);"/></p>';
 		  html += '<img class="img-fluid" id="selectedFile" src=""/>';		  
 		  html += '<p><h3> Enter file description</h3>';
-		  html += '<textarea name="tags" rows=4 column=80></textarea></p>';
+		  html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80></textarea></p>';
 		  html += '<p><input type="button" value="Upload" onClick="submitUploadForm(uploadForm);"/>';
 		  html += '<input type="button" value="Cancel" onClick="closeFancyBoxForm();"/></p>';
 		  html += '</form></div>';

@@ -162,9 +162,9 @@ angular.module('photoController', [])
 		$scope.editImageTag= function (photo) {
 
 		  var html = '<div class="message">';
+		  html += '<img class="img-fluid" id="selectedFile" src="'+ photo.path +'" width=225 height=150/>';		  		  
 		  html += '<form action="/" method="post" id="form' + photo.id + '">';
-		  html += '<h3> Update photo description</h3>';
-		  html += '<img class="img-fluid" id="selectedFile" src="'+ photo.path +'" width=225 height=150/>';		  
+		  html += '<h3> Update photo description</h3>';		  
 		  html += '<p><input type="hidden" name="name" value="' + photo.path + '"/>';
 		  html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80>' +  photo.tags + '</textarea></p>';
 		  html += '<p><input type="button" value="Update" onClick="submitFancyBoxForm(form' + photo.id + ',tag' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>';

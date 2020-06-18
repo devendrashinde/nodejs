@@ -19,6 +19,8 @@ var mime = {
     js: 'application/javascript'
 };
 
+var fileTypes = ['.jpg', '.png', '.mp4', '.mpeg', '.mpg', '.avi', '.3gp', '.mkv', '.mov', '.pdf'];
+
 app.set('view engine', 'pug');
 app.set('views', __dirname);
 
@@ -27,12 +29,12 @@ app.use(fileUpload({
 }));
 
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/pictures', express.static(path.join(__dirname, 'pictures')));
+app.use('/data', express.static(path.join(__dirname, "data")));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-var picturesDir = path.join(__dirname, 'pictures');
-var BASE_DIR = 'pictures/';
+var dataDir = path.join(__dirname, "data");
+var BASE_DIR = 'data/';
 
 app.post('/upload', function(req, res) {
   if (!req.files || Object.keys(req.files).length === 0) {
@@ -65,11 +67,11 @@ app.get('/thumb?:id', (req, res) => {
 
 app.get('/get-images?:id', (req, res) => {
     album = req.query.id;
-    targetDir = picturesDir;
+    targetDir = dataDir;
     if(!album || album == "Home"){
         album = "Home";
     } else {
-        targetDir = path.join(picturesDir, album);
+        targetDir = path.join(dataDir, album);
     }
     let images = {};    
     res.render('index', { title: 'Our Photo Gallery', images: images })
@@ -77,11 +79,11 @@ app.get('/get-images?:id', (req, res) => {
 
 app.get('/photos?:id', (req, res) => {
     album = req.query.id;
-    targetDir = picturesDir;
+    targetDir = dataDir;
     if(album == undefined || !album || album == "Home"){
         album = "Home";
     } else {
-        targetDir = path.join(picturesDir, album);
+        targetDir = path.join(dataDir, album);
     }
     let images = getImagesFromDir(targetDir, album, 0, false);
     res.setHeader('Content-Type', 'application/json');
@@ -98,9 +100,9 @@ app.route('/tags?:tag')
     .get(photos.getPhotos);
 	
 app.get('*', (req, res) => {
-    var file = path.join(picturesDir, req.path.replace(/\/$/, '/index.html'));
+    var file = path.join(dataDir, req.path.replace(/\/$/, '/index.html'));
 
-    if (file.indexOf(picturesDir + path.sep) !== 0) {
+    if (file.indexOf(dataDir + path.sep) !== 0) {
         return res.status(403).end('Forbidden');
     }
     
@@ -176,9 +178,7 @@ function getImagesFromDir(dirPath, album, idIndex, onlyDir) {
             var album_name = (root ? "" : album + "/")+file;
             var imageDetails = new ImageDetails("album"+id, file, album_name, true, file);
             allImages.push(imageDetails);
-            //allImages.push(...getImagesFromDir(fileLocation, file, id)); // process sub directories
-        } else if (!onlyDir && stat && stat.isFile() && ['.jpg', '.png'].indexOf(path.extname(fileLocation).toLowerCase()) != -1) {
-            //allImages.push(new ImageDetails("photo"+id, file, BASE_DIR+(idIndex == 0 ? "" : album + "/")+file, false, album));
+        } else if (!onlyDir && stat && stat.isFile() && fileTypes.indexOf(path.extname(fileLocation).toLowerCase()) != -1) {
             allImages.push(new ImageDetails("photo"+id, file, BASE_DIR+(root ? "" : album + "/")+file, false, (root ? album : album), file));
         }
     }

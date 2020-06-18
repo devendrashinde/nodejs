@@ -10,6 +10,8 @@ angular.module('photoController', [])
 		$scope.searchTag = "";
 		$scope.selectedAlbum = {path:'Home',name:'Home'};
 		$scope.uploadDetails = {};
+		imageTypes = ['jpg', 'png', 'jpeg'];
+		videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg'];
 		
 		// GET =====================================================================
 		// when landing on the page, get all photos and tags and show them
@@ -130,11 +132,23 @@ angular.module('photoController', [])
 						$scope.albums.push(photo);
 					}
 				} else {
-					$scope.photos.push(photo);
+					$scope.photos.push(getImageType(photo));
 				}
 			}
 			$scope.tags = {};
 		}		
+		
+		function getImageType(photo){
+			ext = photo.name.substr(photo.name.lastIndexOf(".")+1).toLowerCase();
+			if(imageTypes.indexOf(ext) != -1) {
+				photo.isPhoto = true;
+			} else if(videoTypes.indexOf(ext) != -1) {
+				photo.isVideo = true;
+			} else {
+				photo.isPdf = true;
+			}
+			return photo;
+		}
 		
 		function getUrlParameter(param) {
 			var sPageURL = $location.$$absUrl,

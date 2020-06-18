@@ -60,7 +60,7 @@ exports.getPhoto = function(req, res) {
 };
 
 function getAlbumName(album){
-	album = !album || !album.length ? "pictures":album;
+	album = !album || !album.length ? "data":album;
 	var s = album.split("/");
 	return s[s.length-1];	
 }

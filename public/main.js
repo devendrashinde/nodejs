@@ -40,23 +40,9 @@ $('[data-fancybox="gallery"]').fancybox({
 	*/
 });
 
-
-function editTag(photoId, photoPath, photoTag) {
-
-  var html = '<div class="message">';
-  html += '<form action="/" method="post" id="form' + photoId + '">';
-  html += '<h3> Update photo description</h3>';
-  html += '<p><input type="hidden" name="name" value="' + photoPath + '"/>';
-  html += '<textarea name="tags" rows=4 column=80>' +  photoTag + '</textarea></p>';
-  html += '<p><input type="button" value="Update" onClick="submitFancyBoxForm(form' + photoId + ',tag' + photoId + ');"/></p>';
-  html += '</form></div>';
-  $.fancybox.open(html);
-
-}
-
-function updateTag(photoId, photoTag){
+function updateTag(photoId, photoTag, newPhotoId){
 	var controller = angular.element('#controller').scope();
-	controller.updateTag(photoId, photoTag);            
+	controller.updateTag(photoId, photoTag, newPhotoId);
 	controller.$apply(); // need when data is changed	
 }
 
@@ -104,39 +90,18 @@ function filterItems(filter) {
   });
 }
 
-function submitAndClosePopup(formName, tagName, closeButton){
+function submitUpdareTagForm(formName, tagName, photoId){
    
 	var form = $(formName);
-	
-	/*
-	$.post(form.attr('action'), form.serialize(), function(response){
-		// do something here on success
-	},'json');
-	*/
 	var values = {};
 	$.each(form.serializeArray(), function (i, field) {
 		values[field.name] = field.value;
 	});
-	$(tagName).text(values.tags);	
-	$(closeButton).click();
-	$.fancybox.close();
-	return false;
-}
-
-function submitFancyBoxForm(formName, tagName, photoId){
-   
-	var form = $(formName);
 		
 	$.post(form.attr('action'), form.serialize(), function(response){
-		// do something here on success
+		updateTag(photoId, values.tags, response);
 	},'json');
 	
-	var values = {};
-	$.each(form.serializeArray(), function (i, field) {
-		values[field.name] = field.value;
-	});
-	//$(tagName).text(values.tags);	
-	updateTag(photoId, values.tags);
 	$.fancybox.close();
 	return false;
 }
@@ -178,18 +143,3 @@ function displayUploadedFile(input) {
 		reader.readAsDataURL(input.files[0]);
 	}
 }
-
-/*
-function search() {
-	var controller = angular.element('#controller').scope();
-	controller.search();
-	controller.$apply();
-};
-
-function clearSearch() {
-	var controller = angular.element('#controller').scope();
-	controller.clearSearch();
-	controller.$apply();
-
-};
-*/

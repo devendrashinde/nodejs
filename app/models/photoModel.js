@@ -3,6 +3,7 @@ var sql = require('./db');
 
 //Photo object constructor
 var Photo = function(photo){
+	this.id = photo.id;
     this.name = photo.name;
     this.tags = photo.tags;
 };

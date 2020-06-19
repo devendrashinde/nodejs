@@ -79,10 +79,11 @@ angular.module('photoController', [])
 		}		
 		
 		// update tag
-		$scope.updateTag = function(id, tag) {
+		$scope.updateTag = function(id, tag, newId) {
 			for (photo of $scope.photos) {
 				if(photo.id == id){
 					photo.tags = tag;
+					photo.id = newId;
 					return;
 				}
 			}
@@ -117,6 +118,7 @@ angular.module('photoController', [])
 				for (tag of $scope.tags) {
 					if(tag.name == albumDetails.name && tag.album == albumDetails.album){
 						photo.tags = (tag.tags.length ? tag.tags : photo.name);
+						photo.id = tag.id;
 						break;
 					}
 				}
@@ -176,12 +178,17 @@ angular.module('photoController', [])
 		$scope.editImageTag= function (photo) {
 
 		  var html = '<div class="message">';
-		  html += '<img class="img-fluid" id="selectedFile" src="'+ photo.path +'" width=225 height=150/>';		  		  
+		  if(photo.isPhoto) {
+			html += '<img class="img-fluid" id="selectedFile" src="'+ photo.path +'" width=225 height=150/>';
+		  }
 		  html += '<form action="/" method="post" id="form' + photo.id + '">';
-		  html += '<h3> Update photo description</h3>';		  
+		  html += '<h3> Update photo description</h3>';
+		  if(parseInt(photo.id) > 0){
+			  html += '<p><input type="hidden" name="id" value="' + photo.id + '"/>';
+		  }
 		  html += '<p><input type="hidden" name="name" value="' + photo.path + '"/>';
 		  html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80>' +  photo.tags + '</textarea></p>';
-		  html += '<p><input type="button" value="Update" onClick="submitFancyBoxForm(form' + photo.id + ',tag' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>';
+		  html += '<p><input type="button" value="Update" onClick="submitUpdareTagForm(form' + photo.id + ',tag' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>';
 		  html += '<input type="button" value="Cancel" onClick="closeFancyBoxForm();"/></p>';
 		  html += '</form></div>';
 		  $.fancybox.open(html);

@@ -18,8 +18,16 @@ angular.module('photoController', [])
 		// use the service to get all the photo tags
 		loadPhotos();
 
-		$scope.uploadFile = function(file, tags){
-           PhotoService.upload(file, tags);
+		$scope.uploadFile = function(file, tags, album){
+			$scope.loading = true;
+			PhotoService.upload(file, tags, album)
+					.then(function successCallback(response) {
+							$scope.loadAlbum();
+							$scope.loading = false;
+					}, function errorCallback(response) {
+						// called asynchronously if an error occurs
+						// or server returns response with an error status.
+					});
         };
 
 		$scope.search = function() {
@@ -28,9 +36,9 @@ angular.module('photoController', [])
 				$location.search('q', $scope.searchTag);
 				PhotoService.getTagsByTag($scope.searchTag)
 					// if successful creation, call our get function to get all the new photos
-					.then(function successCallback(response) {
-							$scope.loading = false;
+					.then(function successCallback(response) {							
 							$scope.photos = response.data; // assign our new list of photos
+							$scope.loading = false;
 					}, function errorCallback(response) {
 						// called asynchronously if an error occurs
 						// or server returns response with an error status.
@@ -198,11 +206,20 @@ angular.module('photoController', [])
 
 		  var html = '<div class="message">';
 		  html += '<form action="/upload" method="post" id="uploadForm" encType="multipart/form-data">';
-		  html += '<p><h3> Upload File</h3>';
+		  html += '<p><h3>Upload File</h3>';
 		  html += '<input type="file" name="myFile" id="uploadFile" onClick="this.value = null" onChange="displayUploadedFile(this);"/></p>';
 		  html += '<img class="img-fluid" id="selectedFile" src=""/>';		  
-		  html += '<p><h3> Enter file description</h3>';
-		  html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80></textarea></p>';
+		  html += '<p><h4>Enter file description</h4>';
+		  html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80></textarea>';
+		  html += '<p><h4>Select folder OR enter name</h4>';		  
+		  html += '<div class="select-editable">';
+		  html += '<select onchange="this.nextElementSibling.value=this.value">';	  
+		  for(album of $scope.albums){
+			html += '<option value="' + album.path + '"' + ($scope.selectedAlbum.name == album.name ? 'selected="selected"': '')+'>' + album.name +'</option>';
+		  }
+		  html += '</select>';
+		  html += '<input type="text" style="width: 100%; max-width: 100%;" name="album" value="' + $scope.selectedAlbum.path +'"/>'; 
+		  html += '</div></p>';		  
 		  html += '<p><input type="button" value="Upload" onClick="submitUploadForm(uploadForm);"/>';
 		  html += '<input type="button" value="Cancel" onClick="closeFancyBoxForm();"/></p>';
 		  html += '</form></div>';

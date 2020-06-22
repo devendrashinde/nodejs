@@ -26,8 +26,8 @@ function getNameAndAlbum(photo){
 	var path = "";
 	for(var i = 0; i < s.length-2; i++){
 		path = path + (i == 0 ? "" : "/") + s[i];
-	}
-	photo.path = path;
+	}	
+	photo.path = path;	
 	photo.album = s[s.length-2];
 	photo.name = s[s.length-1];	
 	console.log(photo);

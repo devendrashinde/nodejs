@@ -19,10 +19,11 @@ angular.module('PhotoService', [])
 			delete : function(id) {
 				return $http.delete('/api/photos/' + id);
 			},
-			upload : function(file, tags) {
+			upload : function(file, tags, album) {
 				var fd = new FormData();
 				fd.append('file', file);
 				fd.append('tags', tags);
+				fd.append('album', album);
 				return $http.post('/upload', fd, {
 					transformRequest: angular.identity,
 					headers: {'Content-Type': undefined}

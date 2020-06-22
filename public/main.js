@@ -116,9 +116,10 @@ function submitUploadForm(formName){
 	
 	var file = $('input[type=file]')[0].files[0];
 	var tags = values.tags;
+	var album = values.album;
 		
 	var controller = angular.element('#controller').scope();
-	controller.uploadFile(file, tags);
+	controller.uploadFile(file, tags, album);
 	controller.$apply();
 	$.fancybox.close();
 	return false;

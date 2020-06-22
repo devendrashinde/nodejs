@@ -43,13 +43,13 @@ app.post('/upload', function(req, res) {
 
   let uploadedFile = req.files.file;
 
-  // Use the mv() method to place the file somewhere on your server  
-  fileName = BASE_DIR + getAlbumName(uploadedFile.name) + '/' + uploadedFile.name;
+  // Use the mv() method to place the file somewhere on your server
+  fileName = BASE_DIR + req.body.album + '/' + uploadedFile.name;
   console.log(fileName);
   uploadedFile.mv(fileName, function(err) {
     if (err)
       return res.status(500).send(err);
-    req.body.name = fileName;	
+    req.body.name = fileName;
 	photos.createPhoto(req, res);
   });
 });

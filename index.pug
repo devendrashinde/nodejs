@@ -56,6 +56,8 @@ html(ng-app="app")
             //      a(class="btn btn-outline-primary nav-link" href="?id={{album.path}}") {{album.album}}
 
         div.page-content
+          div(ng-if="loading")
+            p Loading...
           div.container
             div(class="container px-0")
               div.pp-gallery

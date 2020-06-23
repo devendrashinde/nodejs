@@ -37,7 +37,7 @@ angular.module('photoController', [])
                 PhotoService.getTagsByTag($scope.searchTag)
                     // if successful creation, call our get function to get all the new photos
                     .then(function successCallback(response) {                          
-                            $scope.photos = response.data; // assign our new list of photos
+							updatePhotoTagsFromDb(response.data);
                             $scope.loading = false;
                     }, function errorCallback(response) {
                         // called asynchronously if an error occurs
@@ -60,8 +60,8 @@ angular.module('photoController', [])
             PhotoService.getPhotos(id)
                 // if successful creation, call our get function to get all the new photos
                 .then(function successCallback(response) {
-                        $scope.loading = false;                     
                         updatePhotoTagsFromDb(response.data);
+                        $scope.loading = false;                     
                 }, function errorCallback(response) {
                     // called asynchronously if an error occurs
                     // or server returns response with an error status.
@@ -145,7 +145,7 @@ angular.module('photoController', [])
                     $scope.photos.push(getImageType(photo));
                 }
             }
-            $scope.tags = {};
+            $scope.tags = [];
         }       
         
         function getImageType(photo){

@@ -18,6 +18,9 @@ html(ng-app="app")
     div(class="page" id="controller" ng-controller="photoController")
       header
         div.pp-header
+         div(class="loadingMessage" ng-if="loading")
+          p
+            h1 Loading...
          nav(class="navbar navbar-expand-lg navbar-light")
           div.container
             // add home link with icon
@@ -56,8 +59,6 @@ html(ng-app="app")
             //      a(class="btn btn-outline-primary nav-link" href="?id={{album.path}}") {{album.album}}
 
         div.page-content
-          div(ng-if="loading")
-            p Loading...
           div.container
             div(class="container px-0")
               div.pp-gallery
@@ -75,7 +76,7 @@ html(ng-app="app")
                       div(class="card" ng-if="image.isVideo")
                         span.caption
                           a(id="tag{{image.id}}" class="btn" ng-click="editImageTag(image)") {{image.tags}}
-                        a(href="{{image.path}}" data-fancybox="gallery" data-caption="{{image.tags}}" data-width="640" data-height="360")
+                        a(href="{{image.path}}" data-type="video" data-fancybox="gallery" data-caption="{{image.tags}}" data-width="640" data-height="360")
                           figure.pp-effect
                             img(ng-id="tag{{image.id}}" class="img-fluid" src="video.png" alt="{{image.tags}}")
                             figcaption

@@ -19,7 +19,7 @@ var mime = {
     js: 'application/javascript'
 };
 
-var fileTypes = ['.jpg', '.png', '.mp4', '.mpeg', '.mpg', '.avi', '.3gp', '.mkv', '.mov', '.pdf'];
+var skipFileTypes = ['.db','.exe','.tmp','.doc'];
 
 app.set('view engine', 'pug');
 app.set('views', __dirname);
@@ -178,7 +178,7 @@ function getImagesFromDir(dirPath, album, idIndex, onlyDir) {
             var album_name = (root ? "" : album + "/")+file;
             var imageDetails = new ImageDetails("album"+id, file, album_name, true, file);
             allImages.push(imageDetails);
-        } else if (!onlyDir && stat && stat.isFile() && fileTypes.indexOf(path.extname(fileLocation).toLowerCase()) != -1) {
+        } else if (!onlyDir && stat && stat.isFile() && skipFileTypes.indexOf(path.extname(fileLocation).toLowerCase()) == -1) {
             allImages.push(new ImageDetails("photo"+id, file, BASE_DIR+(root ? "" : album + "/")+file, false, (root ? album : album), file));
         }
     }

@@ -11,7 +11,7 @@ angular.module('photoController', [])
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
         imageTypes = ['jpg', 'png', 'jpeg'];
-        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg'];
+        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg', 'mp3'];
         
         // GET =====================================================================
         // when landing on the page, get all photos and tags and show them
@@ -108,11 +108,12 @@ angular.module('photoController', [])
         
         // load photos and respective tags
         function loadPhotosAndTags(id) {                
+			$scope.loading = true;
             PhotoService.getTagsByAlbum(id)
             .then(function successCallback(response) {
                 $scope.tags = response.data;
                 $scope.getPhotos(id);               
-                $scope.loading = false;             
+                $scope.loading = false;
             }, function errorCallback(response) {
                 // called asynchronously if an error occurs
                 // or server returns response with an error status.

@@ -6,6 +6,7 @@ angular.module('photoController', [])
         $scope.tags = [];
         $scope.photos = [];
         $scope.albums = [];
+		$scope.folders = [];
         $scope.loading = true;
         $scope.searchTag = "";
         $scope.selectedAlbum = {path:'Home',name:'Home'};
@@ -103,11 +104,12 @@ angular.module('photoController', [])
         }
         
         $scope.loadAlbum = function () {
-            loadPhotosAndTags($scope.selectedAlbum.path == "Home"? "" : $scope.selectedAlbum.path);
+            loadPhotosAndTags($scope.selectedAlbum.path);
         }
-        
+
         // load photos and respective tags
-        function loadPhotosAndTags(id) {                
+        function loadPhotosAndTags(id) {
+			id = id == "Home"? "" : id;
 			$scope.loading = true;
             PhotoService.getTagsByAlbum(id)
             .then(function successCallback(response) {
@@ -122,6 +124,7 @@ angular.module('photoController', [])
 
         function updatePhotoTagsFromDb(photos){
             $scope.photos = [];
+			$scope.folders = [];
             for (photo of photos) {
                 var albumDetails = getNameAndAlbum(photo.path);
                 for (tag of $scope.tags) {
@@ -133,6 +136,7 @@ angular.module('photoController', [])
                 }
                 if(photo.isAlbum){
                     found = false;
+					$scope.folders.push(photo);
                     for (x of $scope.albums) {
                         if(x.path == photo.path && x.name == photo.name) {
                             found = true;

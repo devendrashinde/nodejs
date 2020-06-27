@@ -19,7 +19,7 @@ var mime = {
     js: 'application/javascript'
 };
 
-var skipFileTypes = ['.db','.exe','.tmp','.doc'];
+var skipFileTypes = ['.db','.exe','.tmp','.doc','.dat','.ini'];
 
 app.set('view engine', 'pug');
 app.set('views', __dirname);

@@ -60,7 +60,12 @@ html(ng-app="app")
 
         div.page-content
           div.container
-            div(class="container px-0")
+           div.row
+            div(class="col-xs-3 col-md-3")
+              ul(class="navbar-nav ml-auto")
+                li(class="nav-item" ng-repeat="folder in folders")
+                  a(class="btn btn-outline-primary nav-link" ng-model="selectedAlbum" ng-click="$parent.selectedAlbum=folder;loadAlbum();") {{folder.album}}
+            div(class="container px-0 col-xs-9 col-md-9")
               div.pp-gallery
                 div.card-columns
                   div(ng-repeat="image in photos")

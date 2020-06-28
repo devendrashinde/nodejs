@@ -107,6 +107,11 @@ angular.module('photoController', [])
             loadPhotosAndTags($scope.selectedAlbum.path);
         }
 
+        $scope.setAlbum = function (album) {
+			$scope.selectedAlbum = album;
+            loadPhotosAndTags(album.path);
+        }
+		
         // load photos and respective tags
         function loadPhotosAndTags(id) {
 			id = id == "Home"? "" : id;
@@ -136,7 +141,9 @@ angular.module('photoController', [])
                 }
                 if(photo.isAlbum){
                     found = false;
-					$scope.folders.push(photo);
+					if($scope.selectedAlbum.path != photo.path){
+						$scope.folders.push(photo);
+					}
                     for (x of $scope.albums) {
                         if(x.path == photo.path && x.name == photo.name) {
                             found = true;

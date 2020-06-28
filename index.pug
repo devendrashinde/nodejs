@@ -78,12 +78,13 @@ html(ng-app="app")
                             figcaption
                               div.h4(id="tag{{image.id}}") {{image.tags}}
                               p {{image.album}}
-                      div(class="card" ng-if="image.isVideo")
+                      div(class="card" ng-if="image.isVideo || image.isAudio")
                         span.caption
                           a(id="tag{{image.id}}" class="btn" ng-click="editImageTag(image)") {{image.tags}}
                         a(href="{{image.path}}" data-type="video" data-fancybox="gallery" data-caption="{{image.tags}}" data-width="640" data-height="360")
-                          figure.pp-effect
-                            img(ng-id="tag{{image.id}}" class="img-fluid" src="video.png" alt="{{image.tags}}")
+                          figure.pp-effect                  
+                            img(ng-id="tag{{image.id}}" class="img-fluid" ng-if="image.isVideo" src="video.png" alt="{{image.tags}}")
+                            img(ng-id="tag{{image.id}}" class="img-fluid" ng-if="image.isAudio" src="music.png" alt="{{image.tags}}")
                             figcaption
                               div.h4(id="tag{{image.id}}") {{image.tags}}
                               p {{image.album}}

@@ -12,7 +12,9 @@ angular.module('photoController', [])
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
         imageTypes = ['jpg', 'png', 'jpeg'];
-        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg', 'mp3'];
+        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg'];
+        audioTypes = ['mp3', 'amr', 'wav'];
+
         
         // GET =====================================================================
         // when landing on the page, get all photos and tags and show them
@@ -166,6 +168,8 @@ angular.module('photoController', [])
                 photo.isPhoto = true;
             } else if(videoTypes.indexOf(ext) != -1) {
                 photo.isVideo = true;
+            } else if(audioTypes.indexOf(ext) != -1) {
+                photo.isAudio = true;
             } else {
                 photo.isPdf = true;
             }

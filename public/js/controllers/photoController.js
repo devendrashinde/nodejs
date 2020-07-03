@@ -11,7 +11,7 @@ angular.module('photoController', [])
         $scope.searchTag = "";
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
-        imageTypes = ['jpg', 'png', 'jpeg'];
+        imageTypes = ['jpg', 'png', 'jpeg', 'bmp', 'gif'];
         videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg'];
         audioTypes = ['mp3', 'amr', 'wav'];
 

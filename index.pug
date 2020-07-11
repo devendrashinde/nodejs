@@ -67,6 +67,7 @@ html(ng-app="app")
                 li(class="nav-item" ng-repeat="folder in folders")
                   a(class="btn btn-outline-primary nav-link" ng-click="setAlbum(this.folder)") {{folder.album}}
             div(class="container px-0 col-xs-9 col-md-9")
+              button(onclick="topFunction()" id="goTopBtn" title="Go to top") Top
               div.pp-gallery
                 div.card-columns
                   div(ng-repeat="image in photos")

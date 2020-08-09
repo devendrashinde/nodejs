@@ -95,14 +95,23 @@ angular.module('photoController', [])
                 if(photo.id == id){
                     photo.tags = tag;
                     photo.id = newId;
-                    return;
+                    break;
                 }
             }
+			addToTagList(tag);
+        };
+        
+        function addToTagList(tag) {
+			for(tags of $scope.tags){
+				if(tags.tags == tag) {
+					return;
+				}
+			}
 			var tagObj = {};
 			tagObj.tags = tag;
 			$scope.tags.push(tagObj);
-        };
-        
+        }
+
         function loadPhotos() {
             var id = getUrlParameter("id");
             loadPhotosAndTags(id);

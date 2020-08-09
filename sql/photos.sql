@@ -39,25 +39,6 @@ CREATE TABLE IF NOT EXISTS `photos` (
   UNIQUE KEY `name` (`album`,`name`) USING BTREE
 ) ENGINE=MyISAM AUTO_INCREMENT=46 DEFAULT CHARSET=latin1;
 
---
--- Dumping data for table `photos`
---
-
-INSERT INTO `photos` (`id`, `name`, `tags`, `album`, `path`) VALUES
-(29, '100_0004.JPG', 'vaishnav 1 year', 'pictures', ''),
-(30, '000_0036.JPG', 'Geeta and Vaishnav', '2003-Jan', 'pictures'),
-(35, '000_0011.JPG', 'Kabir 1.5 years', '2004-Feb', 'pictures/2003-Jan'),
-(36, 'IMG_20181122_085248.jpg', 'aatya, anna, dada, aakka, vittal, nalini', '2018-Nov', 'pictures/2003-Jan/2004-Feb'),
-(37, '000_0147.jpg', 'vaishnav', 'pictures', ''),
-(38, '000_0221_1.jpg', 'vaishnav', 'pictures', ''),
-(39, '000_0026.JPG', 'kabu', '2003-Jan', 'pictures'),
-(40, '000_0151.jpg', 'vaishnav', 'pictures', ''),
-(41, '100_0013.JPG', 'vaishnav', 'pictures', ''),
-(42, '000_0223.JPG', 'vaishnav', 'pictures', ''),
-(43, 'IMG_20181119_115115.jpg', 'devendra', '2018-Nov', 'pictures'),
-(44, '20150523_055806.jpg', 'pine lake resort cottage, uk', '2015-May', 'pictures'),
-(45, 'IMG20200605114312.jpg', 'abc', '2020-Jun', 'pictures');
-COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

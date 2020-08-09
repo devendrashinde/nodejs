@@ -90,7 +90,7 @@ angular.module('photoController', [])
         }       
         
         // update tag
-        $scope.updateTag = function(id, tag, newId) {
+        $scope.updateTag = function(id, tag, newId) {						
             for (photo of $scope.photos) {
                 if(photo.id == id){
                     photo.tags = tag;
@@ -98,6 +98,9 @@ angular.module('photoController', [])
                     return;
                 }
             }
+			var tagObj = {};
+			tagObj.tags = tag;
+			$scope.tags.push(tagObj);
         };
         
         function loadPhotos() {
@@ -159,7 +162,7 @@ angular.module('photoController', [])
                     $scope.photos.push(getImageType(photo));
                 }
             }
-            $scope.tags = [];
+            //$scope.tags = [];
         }       
         
         function getImageType(photo){
@@ -194,6 +197,16 @@ angular.module('photoController', [])
         $scope.openModal = function(id){
             ModalService.Open(id);
         };
+		
+        $scope.getMatchingTags = function(tag){
+			var matchedTags = [];
+			for (tag of $scope.tags) {
+				if(tag.tags.match('/' + tag + '.*/')){
+					matchedTags.push(tag.tags);					
+				}
+			}
+            return matchedTags;
+        };		
 
         $scope.closeModal = function(id){
             ModalService.Close(id);
@@ -211,7 +224,18 @@ angular.module('photoController', [])
               html += '<p><input type="hidden" name="id" value="' + photo.id + '"/>';
           }
           html += '<p><input type="hidden" name="name" value="' + photo.path + '"/>';
-          html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80>' +  photo.tags + '</textarea></p>';
+
+          html += '<div class="select-editable">';
+          html += '<select onchange="this.nextElementSibling.value=this.value">';     
+          for(tag of $scope.tags){
+			  if(tag.tags) {
+				html += '<option value="' + tag.tags + '"' +'>' + tag.tags +'</option>';
+			  }
+          }
+          html += '</select>';		  
+          html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80>' +  photo.tags + '</textarea>';
+          html += '</div></p>';       
+		  
           html += '<p><input type="button" value="Update" onClick="submitUpdareTagForm(form' + photo.id + ',tag' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>';
           html += '<input type="button" value="Cancel" onClick="closeFancyBoxForm();"/></p>';
           html += '</form></div>';

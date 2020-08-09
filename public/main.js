@@ -46,6 +46,11 @@ function updateTag(photoId, photoTag, newPhotoId){
 	controller.$apply(); // need when data is changed	
 }
 
+function getMatchingTags(tag){
+	var controller = angular.element('#controller').scope();
+	return controller.getMatchingTags(tag);	
+}
+
 $('.pp-filter-button').on('click', function(e) {
   // remove btn-primary from all buttons first
   $('.pp-filter-button').removeClass('btn-primary');

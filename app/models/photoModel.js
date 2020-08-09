@@ -8,18 +8,20 @@ var Photo = function(photo){
     this.tags = photo.tags;
 };
 
-Photo.createPhoto = function (newPhoto, result) {    
-        sql.query("INSERT INTO photos set ? ON DUPLICATE KEY UPDATE tags = ?", [newPhoto, newPhoto.tags], function (err, res) {
+Photo.createPhoto = function (newPhoto, result) {
+		var newTag = {};
+		newTag.tag = newPhoto.tags;
+        sql.query("INSERT INTO tags set ? ON DUPLICATE KEY UPDATE tag = ?; INSERT INTO photos set ? ON DUPLICATE KEY UPDATE tags = ?", [newTag, newPhoto.tags, newPhoto, newPhoto.tags], function (err, res) {
                 				
                 if(err) {
                     console.log("error: ", err);
                     result(err, null);
                 }
                 else{
-                    console.log(res.insertId);
-                    result(null, res.insertId);
+                    console.log(res[1].insertId);
+                    result(null, res[1].insertId);
                 }
-            });           
+            });
 };
 
 Photo.getPhotoById = function (id, result) {

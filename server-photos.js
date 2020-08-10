@@ -45,6 +45,7 @@ app.post('/upload', function(req, res) {
 
   // Use the mv() method to place the file somewhere on your server
   fileName = BASE_DIR + req.body.album + '/' + uploadedFile.name;
+  fileName = fileName.replace('\\', '/'); 
   console.log(fileName);
   uploadedFile.mv(fileName, function(err) {
     if (err)

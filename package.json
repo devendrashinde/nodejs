@@ -7,17 +7,21 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "author": "arjun <arjunphp@gmail>",
+  "author": "devendra <geetds@googlemail.com>",
   "license": "ISC",
   "dependencies": {
     "@fancyapps/fancybox": "^3.5.7",
+    "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
     "express": "^4.17.1",
     "express-fileupload": "^1.1.7-alpha.3",
     "gm": "^1.23.1",
     "jquery-modal": "^0.9.2",
+    "jsonwebtoken": "^8.5.1",
     "mysql": "^2.18.1",
     "pug": "^2.0.0-beta11",
+    "shelljs": "^0.8.4",
     "uuid": "^7.0.3"
   },
   "devDependencies": {

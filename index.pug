@@ -76,7 +76,7 @@ html(ng-app="app")
                           a(id="tag{{image.id}}" class="btn" ng-click="editImageTag(image)") {{image.tags}}
                         a(href="{{image.path}}" data-fancybox="gallery" data-caption="{{image.tags}}")
                           figure.pp-effect
-                            img(ng-id="tag{{image.id}}" class="img-fluid" ng-src="{{image.path}}" alt="{{image.tags}}")
+                            img(ng-id="tag{{image.id}}" class="img-fluid" ng-src="/thumbs?id={{image.path}}&w=200&h=150" alt="{{image.tags}}")
                             figcaption
                               div.h4(id="tag{{image.id}}") {{image.tags}}
                               p {{image.album}}

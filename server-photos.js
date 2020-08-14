@@ -60,7 +60,7 @@ app.get('/thumb?:id', (req, res) => {
     if(req.query.id) {
 		console.log(req.query.id);
        let image = new media(req.query.id);
-       image.thumb(req, res);	   
+       image.thumb(req, res);   
     } else {
         res.sendStatus(403);
     }

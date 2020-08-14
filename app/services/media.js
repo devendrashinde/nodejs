@@ -3,6 +3,7 @@
 const path = require('path');
 const gm = require('gm');
 const fs = require('fs');
+const shell = require('shelljs');
 
 const exists = (path) => {
     try {
@@ -29,32 +30,45 @@ class Media {
     thumb(request, response) {
         let image = this.src;
 
-        if(this.isValidMedia(this.src) && exists(image)) {
+        if(this.isValidMedia(image) && exists(image)) {
 
             let width = (request.query.w && /^\d+$/.test(request.query.w)) ? request.query.w : '150';
             let height = (request.query.h && /^\d+$/.test(request.query.h)) ? request.query.h : '150';
-            let extension = getFileExtension(this.src);
+            let extension = getFileExtension(image).toLowerCase();
             let mime = (extension === 'jpeg' || extension === 'jpg') ? 'jpeg' : 'png';
-
+			let thumb = this.src.replace('pictures', 'pictures/thumbs');
+			let thumbPath = path.resolve(thumb);
+			console.log(thumb);
             response.type(mime);
 
-            //gm(image).resize(width, height).stream().pipe(response);
-			
-			gm(image).identify(function (err, data) {
-			  if (!err) console.log(data)
-			});
-		
-			/*
-			var thumb = this.src.replace('pictures', 'pictures/thumbs');
-			var writeStream = fs.createWriteStream(thumb);
-            gm(image).resize(width, height).write(thumb, function (err) {
-				if (!err) response.sendStatus(200);
-			});
-			*/
-			response.sendStatus(200);
+			if(!exists(thumb)) {
+				shell.mkdir('-p', path.dirname(thumbPath));
+				/* 
+				//write resized file and then return it
+				var writeStream = fs.createWriteStream(thumb);
+				gm(image).resize(width, height).write(thumb, function (err) {
+					if (err) {
+						response.sendStatus(422);
+					} else {
+						//response.sendFile(path.resolve(thumb));
+						gm(image).resize(width, height).stream().pipe(response);
+					}
+				});				
+				*/
+				gm(image).resize(width, height).autoOrient().toBuffer(function (err, buffer) {
+					if (err) {
+						response.sendStatus(422);
+					} else {
+						fs.writeFile(thumb, buffer, function(err) {});
+						gm(buffer).stream().pipe(response);
+					}
+				});				
+			} else {
+				response.sendFile(thumbPath);
+			}
         } else {
             response.sendStatus(404);
-        }    
+        }
     }
 }
 

@@ -8,12 +8,14 @@ angular.module('photoController', [])
         $scope.albums = [];
 		$scope.folders = [];
         $scope.loading = true;
+		$scope.noMorePhotos = false;
         $scope.searchTag = "";
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
         imageTypes = ['jpg', 'png', 'jpeg', 'bmp', 'gif'];
         videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg'];
         audioTypes = ['mp3', 'amr', 'wav'];
+		$scope.pageId = 0;
 
         
         // GET =====================================================================
@@ -60,7 +62,7 @@ angular.module('photoController', [])
         $scope.getPhotos = function(id) {
             $scope.loading = true;
 
-            PhotoService.getPhotos(id)
+            PhotoService.getPhotos(id, $scope.pageId)
                 // if successful creation, call our get function to get all the new photos
                 .then(function successCallback(response) {
                         updatePhotoTagsFromDb(response.data);
@@ -80,6 +82,29 @@ angular.module('photoController', [])
             }
             return "";
         };
+		
+        // load photos from next page
+        $scope.nextPage = function() {
+			if(!$scope.noMorePhotos) {
+				$scope.pageId = $scope.pageId  + 1;
+				$scope.getPhotos(getSelectedAlbumsId());
+			}
+        };
+		
+        // load photos from prev page
+        $scope.prevPage = function() {
+			$scope.pageId = $scope.pageId  - 1;
+			if($scope.pageId >= 0) {
+				$scope.getPhotos(getSelectedAlbumsId());
+			} else {
+				$scope.pageId = 0;
+			}
+        };
+		
+		function getSelectedAlbumsId(){
+			var id = $scope.selectedAlbum.path;
+			return (id == "Home"? "" : id);
+		}
         
         function getNameAndAlbum(name){
             var prop = {};
@@ -113,11 +138,15 @@ angular.module('photoController', [])
         }
 
         function loadPhotos() {
+			$scope.pageId = 0;
+			$scope.noMorePhotos = false;
             var id = getUrlParameter("id");
             loadPhotosAndTags(id);
         }
         
         $scope.loadAlbum = function () {
+			$scope.pageId = 0;
+			$scope.noMorePhotos = false;
             loadPhotosAndTags($scope.selectedAlbum.path);
         }
 
@@ -126,14 +155,21 @@ angular.module('photoController', [])
             loadPhotosAndTags(album.path);
         }
 		
+		function showNoMorePhotos() {			
+			setTimeout(function() {
+				$scope.noMorePhotos = false;
+			}, 5000); // <-- time in milliseconds
+		}
+		
         // load photos and respective tags
         function loadPhotosAndTags(id) {
 			id = id == "Home"? "" : id;
 			$scope.loading = true;
+			$scope.noMorePhotos = false;
             PhotoService.getTagsByAlbum(id)
             .then(function successCallback(response) {
                 $scope.tags = response.data;
-                $scope.getPhotos(id);               
+                $scope.getPhotos(id);
                 $scope.loading = false;
             }, function errorCallback(response) {
                 // called asynchronously if an error occurs
@@ -142,7 +178,7 @@ angular.module('photoController', [])
         }
 
         function updatePhotoTagsFromDb(photos){
-            $scope.photos = [];
+            firstTime = true;
 			$scope.folders = [];
             for (photo of photos) {
                 var albumDetails = getNameAndAlbum(photo.path);
@@ -168,9 +204,18 @@ angular.module('photoController', [])
                         $scope.albums.push(photo);
                     }
                 } else {
+                	if(firstTime) {
+                		$scope.photos = [];
+                		firstTime = false;
+                	}
                     $scope.photos.push(getImageType(photo));
                 }
             }
+			$scope.noMorePhotos = firstTime;
+			if($scope.noMorePhotos && $scope.pageId > 0) {
+				// no more photos, stay on same page
+				$scope.pageId = $scope.pageId  - 1;
+			}
             //$scope.tags = [];
         }       
         

@@ -20,6 +20,7 @@ var mime = {
 };
 
 var skipFileTypes = ['.db','.exe','.tmp','.doc','.dat','.ini', '.srt','.idx','.rar','.sub','.zip','.php','.wmdb'];
+var numberOfImagesOnPage = 4;
 
 app.set('view engine', 'pug');
 app.set('views', __dirname);
@@ -86,7 +87,11 @@ app.get('/photos?:id', (req, res) => {
     } else {
         targetDir = path.join(dataDir, album);
     }
-    let images = getImagesFromDir(targetDir, album, 0, false);
+	let page = 0;
+	if(req.query.page) {
+		page = req.query.page;
+	}
+    let images = getImagesFromDir(targetDir, album, page, false);
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify(images));
 });
@@ -120,7 +125,7 @@ app.get('*', (req, res) => {
 });
 
 
-function getAlbumName(file){	
+function getAlbumName(file){
 	var filename = file;
 	filename = filename.replace("IMG", "");
 	filename = filename.replace("VID", "");
@@ -152,15 +157,18 @@ function getAlbumName(file){
 }
 
 // dirPath: target image directory
-function getImagesFromDir(dirPath, album, idIndex, onlyDir) {
+function getImagesFromDir(dirPath, album, page, onlyDir) {
 
     // All iamges holder, defalut value is empty
     let allImages = [];
     // Iterator over the directory
     let files = fs.readdirSync(dirPath);
  
-    // Iterator over the files and push jpg and png images to allImages array.
-    var id = idIndex
+    // Iterator over the files and push images, video, pdfs to allImages array.
+    var id = 0
+	var imageCnt = 0;	
+	var imageIndex = 0;
+	var firstImageId = page * numberOfImagesOnPage;
     var root = album == "Home";
     
     if(!root){
@@ -170,7 +178,7 @@ function getImagesFromDir(dirPath, album, idIndex, onlyDir) {
     } else{
 		allImages.push(new ImageDetails("album"+id, album, "", true, album));
 	}
-    for (file of files) {       
+    for (file of files) {
         let fileLocation = path.join(dirPath, file);
         var stat = fs.statSync(fileLocation);
 
@@ -179,8 +187,12 @@ function getImagesFromDir(dirPath, album, idIndex, onlyDir) {
             var album_name = (root ? "" : album + "/")+file;
             var imageDetails = new ImageDetails("album"+id, file, album_name, true, file);
             allImages.push(imageDetails);
-        } else if (!onlyDir && stat && stat.isFile() && skipFileTypes.indexOf(path.extname(fileLocation).toLowerCase()) == -1) {
-            allImages.push(new ImageDetails("photo"+id, file, BASE_DIR+(root ? "" : album + "/")+file, false, (root ? album : album), file));
+        } else if (!onlyDir && stat && stat.isFile() && skipFileTypes.indexOf(path.extname(fileLocation).toLowerCase()) == -1) {			
+			if ( imageIndex >= firstImageId && imageCnt < numberOfImagesOnPage) {
+				allImages.push(new ImageDetails("photo"+id, file, BASE_DIR+(root ? "" : album + "/")+file, false, (root ? album : album), file));
+				imageCnt = imageCnt + 1;
+			}
+			imageIndex = imageIndex + 1;
         }
     }
     console.log(allImages);

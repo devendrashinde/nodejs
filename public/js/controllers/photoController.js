@@ -216,6 +216,8 @@ angular.module('photoController', [])
 			if($scope.noMorePhotos && $scope.pageId > 0) {
 				// no more photos, stay on same page
 				$scope.pageId = $scope.pageId  - 1;
+			} else {
+				$scope.noMorePhotos = $scope.photos.length < $scope.numberOfIemsOnPage;
 			}
             //$scope.tags = [];
         }       

@@ -10,8 +10,8 @@ angular.module('PhotoService', [])
 			getTagsByTag : function(id) {
 				return $http.get('/tags?tag=' + id);
 			},
-			getPhotos : function(id, page) {
-				return $http.get('/photos?id=' + id + '&page=' + page);
+			getPhotos : function(id, page, items) {
+				return $http.get('/photos?id=' + id + '&page=' + page + '&items=' + items);
 			},
 			create : function(photoData) {
 				return $http.post('/', photoData);

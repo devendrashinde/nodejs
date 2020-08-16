@@ -62,9 +62,10 @@ html(ng-app="app")
           div.container
            div.row
             button(ng-Click="prevPage()" ng-show="pageId > 0" class="btn" id="prevBtn" title="Go to previous page") << Prev
+            input(type="text" name="numberOfItemsOnPage" size="2" ng-model="numberOfIemsOnPage" title="number of items to load")
             button(ng-Click="nextPage()" ng-hide="noMorePhotos" class="btn" id="nextBtn" title="Go to next page") Next >>
             div(id="noMorePhotosMsg" ng-show="noMorePhotos")
-             h3  Sorry no more items, please select previous or select another folder
+             h4 Sorry no more items, please select previous or select another folder
            div.row
             //nav(class="navbar navbar-expand-lg navbar-light")
             div(class="col-xs-3 col-md-3 d-none d-sm-block" ng-if="folders.length > 0")

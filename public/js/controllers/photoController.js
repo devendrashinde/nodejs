@@ -16,6 +16,7 @@ angular.module('photoController', [])
         videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg'];
         audioTypes = ['mp3', 'amr', 'wav'];
 		$scope.pageId = 0;
+		$scope.numberOfIemsOnPage = 20;
 
         
         // GET =====================================================================
@@ -62,7 +63,7 @@ angular.module('photoController', [])
         $scope.getPhotos = function(id) {
             $scope.loading = true;
 
-            PhotoService.getPhotos(id, $scope.pageId)
+            PhotoService.getPhotos(id, $scope.pageId, $scope.numberOfIemsOnPage)
                 // if successful creation, call our get function to get all the new photos
                 .then(function successCallback(response) {
                         updatePhotoTagsFromDb(response.data);

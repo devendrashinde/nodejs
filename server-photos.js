@@ -20,7 +20,7 @@ var mime = {
 };
 
 var skipFileTypes = ['.db','.exe','.tmp','.doc','.dat','.ini', '.srt','.idx','.rar','.sub','.zip','.php','.wmdb'];
-var numberOfImagesOnPage = 4;
+var numberOfItemsOnPage = 20;
 
 app.set('view engine', 'pug');
 app.set('views', __dirname);
@@ -91,7 +91,11 @@ app.get('/photos?:id', (req, res) => {
 	if(req.query.page) {
 		page = req.query.page;
 	}
-    let images = getImagesFromDir(targetDir, album, page, false);
+	let items = numberOfItemsOnPage;
+	if(req.query.items) {
+		items = req.query.items;
+	}
+    let images = getImagesFromDir(targetDir, album, page, false, items);
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify(images));
 });
@@ -157,7 +161,7 @@ function getAlbumName(file){
 }
 
 // dirPath: target image directory
-function getImagesFromDir(dirPath, album, page, onlyDir) {
+function getImagesFromDir(dirPath, album, page, onlyDir, numberOfItems) {
 
     // All iamges holder, defalut value is empty
     let allImages = [];
@@ -168,7 +172,7 @@ function getImagesFromDir(dirPath, album, page, onlyDir) {
     var id = 0
 	var imageCnt = 0;	
 	var imageIndex = 0;
-	var firstImageId = page * numberOfImagesOnPage;
+	var firstImageId = page * numberOfItems;
     var root = album == "Home";
     
     if(!root){
@@ -188,7 +192,7 @@ function getImagesFromDir(dirPath, album, page, onlyDir) {
             var imageDetails = new ImageDetails("album"+id, file, album_name, true, file);
             allImages.push(imageDetails);
         } else if (!onlyDir && stat && stat.isFile() && skipFileTypes.indexOf(path.extname(fileLocation).toLowerCase()) == -1) {			
-			if ( imageIndex >= firstImageId && imageCnt < numberOfImagesOnPage) {
+			if ( imageIndex >= firstImageId && imageCnt < numberOfItems) {
 				allImages.push(new ImageDetails("photo"+id, file, BASE_DIR+(root ? "" : album + "/")+file, false, (root ? album : album), file));
 				imageCnt = imageCnt + 1;
 			}

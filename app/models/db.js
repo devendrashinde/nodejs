@@ -1,18 +1,18 @@
 'user strict';
 
-var mysql = require('mysql');
+import { createConnection } from 'mysql';
 
 //local mysql db connection
-var connection = mysql.createConnection({
+var connection = createConnection({
     host     : 'localhost',
     user     : 'root',
-    password : '',
+    password : 'photos',
     database : 'mydb',
-	multipleStatements: true
+    multipleStatements: true
 });
 
 connection.connect(function(err) {
     if (err) throw err;
 });
 
-module.exports = connection;
+export default connection;

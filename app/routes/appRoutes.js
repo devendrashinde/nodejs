@@ -1,5 +1,5 @@
 'use strict';
-module.exports = function(app) {
+export default function(app) {
   var todoList = require('../controllers/taskController');
   var photos = require('../controllers/photoController');
 
@@ -23,11 +23,11 @@ module.exports = function(app) {
     .delete(photos.removePhoto);
 
   app.route('/albums')
-    .get(photos.getAlbums)
-	.post(photos.createAlbum);
+    .get(photos.getPhotoAlbums)
+	.post(photos.createPhotoAlbum);
 
   app.route('/albums/:albumId')
-    .get(photos.getAlbum)
+    .get(photos.getPhotoAlbum)
     .put(photos.updateAlbumTag)
     .delete(photos.removeAlbum);
 };

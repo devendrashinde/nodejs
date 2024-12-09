@@ -1,12 +1,17 @@
-const fs = require('fs');
-const express = require('express');
-const fileUpload = require('express-fileupload');
+import { createReadStream, readdirSync, statSync } from 'fs';
+import express from 'express';
+import fileUpload from 'express-fileupload';
 const app = express();
-const path = require('path');
-const bodyParser = require('body-parser');
-var ImageDetails = require("./ImageDetails.js");
-var photos = require('./app/controllers/photoController');
-const media = require('./app/services/media');
+import { join, sep, extname } from 'path';
+import path from 'path';
+//import { urlencoded, json } from 'body-parser';
+import ImageDetails from "./ImageDetails.js";
+import { fileURLToPath } from 'url';
+import { createPhoto, getPhotos } from './app/controllers/photoController.js';
+import media from './app/services/media.js';
+import pkg from 'body-parser';
+
+const { urlencoded, json } = pkg;
 
 var mime = {
     html: 'text/html',
@@ -22,6 +27,9 @@ var mime = {
 var skipFileTypes = ['.db','.exe','.tmp','.doc','.dat','.ini', '.srt','.idx','.rar','.sub','.zip','.php','.wmdb'];
 var numberOfItemsOnPage = 20;
 
+const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
+const __dirname = path.dirname(__filename); // get the name of the directory
+
 app.set('view engine', 'pug');
 app.set('views', __dirname);
 
@@ -29,12 +37,12 @@ app.use(fileUpload({
     createParentPath: true
 }));
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/data', express.static(path.join(__dirname, "data")));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(express.static(join(__dirname, 'public')));
+app.use('/data', express.static(join(__dirname, "data")));
+app.use(urlencoded({ extended: true }));
+app.use(json());
 
-var dataDir = path.join(__dirname, "data");
+var dataDir = join(__dirname, "data");
 var BASE_DIR = 'data/';
 
 app.post('/upload', function(req, res) {
@@ -52,7 +60,7 @@ app.post('/upload', function(req, res) {
     if (err)
       return res.status(500).send(err);
     req.body.name = fileName;
-	photos.createPhoto(req, res);
+	createPhoto(req, res);
   });
 });
 
@@ -68,24 +76,24 @@ app.get('/thumb?:id', (req, res) => {
 });
 
 app.get('/get-images?:id', (req, res) => {
-    album = req.query.id;
-    targetDir = dataDir;
+    let album = req.query.id;
+    let targetDir = dataDir;
     if(!album || album == "Home"){
         album = "Home";
     } else {
-        targetDir = path.join(dataDir, album);
+        targetDir = join(dataDir, album);
     }
     let images = {};    
     res.render('index', { title: 'Our Photo Gallery', images: images })
 });
 
 app.get('/photos?:id', (req, res) => {
-    album = req.query.id;
-    targetDir = dataDir;
+    let album = req.query.id;
+    let targetDir = dataDir;
     if(album == undefined || !album || album == "Home"){
         album = "Home";
     } else {
-        targetDir = path.join(dataDir, album);
+        targetDir = join(dataDir, album);
     }
 	let page = 0;
 	if(req.query.page) {
@@ -101,23 +109,23 @@ app.get('/photos?:id', (req, res) => {
 });
 
 app.route('/')
-    .post(photos.createPhoto);
+    .post(createPhoto);
 
 app.route('/tags?:id')
-    .get(photos.getPhotos);
+    .get(getPhotos);
 	
 app.route('/tags?:tag')
-    .get(photos.getPhotos);
+    .get(getPhotos);
 	
 app.get('*', (req, res) => {
-    var file = path.join(dataDir, req.path.replace(/\/$/, '/index.html'));
+    var file = join(dataDir, req.path.replace(/\/$/, '/index.html'));
 
-    if (file.indexOf(dataDir + path.sep) !== 0) {
+    if (file.indexOf(dataDir + sep) !== 0) {
         return res.status(403).end('Forbidden');
     }
     
-    var type = mime[path.extname(file).slice(1)] || 'text/plain';
-    var s = fs.createReadStream(file);
+    var type = mime[extname(file).slice(1)] || 'text/plain';
+    var s = createReadStream(file);
     s.on('open', function () {
         res.set('Content-Type', type);
         s.pipe(res);
@@ -139,13 +147,13 @@ function getAlbumName(file){
 		str = filename.substr(filename.indexOf(".")-1);
 		filename = filename.replace(str, "");
 	}
-	dir = "uploaded"
+	let dir = "uploaded"
 	filename = filename.substr(0,6);	
 	if (parseInt(filename) > 0) {
-		year = filename.substr(0,4);
-		month = filename.substr(4);
+		let year = filename.substr(0,4);
+		let month = filename.substr(4);
 		if (parseInt(month) <= 12){
-			months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+			let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 			dir = year +"-" + months[parseInt(month)-1];
 		}
 	}
@@ -166,7 +174,7 @@ function getImagesFromDir(dirPath, album, page, onlyDir, numberOfItems) {
     // All iamges holder, defalut value is empty
     let allImages = [];
     // Iterator over the directory
-    let files = fs.readdirSync(dirPath);
+    let files = readdirSync(dirPath);
  
     // Iterator over the files and push images, video, pdfs to allImages array.
     var id = 0
@@ -177,21 +185,21 @@ function getImagesFromDir(dirPath, album, page, onlyDir, numberOfItems) {
     
     if(!root){
         var fileparts = album.split("/");
-        albumName = fileparts[fileparts.length-1]
+        let albumName = fileparts[fileparts.length-1]
         allImages.push(new ImageDetails("album"+id, albumName, (root ? "" : album), true, albumName));
     } else{
 		allImages.push(new ImageDetails("album"+id, album, "", true, album));
 	}
-    for (file of files) {
-        let fileLocation = path.join(dirPath, file);
-        var stat = fs.statSync(fileLocation);
+    for (var file of files) {
+        let fileLocation = join(dirPath, file);
+        var stat = statSync(fileLocation);
 
         id = id + 1;
         if (stat && stat.isDirectory()) {
             var album_name = (root ? "" : album + "/")+file;
             var imageDetails = new ImageDetails("album"+id, file, album_name, true, file);
             allImages.push(imageDetails);
-        } else if (!onlyDir && stat && stat.isFile() && skipFileTypes.indexOf(path.extname(fileLocation).toLowerCase()) == -1) {			
+        } else if (!onlyDir && stat && stat.isFile() && skipFileTypes.indexOf(extname(fileLocation).toLowerCase()) == -1) {			
 			if ( imageIndex >= firstImageId && imageCnt < numberOfItems) {
 				allImages.push(new ImageDetails("photo"+id, file, BASE_DIR+(root ? "" : album + "/")+file, false, (root ? album : album), file));
 				imageCnt = imageCnt + 1;

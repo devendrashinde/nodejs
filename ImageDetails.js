@@ -68,4 +68,4 @@ ImageDetails.prototype.getTags = function() {
     return this.tags;
 };
 
-module.exports = ImageDetails;
+export default ImageDetails;

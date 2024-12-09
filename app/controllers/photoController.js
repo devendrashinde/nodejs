@@ -1,9 +1,9 @@
 'use strict';
 
-var Photo= require('../models/photoModel');
-var Album = require('../models/albumModel');
+import Photo from '../models/photoModel.js';
+import Album from '../models/albumModel.js';
 
-exports.createPhoto = function(req, res) {
+export function createPhoto(req, res) {
   console.log(req.body);
   var new_photo = new Photo(req.body);
   //handles null error 
@@ -19,7 +19,7 @@ exports.createPhoto = function(req, res) {
 			res.json(photoId);
 		});
 	}
-};
+}
 
 function getNameAndAlbum(photo){
 	var s = photo.name.split("/");
@@ -34,7 +34,7 @@ function getNameAndAlbum(photo){
 	return photo;
 }
 
-exports.getPhoto = function(req, res) {
+export function getPhoto(req, res) {
 	console.log(req.query);
 	if(req.query.id){
 	  Photo.getPhotoById(req.query.id, function(err, photo) {
@@ -57,7 +57,7 @@ exports.getPhoto = function(req, res) {
 	} else{
 		res.status(400).end('Bad Request');
 	}
-};
+}
 
 function getAlbumName(album){
 	album = !album || !album.length ? "data":album;
@@ -65,7 +65,7 @@ function getAlbumName(album){
 	return s[s.length-1];	
 }
 
-exports.getPhotos = function(req, res) {
+export function getPhotos(req, res) {
 	if(req.query.tag){
 	  Photo.getPhotosByTag(req.query.tag, function(err, photo) {
 		if (err)
@@ -82,7 +82,7 @@ exports.getPhotos = function(req, res) {
 	}	
 }
 
-exports.updatePhotoTag = function(req, res) {
+export function updatePhotoTag(req, res) {
   var changedTag = new Photo(req.body);
   //handles null error 
    if(!changedTag.name || !changedTag.tags){
@@ -98,26 +98,26 @@ exports.updatePhotoTag = function(req, res) {
 		res.json(result);
 	  });
 	}
-};
+}
 
-exports.removePhoto = function(req, res) {
+export function removePhoto(req, res) {
 
   Photo.remove( req.query.id, function(err, photo) {
     if (err)
       res.send(err);
     res.json({ message: 'Photo successfully deleted' });
   });
-};
+}
 
-exports.updateAlbumTag = function(req, res) {
-  Album.updateTag(req.params.albumId, req.body, function(err, result) {
+export function updateAlbumTag(req, res) {
+	Album.updateTag(req.params.albumId, req.body, function(err, result) {
     if (err)
       res.send(err);
     res.json(result);
   });
-};
+}
 
-exports.createAlbum = function(req, res) {
+export function createPhotoAlbum(req, res) {
   var new_album = new Album(req.body);
 
   //handles null error 
@@ -134,10 +134,10 @@ exports.createAlbum = function(req, res) {
 			res.json(albumId);
 		});
 	}
-};
+}
 
-exports.getAlbums = function(req, res) {
-  Album.getAlbums(function(err, albums) {
+export function getPhotoAlbums(req, res) {
+	Album.getAlbums(function(err, albums) {
 
     console.log('controller')
     if (err)
@@ -145,21 +145,21 @@ exports.getAlbums = function(req, res) {
     console.log('res', albums);
     res.send(albums);
   });
-};
+}
 
-exports.getAlbum = function(req, res) {
-  Album.getAlbum(req.params.albumId, function(err, album) {
+export function getPhotoAlbum(req, res) {
+	Album.getAlbum(req.params.albumId, function(err, album) {
     if (err)
       res.send(err);
     res.json(album);
   });
-};
+}
 
-exports.removeAlbum = function(req, res) {
+export function removeAlbum(req, res) {
 
-  Album.remove( req.params.albumId, function(err, photo) {
+	Album.remove( req.params.albumId, function(err, photo) {
     if (err)
       res.send(err);
     res.json({ message: 'Photo successfully deleted' });
   });
-};
+}

@@ -1,13 +1,14 @@
 'use strict';
 
-const path = require('path');
-const gm = require('gm');
-const fs = require('fs');
-const shell = require('shelljs');
+import { resolve, dirname } from 'path';
+import gm from 'gm';
+import { statSync, writeFile } from 'fs';
+import pkg from 'shelljs';
+const { mkdir } = pkg;
 
 const exists = (path) => {
     try {
-        return fs.statSync(path).isFile();
+        return statSync(path).isFile();
     } catch (e) {
         return false;
     }
@@ -37,12 +38,12 @@ class Media {
             let extension = getFileExtension(image).toLowerCase();
             let mime = (extension === 'jpeg' || extension === 'jpg') ? 'jpeg' : 'png';
 			let thumb = this.src.replace('pictures', 'pictures/thumbs');
-			let thumbPath = path.resolve(thumb);
+			let thumbPath = resolve(thumb);
 			console.log(thumb);
             response.type(mime);
 
 			if(!exists(thumb)) {
-				shell.mkdir('-p', path.dirname(thumbPath));
+				mkdir('-p', dirname(thumbPath));
 				/* 
 				//write resized file and then return it
 				var writeStream = fs.createWriteStream(thumb);
@@ -59,7 +60,7 @@ class Media {
 					if (err) {
 						response.sendStatus(422);
 					} else {
-						fs.writeFile(thumb, buffer, function(err) {});
+						writeFile(thumb, buffer, function(err) {});
 						gm(buffer).stream().pipe(response);
 					}
 				});				
@@ -72,4 +73,4 @@ class Media {
     }
 }
 
-module.exports = Media;
+export default Media;

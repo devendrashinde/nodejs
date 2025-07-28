@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html ng-app="app">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.2.0/css/font-awesome.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Arimo:400,600,700" />
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+        integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css" />
+    <!--link(rel="stylesheet" href="jquery.fancybox.min.css")-->
+    <link rel="stylesheet" href="modal.css" />
+    <link rel="stylesheet" href="main.css" />
+    <link rel="stylesheet" href="search.css" />
+    <title>Our Photo Gallery</title>
+</head>
+
+<body id="top">
+    <div class="page" id="controller" ng-controller="photoController">
+        <header>
+            <div class="pp-header">
+                <div class="loadingMessage" ng-if="loading">
+                    <p>
+                    <h1>Loading...</h1>
+                    </p>
+                </div>
+                <nav class="navbar navbar-expand-lg navbar-light">
+                    <div class="container"><!-- add home link with icon--><a href="#"><img src="/favicon.png" /></a><a
+                            class="navbar-brand" href="#">{{selectedAlbum.name}}</a><!-- add search box-->
+                        <div class="search box"><input class="searchbox input" type="text" name="search"
+                                ng-model="searchTag" placeholder="search" /><button class="btn btn-search" type="button"
+                                ng-click="search()"><i class="fa fa-search"> </i></button><button class="btn btn-reset"
+                                type="button" ng-click="clearSearch()"><i class="fa fa-times"></i></button></div>
+                        <!-- file upload link-->
+                        <div class="search box"><input class="searchbox input" type="text" id="uploadFile"
+                                ng-click="selectUploadFile()" placeholder="Click to upload file" /></div>
+                        <!-- angular style file upload input box--><!--div--><!--    input(type="file" file-model="myFile" id="myFile")--><!--    i(class="fa fa-file-image-o" style="font-size:24px" onClick="$('#myFile').click();")--><!--    button(type="button" class="btn btn-search" value="Upload!" ng-Click="uploadFile()")--><!--        i(class="fa fa-upload" aria-hidden="true")                                    -->
+                        <div class="search box"><!--label Select Album:--><select class="searchbox select"
+                                name="albumList" id="albumList"
+                                ng-options="album.album for album in albums track by album.path"
+                                ng-model="selectedAlbum" ng-change="loadAlbum()"></select></div>
+                        <!-- add album as flat links --><!--button(class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavAltMarkup" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation") --><!--   span.navbar-toggler-icon--><!--div(class="collapse navbar-collapse" id="navbarNavAltMarkup")--><!--  ul(class="navbar-nav ml-auto")--><!--    li(class="nav-item" ng-repeat="album in albums" ng-if="album.isAlbum")--><!--      a(class="btn btn-outline-primary nav-link" href="?id={{album.path}}") {{album.album}}-->
+                    </div>
+                </nav>
+            </div>
+            <div class="page-content">
+                <div class="container">
+                    <div class="row"><button class="btn" ng-Click="prevPage()" ng-show="pageId &gt; 0" id="prevBtn"
+                            title="Go to previous page">
+                            << Prev</button><input type="text" name="numberOfItemsOnPage" size="2"
+                                    ng-model="numberOfItemsOnPage" style="padding-left: 20px;"
+                                    title="number of items to load" /><button class="btn" ng-Click="nextPage()"
+                                    ng-hide="noMorePhotos" id="nextBtn" title="Go to next page">Next
+                                    >></button><!--div(id="noMorePhotosMsg" ng-show="noMorePhotos")--><!-- h4 Sorry no more items, please select previous or select another folder-->
+                    </div>
+                    <div class="row"><!--nav(class="navbar navbar-expand-lg navbar-light")-->
+                        <div class="col-xs-3 col-md-3 d-none d-sm-block" ng-if="folders.length &gt; 0">
+                            <ul class="navbar-nav ml-auto">
+                                <li class="nav-item" ng-repeat="folder in folders"><a
+                                        class="btn btn-outline-primary nav-link"
+                                        ng-click="setAlbum(this.folder)">{{folder.album}}</a></li>
+                            </ul>
+                        </div>
+                        <div class="container px-0 col-xs-9 col-md-9"><button onclick="topFunction()" id="goTopBtn"
+                                title="Go to top">Top</button>
+                            <div class="pp-gallery">
+                                <div class="card-columns">
+                                    <div ng-repeat="image in photos">
+                                        <div class="card" ng-if="image.isPhoto"><span class="caption"><a class="btn"
+                                                    id="tag{{image.id}}"
+                                                    ng-click="editImageTag(image)">{{image.tags}}</a></span><a
+                                                href="{{image.path}}" data-fancybox="gallery"
+                                                data-caption="{{image.tags}}">
+                                                <figure class="pp-effect"><img class="img-fluid" ng-id="tag{{image.id}}"
+                                                        ng-src="/thumbs?id={{image.path}}&amp;w=200&amp;h=150"
+                                                        alt="{{image.tags}}" />
+                                                    <figcaption>
+                                                        <div class="h4" id="tag{{image.id}}">{{image.tags}}</div>
+                                                        <p>{{image.album}}</p>
+                                                    </figcaption>
+                                                </figure>
+                                            </a></div>
+                                        <div class="card" ng-if="image.isVideo || image.isAudio"><span
+                                                class="caption"><a class="btn" id="tag{{image.id}}"
+                                                    ng-click="editImageTag(image)">{{image.tags}}</a></span><a
+                                                href="{{image.path}}" data-type="video" data-fancybox="gallery"
+                                                data-caption="{{image.tags}}" data-width="640" data-height="360">
+                                                <figure class="pp-effect"> <img class="img-fluid"
+                                                        ng-id="tag{{image.id}}" ng-if="image.isVideo" src="video.png"
+                                                        alt="{{image.tags}}" /><img class="img-fluid"
+                                                        ng-id="tag{{image.id}}" ng-if="image.isAudio" src="music.png"
+                                                        alt="{{image.tags}}" />
+                                                    <figcaption>
+                                                        <div class="h4" id="tag{{image.id}}">{{image.tags}}</div>
+                                                        <p>{{image.album}}</p>
+                                                    </figcaption>
+                                                </figure>
+                                            </a></div>
+                                        <div class="card" ng-if="image.isPdf"><span class="caption"><a class="btn"
+                                                    id="tag{{image.id}}"
+                                                    ng-click="editImageTag(image)">{{image.tags}}</a></span><a
+                                                href="javascript:;" data-fancybox="gallery" data-type="iframe"
+                                                data-src="{{image.path}}">
+                                                <figure class="pp-effect"><img class="img-fluid" ng-id="tag{{image.id}}"
+                                                        src="pdf.png" alt="{{image.tags}}" />
+                                                    <figcaption>
+                                                        <div class="h4" id="tag{{image.id}}">{{image.tags}}</div>
+                                                        <p>{{image.album}} </p>
+                                                    </figcaption>
+                                                </figure>
+                                            </a></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+    </div>
+    <script src="jquery/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.2.18/angular-ui-router.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+        integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
+        integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
+        crossorigin="anonymous"></script>
+    <script type="module">
+        import { Fancybox } from "https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.esm.js";
+    
+        Fancybox.bind('[data-fancybox="gallery"]', {
+            //
+        });    
+        </script>
+    <script src="/main.js">   </script>
+    <script src="js/ng-app.js">// load our main application</script>
+    <script src="js/controllers/photoController.js">// load up our controller</script>
+    <script src="js/directives/modalDirective.js"></script>
+    <script src="js/directives/fileModelDirective.js"></script>
+    <script src="js/services/photoService.js">// load our photo service</script>
+    <script src="js/services/modalService.js">// load our photo service</script>
+</body>
+
+</html>

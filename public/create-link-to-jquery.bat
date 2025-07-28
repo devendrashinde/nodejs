@@ -1,0 +1,1 @@
+mklink /D jquery ..\node_modules\jquery\dist

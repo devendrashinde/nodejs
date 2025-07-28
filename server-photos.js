@@ -4,7 +4,6 @@ import fileUpload from 'express-fileupload';
 const app = express();
 import { join, sep, extname } from 'path';
 import path from 'path';
-//import { urlencoded, json } from 'body-parser';
 import ImageDetails from "./ImageDetails.js";
 import { fileURLToPath } from 'url';
 import { createPhoto, getPhotos } from './app/controllers/photoController.js';
@@ -24,6 +23,7 @@ var mime = {
     js: 'application/javascript'
 };
 
+var months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
 var skipFileTypes = ['.db','.exe','.tmp','.doc','.dat','.ini', '.srt','.idx','.rar','.sub','.zip','.php','.wmdb'];
 var numberOfItemsOnPage = 20;
 
@@ -53,8 +53,8 @@ app.post('/upload', function(req, res) {
   let uploadedFile = req.files.file;
 
   // Use the mv() method to place the file somewhere on your server
-  fileName = BASE_DIR + req.body.album + '/' + uploadedFile.name;
-  fileName = fileName.replace('\\', '/'); 
+  let fileName = BASE_DIR + req.body.album + '/' + uploadedFile.name;
+  fileName = fileName.replace('\\', '/');
   console.log(fileName);
   uploadedFile.mv(fileName, function(err) {
     if (err)
@@ -69,16 +69,16 @@ app.get('/thumb?:id', (req, res) => {
     if(req.query.id) {
 		console.log(req.query.id);
        let image = new media(req.query.id);
-       image.thumb(req, res);   
+       image.thumb(req, res);
     } else {
         res.sendStatus(403);
     }
 });
 
-app.get('/get-images?:id', (req, res) => {
+app.get('/get-images', (req, res) => {
     let album = req.query.id;
     let targetDir = dataDir;
-    if(!album || album == "Home"){
+    if(album == undefined || !album || album == "Home"){
         album = "Home";
     } else {
         targetDir = join(dataDir, album);
@@ -87,7 +87,7 @@ app.get('/get-images?:id', (req, res) => {
     res.render('index', { title: 'Our Photo Gallery', images: images })
 });
 
-app.get('/photos?:id', (req, res) => {
+app.get('/photos', (req, res) => {
     let album = req.query.id;
     let targetDir = dataDir;
     if(album == undefined || !album || album == "Home"){
@@ -136,7 +136,6 @@ app.get('*', (req, res) => {
     });
 });
 
-
 function getAlbumName(file){
 	var filename = file;
 	filename = filename.replace("IMG", "");
@@ -152,8 +151,7 @@ function getAlbumName(file){
 	if (parseInt(filename) > 0) {
 		let year = filename.substr(0,4);
 		let month = filename.substr(4);
-		if (parseInt(month) <= 12){
-			let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+		if (parseInt(month) <= 12){			
 			dir = year +"-" + months[parseInt(month)-1];
 		}
 	}
@@ -171,7 +169,7 @@ function getAlbumName(file){
 // dirPath: target image directory
 function getImagesFromDir(dirPath, album, page, onlyDir, numberOfItems) {
 
-    // All iamges holder, defalut value is empty
+    // All images holder, defalut value is empty
     let allImages = [];
     // Iterator over the directory
     let files = readdirSync(dirPath);

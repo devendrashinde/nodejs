@@ -4,7 +4,11 @@ import { resolve, dirname } from 'path';
 import gm from 'gm';
 import { statSync, writeFile } from 'fs';
 import pkg from 'shelljs';
+import e from 'express';
 const { mkdir } = pkg;
+//using imageMagic
+//import gmModule from 'gm';
+//const gm = gmModule.subClass({ imageMagick: true });
 
 const exists = (path) => {
     try {
@@ -24,7 +28,7 @@ class Media {
     }
 
     isValidMedia(src) {
-        return /\.(jpe?g|png)$/.test(src);
+        return /\.(jpe?g|png)$/i.test(src);
     }
 
 
@@ -44,20 +48,9 @@ class Media {
 
 			if(!exists(thumb)) {
 				mkdir('-p', dirname(thumbPath));
-				/* 
-				//write resized file and then return it
-				var writeStream = fs.createWriteStream(thumb);
-				gm(image).resize(width, height).write(thumb, function (err) {
-					if (err) {
-						response.sendStatus(422);
-					} else {
-						//response.sendFile(path.resolve(thumb));
-						gm(image).resize(width, height).stream().pipe(response);
-					}
-				});				
-				*/
 				gm(image).resize(width, height).autoOrient().toBuffer(function (err, buffer) {
 					if (err) {
+						console.log(err);
 						response.sendStatus(422);
 					} else {
 						writeFile(thumb, buffer, function(err) {});

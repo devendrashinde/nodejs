@@ -1,3 +1,4 @@
+
 angular.module('photoController', [])
 
     // inject the Photo service factory into our controller
@@ -13,10 +14,10 @@ angular.module('photoController', [])
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
         imageTypes = ['jpg', 'png', 'jpeg', 'bmp', 'gif'];
-        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg'];
+        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v'];
         audioTypes = ['mp3', 'amr', 'wav'];
 		$scope.pageId = 0;
-		$scope.numberOfIemsOnPage = 20;
+		$scope.numberOfItemsOnPage = 20;
 
         
         // GET =====================================================================
@@ -63,7 +64,7 @@ angular.module('photoController', [])
         $scope.getPhotos = function(id) {
             $scope.loading = true;
 
-            PhotoService.getPhotos(id, $scope.pageId, $scope.numberOfIemsOnPage)
+            PhotoService.getPhotos(id, $scope.pageId, $scope.numberOfItemsOnPage)
                 // if successful creation, call our get function to get all the new photos
                 .then(function successCallback(response) {
                         updatePhotoTagsFromDb(response.data);
@@ -117,6 +118,7 @@ angular.module('photoController', [])
         
         // update tag
         $scope.updateTag = function(id, tag, newId) {						
+            tag = tag.trim();
             for (photo of $scope.photos) {
                 if(photo.id == id){
                     photo.tags = tag;
@@ -213,16 +215,19 @@ angular.module('photoController', [])
                 }
             }
 			$scope.noMorePhotos = firstTime;
-			if($scope.noMorePhotos && $scope.pageId > 0) {
+			if($scope.noMorePhotos) {
+                 if( $scope.pageId > 0) {
 				// no more photos, stay on same page
 				$scope.pageId = $scope.pageId  - 1;
+                 } else {
+                    $scope.photos = [];
+                 }
 			} else {
-				$scope.noMorePhotos = $scope.photos.length < $scope.numberOfIemsOnPage;
-			}
-            //$scope.tags = [];
+				$scope.noMorePhotos = $scope.photos.length < $scope.numberOfItemsOnPage;
+			}            
         }       
         
-        function getImageType(photo){
+        function getImageType(photo) {
             ext = photo.name.substr(photo.name.lastIndexOf(".")+1).toLowerCase();
             if(imageTypes.indexOf(ext) != -1) {
                 photo.isPhoto = true;
@@ -255,7 +260,7 @@ angular.module('photoController', [])
             ModalService.Open(id);
         };
 		
-        $scope.getMatchingTags = function(tag){
+        $scope.getMatchingTags = function(tag) {
 			var matchedTags = [];
 			for (tag of $scope.tags) {
 				if(tag.tags.match('/' + tag + '.*/')){
@@ -265,7 +270,7 @@ angular.module('photoController', [])
             return matchedTags;
         };		
 
-        $scope.closeModal = function(id){
+        $scope.closeModal = function(id) {
             ModalService.Close(id);
         };      
 
@@ -293,7 +298,7 @@ angular.module('photoController', [])
           html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80>' +  photo.tags + '</textarea>';
           html += '</div></p>';       
 		  
-          html += '<p><input type="button" value="Update" onClick="submitUpdareTagForm(form' + photo.id + ',tag' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>';
+          html += '<p><input type="button" value="Update" onClick="submitUpdateTagForm(form' + photo.id + ',tag' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>';
           html += '<input type="button" value="Cancel" onClick="closeFancyBoxForm();"/></p>';
           html += '</form></div>';
           $.fancybox.open(html);

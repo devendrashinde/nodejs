@@ -95,7 +95,7 @@ function filterItems(filter) {
   });
 }
 
-function submitUpdareTagForm(formName, tagName, photoId){
+function submitUpdateTagForm(formName, tagName, photoId){
    
 	var form = $(formName);
 	var values = {};

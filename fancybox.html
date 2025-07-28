@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.css"
+          />
+  </head>
+  <body>
+    <div>
+      <a
+         data-fancybox="gallery"
+         data-src="https://lipsum.app/id/2/1024x768"
+         data-caption="Optional caption,&lt;br /&gt;that can contain &lt;em&gt;HTML&lt;/em&gt; code"
+         >
+        <img src="https://lipsum.app/id/2/200x150" />
+      </a>
+
+      <a data-fancybox="gallery" data-src="data/books/Isavasya-Upanishad.pdf">
+        <img src="data/books/Isavasya-Upanishad.pdf" />
+      </a>
+
+      <a data-fancybox="gallery" data-src="data/movies/Bilateral knees to chest.mp4">
+        <img src="data/movies/Bilateral knees to chest.mp4" />
+      </a>
+    </div>
+    <script type="module">
+      import { Fancybox } from "https://cdn.jsdelivr.net/npm/@fancyapps/ui@5.0/dist/fancybox/fancybox.esm.js";
+
+      Fancybox.bind('[data-fancybox="gallery"]', {
+        //
+      });    
+    </script>
+
+  </body>
+</html>

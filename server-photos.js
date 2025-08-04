@@ -103,9 +103,13 @@ app.get('/photos', (req, res) => {
 	if(req.query.items) {
 		items = req.query.items;
 	}
-    let images = getImagesFromDir(targetDir, album, page, false, items);
+    let result = getImagesFromDir(targetDir, album, page, false, items);
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(images));
+    //res.end(JSON.stringify(images));
+    res.json({
+        totalPhotos: result.totalPhotos,
+        data: result.images
+    })
 });
 
 app.route('/')
@@ -207,8 +211,12 @@ function getImagesFromDir(dirPath, album, page, onlyDir, numberOfItems) {
     }
     console.log(allImages);
  
+    return {
+        totalPhotos: imageIndex,
+        images: allImages
+    };
     // return all images in array formate
-    return allImages;
+    //return allImages;
 }
  
 app.listen(8082, function () {

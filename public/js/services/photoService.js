@@ -11,7 +11,10 @@ angular.module('PhotoService', [])
 				return $http.get('/tags?tag=' + id);
 			},
 			getPhotos : function(id, page, items) {
-				return $http.get('/photos?id=' + id + '&page=' + page + '&items=' + items);
+				return $http.get('/photos?id=' + id + '&page=' + page + '&items=' + items)
+					.then(function(response) {
+            			return response.data; // { totalPhotos, data }
+        			});
 			},
 			create : function(photoData) {
 				return $http.post('/', photoData);

@@ -1,0 +1,180 @@
+/* Global Layout */
+body {
+  font-family: 'Arimo', sans-serif;
+  background-color: #f9f9f9;
+  margin: 0;
+}
+
+/* Sticky Collapsible Header */
+.collapsible-header {
+  transition: all 0.3s ease;
+  padding: 6px 10px;
+  z-index: 1030;
+  background: #fff;
+  border-bottom: 1px solid #ddd;
+}
+
+.collapsible-header h6 {
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 600;
+  color: #333;
+}
+
+.collapsible-header img {
+  width: 28px;
+  height: 28px;
+}
+
+.collapsible-header .btn,
+.collapsible-header .form-control,
+.collapsible-header .form-select {
+  height: 30px;
+  font-size: 0.8rem;
+  padding: 0 8px;
+}
+
+/* Shrink + Hide states */
+.collapsible-header.shrunk {
+  padding: 4px 8px;
+}
+.collapsible-header.shrunk h6 {
+  font-size: 0.9rem;
+}
+.collapsible-header.shrunk img {
+  width: 22px;
+  height: 22px;
+}
+.collapsible-header.hidden-header {
+  transform: translateY(-100%);
+}
+
+/* Progress Bar */
+.collapsible-header .progress {
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* Sidebar */
+aside ul.list-group {
+  max-height: 80vh;
+  overflow-y: auto;
+  margin-top: 0;
+  padding-top: 0;
+}
+aside .list-group-item {
+  font-size: 0.9rem;
+  border: none;
+  transition: background 0.2s, color 0.2s;
+  cursor: pointer;
+}
+aside .list-group-item:hover {
+  background: #f1f1f1;
+}
+aside .list-group-item.active {
+  background: #007bff;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Gallery Cards */
+.card {
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+.card img {
+  object-fit: cover;
+  height: 180px;
+  transition: transform 0.4s ease;
+}
+.card:hover img {
+  transform: scale(1.08);
+}
+.card-body {
+  background: white;
+}
+.card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #333;
+}
+.card-text {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* Hover Overlay Icons */
+.card figure {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border-radius: 10px 10px 0 0;
+}
+.card figure::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.35);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.card:hover figure::after {
+  opacity: 1;
+}
+.card figure .overlay-icon {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.5rem;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.card:hover figure .overlay-icon {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* Back to Top Button */
+#goTopBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 1040;
+  display: none;
+  width: 45px; height: 45px;
+  font-size: 18px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  transition: opacity 0.3s ease;
+}
+#goTopBtn.show {
+  display: flex;
+  opacity: 1;
+}
+#goTopBtn.hide {
+  opacity: 0;
+}
+
+/* Scrollbar styling for sidebar */
+aside ul::-webkit-scrollbar {
+  width: 6px;
+}
+aside ul::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
+}
+
+input[ng-show] {
+  transition: opacity 0.3s ease;
+}

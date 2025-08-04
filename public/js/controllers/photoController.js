@@ -5,18 +5,22 @@ angular.module('photoController', [])
     .controller('photoController', ['$scope','$http','$location','PhotoService','ModalService', function($scope, $http, $location, PhotoService, ModalService) {
         $scope.formData = {};
         $scope.tags = [];
-        $scope.photos = [];
+        $scope.photos = []; // all photos
+        $scope.filteredPhotos = [];// search-filtered photos
         $scope.albums = [];
 		$scope.folders = [];
         $scope.loading = true;
 		$scope.noMorePhotos = false;
-        $scope.searchTag = "";
+        $scope.showSearch = false;
+        $scope.searchTag = ""; // user input for search
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
         imageTypes = ['jpg', 'png', 'jpeg', 'bmp', 'gif'];
         videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v'];
         audioTypes = ['mp3', 'amr', 'wav'];
 		$scope.pageId = 0;
+        $scope.totalPhotos = 0;
+        $scope.totalPages = 0;
 		$scope.numberOfItemsOnPage = 20;
 
         
@@ -38,7 +42,7 @@ angular.module('photoController', [])
         };
 
         $scope.search = function() {
-            if($scope.searchTag && $scope.searchTag.length){
+            if($scope.searchTag && $scope.searchTag.trim() !== ''){
                 $scope.loading = true;
                 $location.search('q', $scope.searchTag);
                 PhotoService.getTagsByTag($scope.searchTag)
@@ -54,9 +58,8 @@ angular.module('photoController', [])
         };
         
         $scope.clearSearch = function() {
-            if($scope.searchTag && $scope.searchTag.length){
-                $scope.searchTag = "";
-            }
+            $scope.searchTag = "";
+            $scope.showSearch = false; // hide box after clearing
         };
 
         // GET  ==================================================================
@@ -67,6 +70,8 @@ angular.module('photoController', [])
             PhotoService.getPhotos(id, $scope.pageId, $scope.numberOfItemsOnPage)
                 // if successful creation, call our get function to get all the new photos
                 .then(function successCallback(response) {
+                        $scope.totalPhotos = response.totalPhotos;
+                        $scope.totalPages = Math.ceil($scope.totalPhotos / $scope.numberOfItemsOnPage);
                         updatePhotoTagsFromDb(response.data);
                         $scope.loading = false;                     
                 }, function errorCallback(response) {
@@ -146,11 +151,15 @@ angular.module('photoController', [])
             var id = getUrlParameter("id");
             loadPhotosAndTags(id);
         }
-        
-        $scope.loadAlbum = function () {
-			$scope.pageId = 0;
+
+        $scope.loadAlbumWithPageId = function (pageId) {
+			$scope.pageId = pageId;
 			$scope.noMorePhotos = false;
             loadPhotosAndTags($scope.selectedAlbum.path);
+        }
+        
+        $scope.loadAlbum = function () {
+            $scope.loadAlbumWithPageId(0);
         }
 
         $scope.setAlbum = function (album) {
@@ -204,7 +213,8 @@ angular.module('photoController', [])
                         }                           
                     }
                     if(!found){
-                        $scope.albums.push(photo);
+                        $scope.albums.unshift(photo);
+                        //$scope.albums.push(photo);
                     }
                 } else {
                 	if(firstTime) {
@@ -328,4 +338,29 @@ angular.module('photoController', [])
           $.fancybox.open(html);
         };
         
+        // Watch for change in numberOfItemsOnPage
+        $scope.$watch('numberOfItemsOnPage', function(newVal, oldVal) {
+            if (newVal !== oldVal && newVal > 0) {
+                let firstItemIndex = $scope.pageId * oldVal;
+                let pageId = Math.floor(firstItemIndex / newVal);
+                $scope.loadAlbumWithPageId(pageId);
+            }
+        });
+
+        $scope.scrollToTop = function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Show button when scrolling down
+        window.onscroll = function() {
+            const btn = document.getElementById("goTopBtn");
+            if (!btn) return;
+            if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
+                btn.classList.add("show");
+                btn.classList.remove("hide");
+            } else {
+                btn.classList.add("hide");
+                btn.classList.remove("show");
+            }
+        };        
     }]);

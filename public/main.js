@@ -26,29 +26,16 @@ $('[data-fancybox="gallery"]').fancybox({
     'thumbs',
     'close'
   ]
-	/*
-	caption : function( instance, item ) {
-        var caption = $(this).data('caption') || '';
-
-        if ( item.type === 'image' ) {
-			tagValue = angular.element('#controller').scope().getTag(item.src);
-            caption = (tagValue.length ? tagValue : caption) + '<br />' + '<a href="' + item.src + '">Download image</a>' ;
-			//angular.element('#controller').scope().$apply(); // need when data is changed
-        }
-        return caption;
-    }
-	*/
 });
 
 function updateTag(photoId, photoTag, newPhotoId){
-	//var controller = angular.element('#controller').scope();
   var controller = angular.element(document.querySelector('#controller')).scope();
 	controller.updateTag(photoId, photoTag, newPhotoId);
 	controller.$apply(); // need when data is changed	
 }
 
 function getMatchingTags(tag){
-	var controller = angular.element('#controller').scope();
+	var controller = angular.element(document.querySelector('#controller')).scope();
 	return controller.getMatchingTags(tag);	
 }
 
@@ -124,7 +111,7 @@ function submitUploadForm(formName){
 	var tags = values.tags;
 	var album = values.album;
 		
-	var controller = angular.element('#controller').scope();
+	var controller = angular.element(document.querySelector('#controller')).scope();
 	controller.uploadFile(file, tags, album);
 	controller.$apply();
 	$.fancybox.close();

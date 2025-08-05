@@ -16,7 +16,7 @@ angular.module('photoController', [])
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
         imageTypes = ['jpg', 'png', 'jpeg', 'bmp', 'gif'];
-        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v'];
+        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v', 'divx', 'xvid'];
         audioTypes = ['mp3', 'amr', 'wav'];
 		$scope.pageId = 0;
         $scope.totalPhotos = 0;

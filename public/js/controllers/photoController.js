@@ -308,7 +308,7 @@ angular.module('photoController', [])
           html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80>' +  photo.tags + '</textarea>';
           html += '</div></p>';       
 		  
-          html += '<p><input type="button" value="Update" onClick="submitUpdateTagForm(form' + photo.id + ',tag' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>';
+          html += '<p><input type="button" value="Update" onClick="submitUpdateTagForm(form' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>'; 
           html += '<input type="button" value="Cancel" onClick="closeFancyBoxForm();"/></p>';
           html += '</form></div>';
           $.fancybox.open(html);

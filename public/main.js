@@ -41,7 +41,8 @@ $('[data-fancybox="gallery"]').fancybox({
 });
 
 function updateTag(photoId, photoTag, newPhotoId){
-	var controller = angular.element('#controller').scope();
+	//var controller = angular.element('#controller').scope();
+  var controller = angular.element(document.querySelector('#controller')).scope();
 	controller.updateTag(photoId, photoTag, newPhotoId);
 	controller.$apply(); // need when data is changed	
 }
@@ -95,7 +96,7 @@ function filterItems(filter) {
   });
 }
 
-function submitUpdateTagForm(formName, tagName, photoId){
+function submitUpdateTagForm(formName, photoId){
    
 	var form = $(formName);
 	var values = {};
@@ -130,7 +131,7 @@ function submitUploadForm(formName){
 	return false;
 }
 
-function closeFancyBoxForm(formName, tagName){
+function closeFancyBoxForm(){
    	$.fancybox.close();
 	return false;
 }

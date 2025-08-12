@@ -139,10 +139,8 @@ angular.module('photoController', [])
 				if(tags.tags == tag) {
 					return;
 				}
-			}
-			var tagObj = {};
-			tagObj.tags = tag;
-			$scope.tags.push(tagObj);
+			}            
+            $scope.tags.unshift({ tags: tag });
         }
 
         function loadPhotos() {
@@ -304,12 +302,16 @@ angular.module('photoController', [])
 				html += '<option value="' + tag.tags + '"' +'>' + tag.tags +'</option>';
 			  }
           }
-          html += '</select>';		  
-          html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows=4 column=80>' +  photo.tags + '</textarea>';
-          html += '</div></p>';       
-		  
+
+          html += '</select>';
+          html += '<textarea style="width: 100%; max-width: 100%;" name="tags" rows="4" cols="80">' +  photo.tags + '</textarea>';
+          html += '</div></p>';
+
           html += '<p><input type="button" value="Update" onClick="submitUpdateTagForm(form' + photo.id + ',' +  "'" + photo.id + "'"+ ');"/>'; 
-          html += '<input type="button" value="Cancel" onClick="closeFancyBoxForm();"/></p>';
+          html += '<input type="button" value="Cancel" onClick="closeFancyBoxForm();"/>';
+          html += '<input type="button" value="X" onClick="clearTagBox(\'#form' + photo.id + '\', \'tags\')" /></p>';
+          
+
           html += '</form></div>';
           $.fancybox.open(html);
         };

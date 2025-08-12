@@ -123,6 +123,14 @@ function closeFancyBoxForm(){
 	return false;
 }
 
+function clearTagBox(formSelector, fieldName) {
+  var $form = $(formSelector);
+  if (!$form.length) return;
+  var form = $form[0]; // <- DOM form element
+  var field = form.elements[fieldName] || form.querySelector('[name="'+fieldName+'"]');
+  if (field) field.value = "";
+}
+
 function displayUploadedFile(input) {
 	if (input.files && input.files[0]) {
 		var reader = new FileReader();

@@ -44,6 +44,14 @@ app.use(json());
 
 var dataDir = join(__dirname, "data");
 var BASE_DIR = 'data/';
+const imageCache = {};
+
+
+setInterval(() => {
+    console.log("Clearing image cache");
+    Object.keys(imageCache).forEach(key => delete imageCache[key]);
+}, 10 * 60 * 1000); // Clear every 10 minutes
+
 
 app.post('/upload', function(req, res) {
   if (!req.files || Object.keys(req.files).length === 0) {
@@ -76,15 +84,7 @@ app.get('/thumb?:id', (req, res) => {
 });
 
 app.get('/get-images', (req, res) => {
-    let album = req.query.id;
-    let targetDir = dataDir;
-    if(album == undefined || !album || album == "Home"){
-        album = "Home";
-    } else {
-        targetDir = join(dataDir, album);
-    }
-    let images = {};    
-    res.render('index', { title: 'Our Photo Gallery', images: images })
+    res.render('index', { title: 'Our Photo Gallery', images: {} })
 });
 
 app.get('/photos', (req, res) => {
@@ -103,13 +103,27 @@ app.get('/photos', (req, res) => {
 	if(req.query.items) {
 		items = req.query.items;
 	}
-    let result = getImagesFromDir(targetDir, album, page, false, items);
-    res.setHeader('Content-Type', 'application/json');
-    //res.end(JSON.stringify(images));
-    res.json({
-        totalPhotos: result.totalPhotos,
-        data: result.images
-    })
+    
+    // Check if page is cached
+    let cacheKey = getCacheKey(targetDir, page, items);
+    if (imageCache[cacheKey]) {
+        console.log(`Serving album "${album}" page ${page} items ${items} from cache`);
+        let result = imageCache[cacheKey];
+        res.json({
+            totalPhotos: result.totalPhotos,
+            data: result.images
+        })
+    } else {
+        console.log(`Serving album "${album}" page ${page} items ${items} from disk`);
+        let result = getImagesFromDir(targetDir, album, page, false, items);
+        imageCache[cacheKey] = result; // Cache the result
+        res.setHeader('Content-Type', 'application/json');
+        //res.end(JSON.stringify(images));
+        res.json({
+            totalPhotos: result.totalPhotos,
+            data: result.images
+        })
+    }
 });
 
 app.route('/')
@@ -168,6 +182,10 @@ function getAlbumName(file){
 	*/
 	console.log(dir);
 	return dir;
+}
+
+function getCacheKey(album, page, items) {
+    return album + "_" + page + "_" + items;
 }
 
 // dirPath: target image directory

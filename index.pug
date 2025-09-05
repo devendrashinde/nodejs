@@ -21,7 +21,7 @@ html(ng-app="app")
         div.d-flex.align-items-center.justify-content-between.w-100
           img(src="/favicon.png" alt="Home" width="28" class="me-2")
           h6.mb-0.flex-grow-1.text-truncate {{selectedAlbum.name}}
-          div.ms-auto.d-flex.align-items-center.gap-2
+          div.ms-auto.d-flex.flex-wrap.align-items-center.gap-2
             // Search
             div.input-group.input-group-sm.me-2(style="max-width:200px;")
               input.form-control(
@@ -125,7 +125,7 @@ html(ng-app="app")
                 )
                   figure
                     img.card-img-top(
-                      ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? 'video.png' : (image.isPdf ? 'pdf.png' : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
+                      ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? 'pdf.png' : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
                       alt="{{image.tags}}"
                       loading="lazy"
                     )
@@ -134,7 +134,7 @@ html(ng-app="app")
                     )
                 div.card-body.p-2
                   h6.card-title.mb-1.text-truncate {{image.tags || 'Untitled'}}
-                  p.card-text.text-muted.small.mb-0 {{image.album}}
+                  //p.card-text.text-muted.small.mb-0 {{image.album}}
                   button.btn.btn-sm.btn-outline-secondary.mt-2(ng-click="editImageTag(image)")
                     i.fas.fa-edit.me-1
                     | Edit Tags

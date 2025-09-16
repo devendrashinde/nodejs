@@ -97,9 +97,13 @@ aside .list-group-item.active {
   transition: transform 0.4s ease;
 }
 .card-img-top {
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
   width: 100%;
+  height: auto;
+  object-fit: contain; /* Ensures full image is visible without cropping */
+  aspect-ratio: 4 / 3;  /* Maintains consistent thumbnail shape */
+  background-color: #f8f9fa; /* Optional: adds padding background if image doesn't fill */
+  padding: 4px; /* Optional: adds spacing around image */
+  border-radius: 4px;
 }
 .card:hover img {
   transform: scale(1.08);

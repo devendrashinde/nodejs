@@ -128,7 +128,7 @@ html(ng-app="app")
                       ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? 'pdf.png' : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
                       alt="{{image.tags}}"
                       loading="lazy"
-                      style="object-fit: cover; width: 100%; height: auto;"
+                      style="object-fit: contain; width: 100%; height: auto;"
                     )
                     i.overlay-icon(
                       ng-class="{'fas fa-play-circle': image.isAudio || image.isVideo,'fas fa-file-pdf': image.isPdf,'fas fa-search-plus': image.isPhoto}"

@@ -114,7 +114,7 @@ html(ng-app="app")
           // Gallery Grid
           div.row.g-3
             div.col-sm-6.col-md-4.col-lg-3(ng-repeat="image in photos")
-              div.card.shadow-sm.h-100
+              div.card.shadow-sm
                 a(
                   ng-href="{{image.path}}"
                   data-fancybox="gallery"
@@ -124,10 +124,11 @@ html(ng-app="app")
                   ng-attr-data-height="{{image.isVideo ? '360' : undefined}}"
                 )
                   figure
-                    img.card-img-top(
+                    img.card-img-top.img-fluid(
                       ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? 'pdf.png' : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
                       alt="{{image.tags}}"
                       loading="lazy"
+                      style="object-fit: cover; width: 100%; height: auto;"
                     )
                     i.overlay-icon(
                       ng-class="{'fas fa-play-circle': image.isAudio || image.isVideo,'fas fa-file-pdf': image.isPdf,'fas fa-search-plus': image.isPhoto}"

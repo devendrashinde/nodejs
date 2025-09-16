@@ -80,6 +80,8 @@ aside .list-group-item.active {
 
 /* Gallery Cards */
 .card {
+  min-height: unset;
+  height: auto;
   border: none;
   border-radius: 10px;
   overflow: hidden;
@@ -93,6 +95,11 @@ aside .list-group-item.active {
   object-fit: cover;
   height: 180px;
   transition: transform 0.4s ease;
+}
+.card-img-top {
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  width: 100%;
 }
 .card:hover img {
   transform: scale(1.08);

@@ -184,6 +184,15 @@ function getAlbumName(file){
 	return dir;
 }
 
+function getTagFromFileName(file) {
+    // Remove directory path if present
+    let base = file.split(/[\\/]/).pop();
+    // Remove extension
+    let tag = base.replace(/\.[^/.]+$/, "");
+    console.log(tag);
+    return tag;
+}
+
 function getCacheKey(album, page, items) {
     return album + "_" + page + "_" + items;
 }
@@ -221,7 +230,7 @@ function getImagesFromDir(dirPath, album, page, onlyDir, numberOfItems) {
             allImages.push(imageDetails);
         } else if (!onlyDir && stat && stat.isFile() && skipFileTypes.indexOf(extname(fileLocation).toLowerCase()) == -1) {			
 			if ( imageIndex >= firstImageId && imageCnt < numberOfItems) {
-				allImages.push(new ImageDetails("photo"+id, file, BASE_DIR+(root ? "" : album + "/")+file, false, (root ? album : album), file));
+				allImages.push(new ImageDetails("photo"+id, file, BASE_DIR+(root ? "" : album + "/")+file, false, (root ? album : album), getTagFromFileName(file)));
 				imageCnt = imageCnt + 1;
 			}
 			imageIndex = imageIndex + 1;

@@ -139,6 +139,40 @@ html(ng-app="app")
                   button.btn.btn-sm.btn-outline-secondary.mt-2(ng-click="editImageTag(image)")
                     i.fas.fa-edit.me-1
                     | Edit Tags
+
+              small.text-muted.ms-2 {{ currentTime }} / {{ duration }}
+        div#playerBar.fixed-bottom.bg-light.border-top.p-2(ng-if="playlist.length > 0")
+          div.d-flex.align-items-center
+            i.fas.fa-music.me-2
+            strong.me-2 {{ playlist[currentIndex].tags || 'Untitled' }}
+
+            // Controls
+            button.btn.btn-sm.btn-outline-secondary.me-2(ng-click="prev()")
+              i.fas.fa-backward
+            button.btn.btn-sm.btn-outline-primary.me-2(ng-click="togglePlay()")
+              i(ng-class="{'fas fa-pause': isPlaying, 'fas fa-play': !isPlaying}")
+            button.btn.btn-sm.btn-outline-secondary.me-2(ng-click="next()")
+              i.fas.fa-forward
+
+            // Progress bar
+            div.flex-grow-1.mx-2.progress-bar-container(
+              ng-click="seek($event)"
+              style="height:6px; background:#ddd; cursor:pointer; position:relative;"
+            )
+              div(style="height:100%; background:#4285f4; width:{{progress}}%;")
+
+            small.text-muted.ms-2 {{ currentTime }} / {{ duration }}
+
+          // Playlist display
+          div.mt-2
+            ul.list-inline.mb-0
+              li.list-inline-item(
+                ng-repeat="track in playlist track by $index"
+                ng-class="{'fw-bold text-primary': $index === currentIndex}"
+                ng-click="playAudio(track)"
+                style="cursor:pointer;"
+              )
+                | {{ track.tags || 'Untitled' }}      
       button#goTopBtn.btn.btn-primary.rounded-circle.shadow(
         ng-click="scrollToTop()"
         title="Go to top"

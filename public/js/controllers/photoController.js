@@ -2,7 +2,7 @@
 angular.module('photoController', [])
 
     // inject the Photo service factory into our controller
-    .controller('photoController', ['$scope','$http','$location','PhotoService','ModalService', function($scope, $http, $location, PhotoService, ModalService) {
+    .controller('photoController', ['$scope','$http', '$location','PhotoService','ModalService', function($scope, $http, $location, PhotoService, ModalService) {
         $scope.formData = {};
         $scope.tags = [];
         $scope.photos = []; // all photos
@@ -22,7 +22,14 @@ angular.module('photoController', [])
         $scope.totalPhotos = 0;
         $scope.totalPages = 0;
 		$scope.numberOfItemsOnPage = 20;
-
+        // music player
+        var audio = new Audio();
+        $scope.playlist = [];
+        $scope.currentIndex = -1;
+        $scope.isPlaying = false;
+        $scope.currentTime = "0:00";
+        $scope.duration = "0:00";
+        $scope.progress = 0;        
         
         // GET =====================================================================
         // when landing on the page, get all photos and tags and show them
@@ -190,6 +197,8 @@ angular.module('photoController', [])
         function updatePhotoTagsFromDb(photos){
             firstTime = true;
 			$scope.folders = [];
+            $scope.playlist = [];
+            $scope.currentIndex = -1;
             for (photo of photos) {
                 var albumDetails = getNameAndAlbum(photo.path);
                 for (tag of $scope.tags) {
@@ -232,7 +241,10 @@ angular.module('photoController', [])
                  }
 			} else {
 				$scope.noMorePhotos = $scope.photos.length < $scope.numberOfItemsOnPage;
-			}            
+			}
+            if($scope.playlist.length > 0) {
+                $scope.currentIndex = 0;
+            }
         }       
         
         function getImageType(photo) {
@@ -243,6 +255,7 @@ angular.module('photoController', [])
                 photo.isVideo = true;
             } else if(audioTypes.indexOf(ext) != -1) {
                 photo.isAudio = true;
+                $scope.playlist.push(photo);
             } else {
                 photo.isPdf = true;
             }
@@ -365,4 +378,85 @@ angular.module('photoController', [])
                 btn.classList.remove("show");
             }
         };        
-    }]);
+
+        function formatTime(seconds) {
+            var minutes = Math.floor(seconds / 60) || 0;
+            var secs = Math.floor(seconds % 60) || 0;
+            return minutes + ":" + (secs < 10 ? "0" : "") + secs;
+        }
+
+        // Add to playlist and play
+        $scope.playAudio = function(image) {
+            if (!image.isAudio) return;
+
+            // If not already in playlist, add it
+            var existingIndex = $scope.playlist.findIndex(track => track.path === image.path);
+            if (existingIndex === -1) {
+                $scope.playlist.push(image);
+                $scope.currentIndex = $scope.playlist.length - 1;
+            } else {
+                $scope.currentIndex = existingIndex;
+            }
+
+            startPlayback();
+        };
+
+        function startPlayback() {
+            var track = $scope.playlist[$scope.currentIndex];
+            if (!track) return;
+
+            audio.src = track.path;
+            audio.play();
+            $scope.isPlaying = true;
+        }
+
+        $scope.togglePlay = function() {
+            if ($scope.isPlaying) {
+            audio.pause();
+            $scope.isPlaying = false;
+            } else {
+                if(!audio.src) {
+                    startPlayback();
+                } else {
+                    audio.play();
+                    $scope.isPlaying = true;
+                }
+            }
+        };
+
+        $scope.next = function() {
+            if ($scope.playlist.length === 0) return;
+            $scope.currentIndex = ($scope.currentIndex + 1) % $scope.playlist.length;
+            startPlayback();
+        };
+
+        $scope.prev = function() {
+            if ($scope.playlist.length === 0) return;
+            $scope.currentIndex = ($scope.currentIndex - 1 + $scope.playlist.length) % $scope.playlist.length;
+            startPlayback();
+        };
+
+        $scope.seek = function(event) {
+            var bar = event.target;
+            var clickX = event.offsetX;
+            var width = bar.offsetWidth;
+            var newTime = (clickX / width) * audio.duration;
+            audio.currentTime = newTime;
+        };
+
+        // update progress bar
+        audio.addEventListener("timeupdate", function() {
+            $scope.$apply(function() {
+            $scope.currentTime = formatTime(audio.currentTime);
+            $scope.duration = formatTime(audio.duration);
+            $scope.progress = (audio.currentTime / audio.duration) * 100 || 0;
+            });
+        });
+
+        // auto-play next when finished
+        audio.addEventListener("ended", function() {
+            $scope.$apply(function() {
+            $scope.next();
+            });
+        });
+}]);

@@ -116,6 +116,7 @@ html(ng-app="app")
             div.col-sm-6.col-md-4.col-lg-3(ng-repeat="image in photos")
               div.card.shadow-sm
                 a(
+                  ng-if="!image.isAudio"
                   ng-href="{{image.path}}"
                   data-fancybox="gallery"
                   data-caption="{{image.tags}}"
@@ -140,7 +141,6 @@ html(ng-app="app")
                     i.fas.fa-edit.me-1
                     | Edit Tags
 
-              small.text-muted.ms-2 {{ currentTime }} / {{ duration }}
         div#playerBar.fixed-bottom.bg-light.border-top.p-2(ng-if="playlist.length > 0")
           div.d-flex.align-items-center
             i.fas.fa-music.me-2
@@ -164,15 +164,16 @@ html(ng-app="app")
             small.text-muted.ms-2 {{ currentTime }} / {{ duration }}
 
           // Playlist display
-          div.mt-2
-            ul.list-inline.mb-0
-              li.list-inline-item(
+          div.mt-2(style="max-height:150px; overflow-y:auto;")
+            ul.list-group
+              li.list-group-item(
                 ng-repeat="track in playlist track by $index"
-                ng-class="{'fw-bold text-primary': $index === currentIndex}"
+                ng-class="{'active': $index === currentIndex}"
                 ng-click="playAudio(track)"
                 style="cursor:pointer;"
               )
-                | {{ track.tags || 'Untitled' }}      
+                i.fas.fa-music.me-2
+                | {{ track.tags || 'Untitled' }}   
       button#goTopBtn.btn.btn-primary.rounded-circle.shadow(
         ng-click="scrollToTop()"
         title="Go to top"

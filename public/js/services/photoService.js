@@ -16,6 +16,12 @@ angular.module('PhotoService', [])
             			return response.data; // { totalPhotos, data }
         			});
 			},
+			getAllTags : function() {
+				return $http.get('/alltags')
+					.then(function(response) {
+            			return response.data; // { [{"tag": "1"},]}
+        			});
+			},
 			create : function(photoData) {
 				return $http.post('/', photoData);
 			},

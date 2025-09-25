@@ -18,25 +18,20 @@ html(ng-app="app")
       // Header
       header.collapsible-header.d-flex.flex-column.sticky-top.bg-white.border-bottom.shadow-sm.px-2.py-2(combo-header)
         // First row: Logo, Album, Controls
-        div.d-flex.align-items-center.justify-content-between.w-100
+        div.d-flex.align-items-center.flex-nowrap.w-100
           img(src="/favicon.png" alt="Home" width="28" class="me-2")
           h6.mb-0.flex-grow-1.text-truncate {{selectedAlbum.name}}
-          div.ms-auto.d-flex.flex-wrap.align-items-center.gap-2
-            // Search
-            div.input-group.input-group-sm.me-2(style="max-width:200px;")
-              input.form-control(
-                type="text"
-                ng-model="searchTag"
-                placeholder="Search..."
-                ng-keypress="($event.which === 13) && search()"
-              )
-              button.btn.btn-outline-primary(type="button", ng-click="search()")
-                i.fas.fa-search
-              button.btn.btn-outline-secondary(type="button", ng-click="clearSearch()")
-                i.fas.fa-times
+          div.d-flex.align-items-center.ms-auto.gap-2.flex-nowrap
+            // Search button            
+            button.btn.btn-outline-primary(
+              type="button" 
+              data-bs-toggle="modal" 
+              data-bs-target="#searchModal"
+            )
+              i.fas.fa-search
 
-            // File upload button
-            button.btn.btn-outline-success.btn-sm.ms-2(
+            // Upload button
+            button.btn.btn-outline-success.btn-sm(
               type="button"
               ng-click="selectUploadFile()"
             )
@@ -48,8 +43,10 @@ html(ng-app="app")
               ng-options="album.album for album in albums track by album.path"
               ng-model="selectedAlbum"
               ng-change="loadAlbum()"
+              class="me-2"
             )
-            // Hamburger menu button
+
+            // Hamburger menu (aligned right)
             button.btn.btn-outline-secondary.btn-sm.d-md-none(
               type="button"
               data-bs-toggle="collapse"
@@ -135,12 +132,13 @@ html(ng-app="app")
                       ng-class="{'fas fa-play-circle': image.isAudio || image.isVideo,'fas fa-file-pdf': image.isPdf,'fas fa-search-plus': image.isPhoto}"
                     )
                 div.card-body.p-2
-                  h6.card-title.mb-1.text-truncate {{image.tags || 'Untitled'}}
-                  //p.card-text.text-muted.small.mb-0 {{image.album}}
-                  button.btn.btn-sm.btn-outline-secondary.mt-2(ng-click="editImageTag(image)")
-                    i.fas.fa-edit.me-1
-                    | Edit Tags
-
+                  h6.card-title.mb-1.text-truncate
+                    a.text-decoration-none.text-dark(
+                      href="#"
+                      ng-click="editImageTag(image)"
+                      title="Edit tags"
+                    ) {{image.tags || 'Untitled'}}
+        // Audio Player Bar
         div#playerBar.fixed-bottom.bg-light.border-top.p-2(ng-if="playlist.length > 0")
           div.d-flex.align-items-center
             i.fas.fa-music.me-2
@@ -180,6 +178,53 @@ html(ng-app="app")
       )
         i.fas.fa-arrow-up
 
+      //- Search Modal
+      div.modal.fade#searchModal(tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered
+          div.modal-content
+            div.modal-header
+              h5.modal-title#searchModalLabel Search
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              input.form-control(type="text" placeholder="Type to search..." ng-model="searchTag" ng-keypress="($event.which === 13) && search()")
+              div.mt-3
+                h6.text-muted Tags
+                div.d-flex.flex-wrap.gap-2
+                  a.badge.bg-secondary.text-white.text-decoration-none(
+                    ng-repeat="tag in filteredTags"
+                    ng-click="searchByTag(tag.tag)"
+                    style="cursor: pointer;"
+                  ) {{tag.tag}}
+            div.modal-footer
+              button.btn.btn-primary(type="button" ng-click="search()" data-bs-dismiss="modal") Search
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
+      //- File upload Modal
+      div.modal.fade#uploadModal(tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true")
+        div.modal-dialog
+          div.modal-content
+            div.modal-header
+              h5.modal-title#uploadModalLabel Upload File
+              button.btn-close(type="button", data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              form(name="uploadForm" ng-submit="submitUploadForm()")
+                div.mb-3
+                  label.form-label(for="uploadFile") Select File                  
+                  input.form-control(type="file" id="uploadFile" name="myFile" file-model="uploadFile" accept="*/*" required)
+                img.img-fluid.mt-2(ng-if="filePreviewUrl" ng-src="{{filePreviewUrl}}")
+                div.mb-3
+                  label.form-label Enter file description
+                  textarea.form-control(name="tags" ng-model="uploadTags" rows="3")
+                div.mb-3
+                  label.form-label Select folder OR enter name
+                  div.d-flex.gap-2
+                    select.form-select(
+                      ng-model="uploadAlbum"
+                      ng-options="album.path as album.name for album in albums"
+                    )
+                    input.form-control(type="text" name="album" ng-model="uploadAlbum")
+            div.modal-footer
+              button.btn.btn-primary(type="submit") Upload
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel              
     // Scripts
     script(src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js")
     script(src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.2.18/angular-ui-router.min.js")

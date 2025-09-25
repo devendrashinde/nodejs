@@ -3,8 +3,12 @@ angular.module('photoController', [])
 
     // inject the Photo service factory into our controller
     .controller('photoController', ['$scope','$http', '$location','PhotoService','ModalService', function($scope, $http, $location, PhotoService, ModalService) {
+
         $scope.formData = {};
         $scope.tags = [];
+        $scope.allTags = [];
+        $scope.filteredTags = []
+        $scope.tagsLoaded = false;
         $scope.photos = []; // all photos
         $scope.filteredPhotos = [];// search-filtered photos
         $scope.albums = [];
@@ -29,24 +33,17 @@ angular.module('photoController', [])
         $scope.isPlaying = false;
         $scope.currentTime = "0:00";
         $scope.duration = "0:00";
-        $scope.progress = 0;        
+        $scope.progress = 0;   
+        // file upload
+        $scope.uploadFile = null;
+        $scope.filePreviewUrl = '';
+        $scope.uploadTags = '';
+        $scope.uploadAlbum = $scope.selectedAlbum ? $scope.selectedAlbum.path : '';
         
         // GET =====================================================================
         // when landing on the page, get all photos and tags and show them
         // use the service to get all the photo tags
         loadPhotos();
-
-        $scope.uploadFile = function(file, tags, album){
-            $scope.loading = true;
-            PhotoService.upload(file, tags, album)
-                    .then(function successCallback(response) {
-                            $scope.loadAlbum();
-                            $scope.loading = false;
-                    }, function errorCallback(response) {
-                        // called asynchronously if an error occurs
-                        // or server returns response with an error status.
-                    });
-        };
 
         $scope.search = function() {
             if($scope.searchTag && $scope.searchTag.trim() !== ''){
@@ -194,6 +191,48 @@ angular.module('photoController', [])
             });         
         }
 
+        // Watch search input and filter tags
+        $scope.$watch('searchTag', function(newVal) {
+        if (!newVal) {
+            $scope.filteredTags = $scope.allTags;
+        } else {
+            const lower = newVal.toLowerCase();
+            $scope.filteredTags = $scope.allTags.filter(tag => tag.tag.includes(lower));
+        }
+        });
+
+        
+        $scope.searchByTag = function(tag) {
+            $scope.searchTag = tag;
+            $scope.search();
+            $('#searchModal').modal('hide');
+        };
+
+
+        $('#searchModal').on('shown.bs.modal', function () {
+            const scope = angular.element(this).scope();
+            scope.$apply(function () {
+                scope.loadAllTags();
+            });
+        });
+
+        // load all tags
+        $scope.loadAllTags = function () {
+            if($scope.tagsLoaded) return;
+            $scope.tagsLoaded = true;            
+            $scope.loading = true;
+            PhotoService.getAllTags()
+            .then(function successCallback(response) {
+                $scope.allTags = response;
+                $scope.filteredTags = response;
+                $scope.loading = false;
+            }, function errorCallback(response) {
+                $scope.loading = false;
+                // called asynchronously if an error occurs
+                // or server returns response with an error status.
+            });         
+        }
+
         function updatePhotoTagsFromDb(photos){
             firstTime = true;
 			$scope.folders = [];
@@ -329,7 +368,12 @@ angular.module('photoController', [])
           $.fancybox.open(html);
         };
         
-        $scope.selectUploadFile= function (photo) {
+       
+        $scope.selectUploadFile = function () {
+            $('#uploadModal').modal('show');
+        };
+
+        $scope.selectUploadFile2= function (photo) {
 
           var html = '<div class="message">';
           html += '<form action="/upload" method="post" id="uploadForm" encType="multipart/form-data">';
@@ -459,4 +503,50 @@ angular.module('photoController', [])
             $scope.next();
             });
         });
+
+        $scope.previewFile = function() {
+            if ($scope.uploadFile && $scope.uploadFile.type) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                $scope.$apply(function() {
+                    $scope.filePreviewUrl = e.target.result;
+                });
+                };
+                reader.readAsDataURL($scope.uploadFile);
+            } else {
+                $scope.filePreviewUrl = '';
+            }
+        };
+
+        $scope.albumDropdownChanged = function() {
+        // Optionally sync dropdown and input
+        };
+
+        $scope.selectUploadFile = function() {
+        $('#uploadModal').modal('show');
+        };
+
+        $scope.submitUploadForm = function() {
+            $scope.uploadFile($scope.uploadFile, $scope.uploadTags, $scope.uploadAlbum);
+        };
+
+        $scope.uploadFile = function(file, tags, album){
+            $scope.loading = true;
+            PhotoService.upload(file, tags, album)
+                    .then(function successCallback(response) {
+                            $scope.loadAlbum();
+                            $scope.loading = false;
+                            $('#uploadModal').modal('hide');
+                    }, function errorCallback(response) {
+                        // called asynchronously if an error occurs
+                        // or server returns response with an error status.
+                        alert('Upload failed!');
+                    });
+        };
+
+      
+        $scope.$watch('uploadFile', function(newFile) {
+            if (newFile) $scope.previewFile();
+        });
+
 }]);

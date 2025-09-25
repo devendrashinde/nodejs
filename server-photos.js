@@ -6,7 +6,7 @@ import { join, sep, extname } from 'path';
 import path from 'path';
 import ImageDetails from "./ImageDetails.js";
 import { fileURLToPath } from 'url';
-import { createPhoto, getPhotos } from './app/controllers/photoController.js';
+import { createPhoto, getPhotos, getTags } from './app/controllers/photoController.js';
 import media from './app/services/media.js';
 import pkg from 'body-parser';
 
@@ -134,7 +134,10 @@ app.route('/tags?:id')
 	
 app.route('/tags?:tag')
     .get(getPhotos);
-	
+
+app.route('/alltags')
+   .get(getTags);;
+
 app.get('*', (req, res) => {
     var file = join(dataDir, req.path.replace(/\/$/, '/index.html'));
 

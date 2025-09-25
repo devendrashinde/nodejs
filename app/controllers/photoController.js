@@ -59,6 +59,27 @@ export function getPhoto(req, res) {
 	}
 }
 
+
+export function getTags(req, res) {
+  Photo.getTags(function(err, rows) {
+    if (err) return res.status(500).send(err);
+
+    const allTags = rows
+      .map(row => row.tags)
+      .filter(Boolean)
+      .flatMap(tagStr =>
+        tagStr
+          .split(/[\s,]+/) // split by space or comma
+          .map(tag => tag.trim().toLowerCase())
+		  .filter(tag => tag.length > 0) // remove empty strings
+      );
+
+    const uniqueTags = [...new Set(allTags)].sort();
+
+    res.json(uniqueTags.map(tag => ({ tag })));
+  });
+}
+
 function getAlbumName(album){
 	album = !album || !album.length ? "data":album;
 	var s = album.split("/");

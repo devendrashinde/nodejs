@@ -77,6 +77,19 @@ class Photo {
             }
         });
     }
+
+    static getTags(result) {
+        sql.query("SELECT tags FROM photos", function (err, res) {
+            if (err) {
+                console.log("error: ", err);
+                result(err, null);
+            }
+            else {
+                result(null, res);
+            }
+        });
+    }
+
     static updateTag(changedTag, result) {
         sql.query("UPDATE photos SET tags = ? WHERE name = ? AND album = ?", [changedTag.tags.trim(), changedTag.name, changedTag.album], function (err, res) {
             if (err) {

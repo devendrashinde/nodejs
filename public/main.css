@@ -519,15 +519,38 @@ body {
   flex-direction: column;
 }
 
+.albums-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 12px;
+}
+
 .albums-title {
   font-size: 1rem;
   font-weight: 600;
   color: #333;
-  margin: 0 0 12px 0;
+  margin: 0;
   padding-bottom: 10px;
   border-bottom: 2px solid #dee2e6;
   display: flex;
   align-items: center;
+  flex: 1;
+}
+
+.back-button {
+  white-space: nowrap;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
+.back-button:disabled {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .albums-search {

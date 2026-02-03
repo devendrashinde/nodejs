@@ -103,9 +103,13 @@ html(ng-app="app")
         // Sidebar for Folders
         aside#folderSidebar.col-md-2.mb-3.collapse.d-md-block(ng-if="folders.length > 0")
           div.albums-sidebar
-            h6.albums-title
-              i.fas.fa-folder-open.me-2
-              | Albums
+            div.albums-header
+              h6.albums-title
+                i.fas.fa-folder-open.me-2
+                | Albums
+              //- Back button for sub-albums
+              button.btn.btn-sm.btn-outline-secondary.back-button(ng-click="goToParentAlbum()" ng-disabled="!getParentAlbum()" title="Back to parent album")
+                i.fas.fa-arrow-left
             
             //- Albums search
             div.albums-search

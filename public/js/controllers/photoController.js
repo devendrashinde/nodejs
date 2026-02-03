@@ -230,6 +230,45 @@ angular.module('photoController', [])
             }
         }
 
+        // Get parent album from current album path
+        $scope.getParentAlbum = function() {
+            if (!$scope.selectedAlbum) {
+                return null;
+            }
+            
+            const path = $scope.selectedAlbum.path;
+            
+            // No parent for empty path, 'Home', or favorites
+            if (!path || path === 'Home' || path === '' || path === 'favorites') {
+                return null;
+            }
+            
+            const parts = path.split('/');
+            
+            if (parts.length === 1) {
+                // Single level - parent is root (All Albums)
+                return { album: 'All Albums', path: '', isRoot: true };
+            }
+            
+            // Remove last part to get parent path
+            const parentPath = parts.slice(0, -1).join('/');
+            const parentAlbum = parts[parts.length - 2]; // Get the parent album name
+            
+            return { album: parentAlbum, path: parentPath };
+        }
+
+        // Go to parent album
+        $scope.goToParentAlbum = function() {
+            const parentAlbum = $scope.getParentAlbum();
+            if (parentAlbum) {
+                if (parentAlbum.isRoot) {
+                    $scope.setAlbum({ album: '', path: '' }); // Go to All Albums
+                } else {
+                    $scope.setAlbum(parentAlbum);
+                }
+            }
+        }
+
         // View favorites - display all favorited media
         $scope.viewFavorites = function() {
             $scope.selectedAlbum = { album: 'favorites', path: 'favorites' };

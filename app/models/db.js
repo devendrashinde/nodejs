@@ -1,6 +1,10 @@
 'use strict';
 
+import dotenv from 'dotenv';
 import { createPool } from 'mysql';
+
+// Load environment variables from .env file
+dotenv.config();
 
 // MySQL connection pool configuration
 const pool = createPool({

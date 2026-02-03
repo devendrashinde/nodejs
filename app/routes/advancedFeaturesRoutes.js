@@ -26,7 +26,10 @@ import {
     getAvailableFilters,
     getVideoMetadata,
     getAvailableVideoQualities,
-    getVideoCodecRecommendations
+    getVideoCodecRecommendations,
+    getUserFavorites,
+    checkFavorite,
+    getFavoritesByAlbum
 } from '../controllers/advancedFeaturesController.js';
 
 const router = express.Router();
@@ -144,6 +147,24 @@ router.get('/photos/:id/ratings', (req, res) => {
  * Body: { isFavorite: true }
  */
 router.post('/photos/:id/favorite', toggleFavorite);
+
+/**
+ * Get all favorites for current user
+ * GET /api/favorites
+ */
+router.get('/favorites', getUserFavorites);
+
+/**
+ * Check if photo is favorited
+ * GET /api/favorites/check/:path
+ */
+router.get('/favorites/check/:path', checkFavorite);
+
+/**
+ * Get favorites for specific album
+ * GET /api/favorites/album/:album
+ */
+router.get('/favorites/album/:album', getFavoritesByAlbum);
 
 /**
  * Generate share link for photo

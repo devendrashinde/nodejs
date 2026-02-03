@@ -166,12 +166,12 @@ export const bulkAddTags = async (req, res) => {
 
         // Validate input
         if (!Array.isArray(photoIds) || !Array.isArray(tags)) {
-            return res.status(400).json({ error: 'Invalid input format' });
+            return res.status(400).json({ success: false, error: 'Invalid input format' });
         }
 
         const validation = BulkOperationsService.validateBulkOperation(photoIds);
         if (!validation.valid) {
-            return res.status(400).json({ errors: validation.errors });
+            return res.status(400).json({ success: false, errors: validation.errors });
         }
 
         // In real implementation, would fetch photos and perform operations
@@ -179,6 +179,8 @@ export const bulkAddTags = async (req, res) => {
         const batch = BulkOperationsService.bulkAddTags(photoIds, tags, mockPhotos);
 
         res.json({
+            success: true,
+            message: `Added ${tags.length} tag(s) to ${photoIds.length} photo(s)`,
             batchId: batch.id,
             total: batch.total,
             results: batch.results,
@@ -186,7 +188,7 @@ export const bulkAddTags = async (req, res) => {
         });
     } catch (err) {
         console.error('Error in bulk tag operation:', err);
-        res.status(500).json({ error: 'Bulk operation failed' });
+        res.status(500).json({ success: false, error: 'Bulk operation failed', message: err.message });
     }
 };
 
@@ -200,12 +202,12 @@ export const prepareBulkDownload = async (req, res) => {
 
         // Validate input
         if (!Array.isArray(photoIds) || photoIds.length === 0) {
-            return res.status(400).json({ error: 'No photos selected' });
+            return res.status(400).json({ success: false, error: 'No photos selected' });
         }
 
         const validation = BulkOperationsService.validateBulkOperation(photoIds);
         if (!validation.valid) {
-            return res.status(400).json({ errors: validation.errors });
+            return res.status(400).json({ success: false, errors: validation.errors });
         }
 
         // In real implementation, would fetch actual photos
@@ -213,6 +215,8 @@ export const prepareBulkDownload = async (req, res) => {
         const downloadInfo = BulkOperationsService.prepareBulkDownload(photoIds, mockPhotos);
 
         res.json({
+            success: true,
+            message: `Prepared download for ${photoIds.length} photo(s)`,
             zipFilename: downloadInfo.zipFilename,
             totalFiles: downloadInfo.totalFiles,
             totalSize: downloadInfo.totalSize,
@@ -220,7 +224,7 @@ export const prepareBulkDownload = async (req, res) => {
         });
     } catch (err) {
         console.error('Error preparing download:', err);
-        res.status(500).json({ error: 'Download preparation failed' });
+        res.status(500).json({ success: false, error: 'Download preparation failed', message: err.message });
     }
 };
 
@@ -231,24 +235,23 @@ export const prepareBulkDownload = async (req, res) => {
 export const bulkFavorite = async (req, res) => {
     try {
         const { photoIds, isFavorite = true } = req.body;
-        const userId = req.user?.id || req.session?.userId;
-
-        if (!userId) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
+        // Use authenticated user, session user, or default guest user
+        const userId = req.user?.id || req.session?.userId || 'guest';
 
         const batch = isFavorite 
             ? BulkOperationsService.bulkFavorite(photoIds, userId)
             : BulkOperationsService.bulkUnfavorite(photoIds, userId);
 
         res.json({
+            success: true,
+            message: `${isFavorite ? 'Added' : 'Removed'} ${photoIds.length} photo(s) ${isFavorite ? 'to' : 'from'} favorites`,
             batchId: batch.id,
             total: batch.total,
             action: isFavorite ? 'favorited' : 'unfavorited'
         });
     } catch (err) {
         console.error('Error in bulk favorite:', err);
-        res.status(500).json({ error: 'Operation failed' });
+        res.status(500).json({ success: false, error: 'Operation failed', message: err.message });
     }
 };
 
@@ -283,11 +286,8 @@ export const ratePhoto = async (req, res) => {
     try {
         const { rating } = req.body;
         const photoId = req.params.id;
-        const userId = req.user?.id || req.session?.userId;
-
-        if (!userId) {
-            return res.status(401).json({ error: 'Authentication required' });
-        }
+        // Use authenticated user, session user, or default guest user
+        const userId = req.user?.id || req.session?.userId || 'guest';
 
         const ratingRecord = SocialFeaturesService.addRating(photoId, userId, rating);
         res.json(ratingRecord);
@@ -298,21 +298,48 @@ export const ratePhoto = async (req, res) => {
 };
 
 /**
+/**
  * Toggle photo favorite
  * @route POST /api/photos/:id/favorite
  */
 export const toggleFavorite = async (req, res) => {
     try {
+        let photoPath = req.params.id;
         const { isFavorite = true } = req.body;
-        const photoId = req.params.id;
-        const userId = req.user?.id || req.session?.userId;
-
-        if (!userId) {
-            return res.status(401).json({ error: 'Authentication required' });
+        
+        // Validate path
+        if (photoPath.includes('..') || photoPath.startsWith('/')) {
+            return res.status(400).json({ error: 'Invalid photo path' });
         }
 
-        const favorite = SocialFeaturesService.toggleFavorite(photoId, userId, isFavorite);
-        res.json(favorite);
+        const userId = req.user?.id || req.session?.userId || 'guest';
+        
+        // Extract photo name and album from path (e.g., "data/pictures/nature/photo.jpg")
+        const pathParts = photoPath.split('/');
+        const photoName = pathParts[pathParts.length - 1];
+        const album = pathParts.length > 2 ? pathParts[pathParts.length - 2] : 'pictures';
+
+        if (isFavorite) {
+            // Add favorite to database
+            const sql = `
+                INSERT INTO favorites (user_id, photo_path, photo_name, album)
+                VALUES (?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE created_at = NOW()
+            `;
+            await query(sql, [userId, photoPath, photoName, album]);
+        } else {
+            // Remove favorite from database
+            const sql = `DELETE FROM favorites WHERE user_id = ? AND photo_path = ?`;
+            await query(sql, [userId, photoPath]);
+        }
+
+        res.json({
+            success: true,
+            photoPath,
+            userId,
+            isFavorite,
+            message: isFavorite ? 'Added to favorites' : 'Removed from favorites'
+        });
     } catch (err) {
         console.error('Error toggling favorite:', err);
         res.status(500).json({ error: 'Operation failed' });
@@ -431,6 +458,92 @@ export const getVideoCodecRecommendations = (req, res) => {
     }
 };
 
+/**
+ * Get all favorites for the current user
+ * @route GET /api/favorites
+ */
+export const getUserFavorites = async (req, res) => {
+    try {
+        const userId = req.user?.id || req.session?.userId || 'guest';
+        
+        const sql = `
+            SELECT * FROM favorites 
+            WHERE user_id = ? 
+            ORDER BY created_at DESC
+        `;
+        
+        const results = await query(sql, [userId]);
+        
+        res.json({
+            success: true,
+            count: results.length,
+            favorites: results
+        });
+    } catch (err) {
+        console.error('Error getting favorites:', err);
+        res.status(500).json({ error: 'Failed to get favorites' });
+    }
+};
+
+/**
+ * Check if a specific photo is favorited
+ * @route GET /api/favorites/check/:path
+ */
+export const checkFavorite = async (req, res) => {
+    try {
+        let photoPath = req.params.path;
+        
+        // Validate path
+        if (photoPath.includes('..') || photoPath.startsWith('/')) {
+            return res.status(400).json({ error: 'Invalid photo path' });
+        }
+
+        const userId = req.user?.id || req.session?.userId || 'guest';
+        
+        const sql = `SELECT id FROM favorites WHERE user_id = ? AND photo_path = ?`;
+        const results = await query(sql, [userId, photoPath]);
+        
+        res.json({
+            success: true,
+            isFavorite: results.length > 0,
+            photoPath,
+            userId
+        });
+    } catch (err) {
+        console.error('Error checking favorite:', err);
+        res.status(500).json({ error: 'Failed to check favorite status' });
+    }
+};
+
+/**
+ * Get favorites by album
+ * @route GET /api/favorites/album/:album
+ */
+export const getFavoritesByAlbum = async (req, res) => {
+    try {
+        const userId = req.user?.id || req.session?.userId || 'guest';
+        const { album } = req.params;
+        
+        const sql = `
+            SELECT * FROM favorites 
+            WHERE user_id = ? AND album = ? 
+            ORDER BY created_at DESC
+        `;
+        
+        const results = await query(sql, [userId, album]);
+        
+        res.json({
+            success: true,
+            album,
+            count: results.length,
+            favorites: results
+        });
+    } catch (err) {
+        console.error('Error getting album favorites:', err);
+        res.status(500).json({ error: 'Failed to get album favorites' });
+    }
+};
+
 export default {
     getPhotoExif,
     advancedSearch,
@@ -446,5 +559,8 @@ export default {
     getAvailableFilters,
     getVideoMetadata,
     getAvailableVideoQualities,
-    getVideoCodecRecommendations
+    getVideoCodecRecommendations,
+    getUserFavorites,
+    checkFavorite,
+    getFavoritesByAlbum
 };

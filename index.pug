@@ -47,15 +47,6 @@ html(ng-app="app")
             )
               i.fas.fa-upload.me-1
 
-            // Album dropdown
-            select.form-select.form-select-sm(
-              name="albumList"
-              ng-options="album.album for album in albums track by album.path"
-              ng-model="selectedAlbum"
-              ng-change="loadAlbum()"
-              class="me-2"
-            )
-
             // Hamburger menu (aligned right)
             button.btn.btn-outline-secondary.btn-sm.d-md-none(
               type="button"
@@ -142,6 +133,17 @@ html(ng-app="app")
               i.fas.fa-th.me-1
               | All Albums
               span.badge.bg-primary.float-end {{(folders | filter:{album: albumsSearchText}).length}}
+            
+            //- Favorites button
+            button.btn.btn-sm.btn-outline-danger.w-100.mb-2(
+              ng-click="viewFavorites()"
+              ng-class="{'active': selectedAlbum.album == 'favorites'}"
+              style="font-size: 0.85rem;"
+              title="View all favorite media"
+            )
+              i.bi.bi-heart-fill.me-1
+              | Favorites
+              span.badge.bg-danger.float-end {{favoritesCount}}
             
             //- Albums list (filtered)
             ul.list-group.list-group-flush.albums-list

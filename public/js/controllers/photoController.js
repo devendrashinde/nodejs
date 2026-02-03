@@ -42,6 +42,8 @@ angular.module('photoController', [])
         $scope.filePreviewUrl = '';
         $scope.uploadTags = '';
         $scope.uploadAlbum = $scope.selectedAlbum ? $scope.selectedAlbum.path : '';
+        $scope.favoritesCount = 0; // Count of favorited media
+        $scope.allFavorites = []; // Store all favorites
         
         // GET =====================================================================
         // when landing on the page, get all photos and tags and show them
@@ -85,6 +87,8 @@ angular.module('photoController', [])
                         $scope.totalPhotos = response.totalPhotos;
                         $scope.totalPages = Math.ceil($scope.totalPhotos / $scope.numberOfItemsOnPage);
                         updatePhotoTagsFromDb(response.data);
+                        // Load favorites for these photos
+                        $scope.loadUserFavorites();
                         $scope.loading = false;                     
                 }, function errorCallback(response) {
                     // called asynchronously if an error occurs
@@ -100,6 +104,34 @@ angular.module('photoController', [])
                 }
             }
             return "";
+        };
+
+        // Load user's favorite photos from database
+        $scope.loadUserFavorites = function() {
+            $http.get('/api/favorites')
+                .then(function successCallback(response) {
+                    const favorites = response.data.favorites || [];
+                    const favoriteMap = {};
+                    
+                    // Update favorites count for badge
+                    $scope.favoritesCount = favorites.length;
+                    $scope.allFavorites = favorites;
+                    
+                    // Create a map of favorite photo paths for quick lookup
+                    favorites.forEach(fav => {
+                        favoriteMap[fav.photo_path] = true;
+                    });
+                    
+                    // Mark photos as favorites
+                    $scope.photos.forEach(photo => {
+                        if (favoriteMap[photo.path]) {
+                            photo.isFavorite = true;
+                        }
+                    });
+                }, function errorCallback(response) {
+                    console.error('Error loading favorites:', response);
+                    // Silently fail - continue without favorites
+                });
         };
 		
         // load photos from next page
@@ -197,8 +229,41 @@ angular.module('photoController', [])
                 loadPhotosAndTags(album.path);
             }
         }
-		
 
+        // View favorites - display all favorited media
+        $scope.viewFavorites = function() {
+            $scope.selectedAlbum = { album: 'favorites', path: 'favorites' };
+            $scope.loading = true;
+            $scope.pageId = 0;
+            
+            // Get all favorites from database
+            $http.get('/api/favorites')
+                .then(function successCallback(response) {
+                    const favorites = response.data.favorites || [];
+                    $scope.favoritesCount = favorites.length;
+                    $scope.allFavorites = favorites;
+                    
+                    // Convert favorites to photo objects
+                    $scope.photos = favorites.map(fav => ({
+                        name: fav.photo_name,
+                        path: fav.photo_path,
+                        album: fav.album,
+                        isFavorite: true,
+                        tags: ''
+                    }));
+                    
+                    $scope.totalPhotos = favorites.length;
+                    $scope.totalPages = 1;
+                    $scope.tags = [];
+                    $scope.loading = false;
+                }, function errorCallback(response) {
+                    console.error('Error loading favorites:', response);
+                    $scope.photos = [];
+                    $scope.favoritesCount = 0;
+                    $scope.loading = false;
+                });
+        };
+		
 		function showNoMorePhotos() {			
 			setTimeout(function() {
 				$scope.noMorePhotos = false;
@@ -621,5 +686,64 @@ angular.module('photoController', [])
         $scope.$watch('uploadFile', function(newFile) {
             if (newFile) $scope.previewFile();
         });
+
+        // Toggle favorite status for a photo
+        $scope.toggleFavorite = function(image) {
+            if (!image.path) return;
+            
+            const isFavorite = !image.isFavorite;
+            const encodedPath = encodeURIComponent(image.path);
+            
+            $http.post(`/api/photos/${encodedPath}/favorite`, { isFavorite: isFavorite })
+                .then(function successCallback(response) {
+                    image.isFavorite = isFavorite;
+                    // Update favorites count
+                    if (isFavorite) {
+                        $scope.favoritesCount++;
+                    } else {
+                        $scope.favoritesCount = Math.max(0, $scope.favoritesCount - 1);
+                    }
+                    console.log('Favorite toggled:', image.path, isFavorite);
+                }, function errorCallback(response) {
+                    console.error('Error toggling favorite:', response);
+                    alert('Failed to toggle favorite');
+                });
+        };
+
+        // Share photo (placeholder for future share functionality)
+        $scope.sharePhoto = function(image) {
+            if (!image.path) return;
+            
+            const encodedPath = encodeURIComponent(image.path);
+            const shareUrl = window.location.origin + '?photo=' + encodedPath;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: image.tags || 'Photo',
+                    url: shareUrl
+                }).catch(err => console.log('Error sharing:', err));
+            } else {
+                // Fallback: copy to clipboard
+                navigator.clipboard.writeText(shareUrl);
+                alert('Share link copied to clipboard!');
+            }
+        };
+
+        // Show EXIF modal for a photo
+        $scope.showExifModal = function(image) {
+            if (!image.path) return;
+            
+            const encodedPath = encodeURIComponent(image.path);
+            
+            $http.get(`/api/photos/${encodedPath}/exif`)
+                .then(function successCallback(response) {
+                    console.log('EXIF data:', response.data);
+                    // Display EXIF data (can be enhanced with a modal)
+                    alert('EXIF data retrieved. Check console for details.');
+                }, function errorCallback(response) {
+                    console.error('Error fetching EXIF:', response);
+                    alert('Failed to load EXIF data');
+                });
+        };
 
 }]);

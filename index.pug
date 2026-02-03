@@ -9,6 +9,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
     link(rel="stylesheet", href="main.css")
+    link(rel="stylesheet", href="css/advanced-features.css")
   
   body#top
     div(class="container-fluid py-3" id="controller" ng-controller="photoController")
@@ -22,13 +23,22 @@ html(ng-app="app")
           img(src="/favicon.png" alt="Home" width="28" class="me-2")
           h6.mb-0.flex-grow-1.text-truncate {{selectedAlbum.name}}
           div.d-flex.align-items-center.ms-auto.gap-2.flex-nowrap
-            // Search button            
-            button.btn.btn-outline-primary(
-              type="button" 
-              data-bs-toggle="modal" 
-              data-bs-target="#searchModal"
-            )
-              i.fas.fa-search
+            // Search buttons (Basic + Advanced)
+            div.btn-group
+              button.btn.btn-outline-primary.btn-sm(
+                type="button" 
+                data-bs-toggle="modal" 
+                data-bs-target="#searchModal"
+                title="Quick search"
+              )
+                i.fas.fa-search
+              
+              button.btn.btn-outline-info.btn-sm(
+                type="button"
+                onclick="window.advancedSearch && window.advancedSearch.toggle()"
+                title="Advanced search with filters"
+              )
+                i.fas.fa-search-plus
 
             // Upload button
             button.btn.btn-outline-success.btn-sm(
@@ -94,24 +104,77 @@ html(ng-app="app")
             aria-valuemax="100"
           )
 
+      //- Advanced Search Panel
+      div#advanced-search-container
+
       // Sidebar + Content
       div.row
         // Sidebar for Folders
         aside#folderSidebar.col-md-2.mb-3.collapse.d-md-block(ng-if="folders.length > 0")
-          h6.mb-0.flex-grow-1.text-truncate Albums
-          ul.list-group.list-group-flush
-            li.list-group-item.list-group-item-action(
-              ng-repeat="folder in folders"
-              ng-click="setAlbum(folder)"
-              ng-class="{'active': folder.album == selectedAlbum.album}"
-            ) {{folder.album}}
+          div.albums-sidebar
+            h6.albums-title
+              i.fas.fa-folder-open.me-2
+              | Albums
+            
+            //- Albums search
+            div.albums-search
+              input.form-control.form-control-sm(
+                type="text"
+                ng-model="albumsSearchText"
+                placeholder="Search albums..."
+                title="Search albums by name"
+                id="albumsSearchInput"
+              )
+              button.btn-albums-clear(
+                ng-style="albumsSearchText ? {opacity: 1, 'pointer-events': 'all'} : {opacity: 0, 'pointer-events': 'none'}"
+                ng-mousedown="albumsSearchText = ''"
+                type="button"
+                title="Clear search"
+              )
+                i.fas.fa-times
+            
+            //- All Albums button
+            button.btn.btn-sm.btn-outline-primary.w-100.mb-2(
+              ng-click="setAlbum({album: '', path: ''})"
+              ng-class="{'active': selectedAlbum.album == '' || !selectedAlbum.album}"
+              style="font-size: 0.85rem;"
+            )
+              i.fas.fa-th.me-1
+              | All Albums
+              span.badge.bg-primary.float-end {{(folders | filter:{album: albumsSearchText}).length}}
+            
+            //- Albums list (filtered)
+            ul.list-group.list-group-flush.albums-list
+              li.list-group-item.list-group-item-action.album-item(
+                ng-repeat="folder in folders | filter:{album: albumsSearchText}"
+                ng-click="setAlbum(folder)"
+                ng-class="{'active': folder.album == selectedAlbum.album}"
+                title="{{folder.album}}"
+              )
+                div.album-name
+                  i.fas.fa-folder.me-2
+                  span {{folder.album}}
+            
+            //- No results message
+            div.albums-no-results(
+              ng-if="albumsSearchText.trim() && (folders | filter:{album: albumsSearchText}).length === 0"
+            )
+              i.fas.fa-search.me-2
+              | No albums found
 
         // Main Content
         main(ng-class="{'col-md-10': folders.length > 0, 'col-12': folders.length == 0}")
           // Gallery Grid
           div.row.g-3
             div.col-sm-6.col-md-4.col-lg-3(ng-repeat="image in photos")
-              div.card.shadow-sm
+              div.card.shadow-sm(style="position: relative;")
+                //- Checkbox for bulk operations
+                input.photo-checkbox(
+                  type="checkbox"
+                  ng-attr-data-photo-id="{{image.path}}"
+                  style="position: absolute; bottom: 10px; right: 10px; z-index: 5; width: 20px; height: 20px; cursor: pointer;"
+                  title="Select for bulk operations"
+                )
                 a(
                   ng-if="!image.isAudio"
                   ng-href="{{image.path}}"
@@ -134,10 +197,34 @@ html(ng-app="app")
                 div.card-body.p-2
                   h6.card-title.mb-1.text-truncate
                     a.text-decoration-none.text-dark(
-                      href="#"
+                      href="javascript:void(0)"
                       ng-click="editImageTag(image)"
                       title="Edit tags"
                     ) {{image.tags || 'Untitled'}}
+                  
+                  //- Action buttons for advanced features
+                  div.d-flex.gap-1.mt-2(ng-if="!image.isAudio && !image.isPdf")
+                    button.btn.btn-sm.btn-outline-info(
+                      type="button"
+                      ng-click="showExifModal(image)"
+                      title="View EXIF data"
+                    )
+                      i.fas.fa-camera.fa-sm
+                    
+                    button.btn.btn-sm.btn-outline-danger(
+                      type="button"
+                      ng-click="toggleFavorite(image)"
+                      ng-class="{'active': image.isFavorite}"
+                      title="Favorite"
+                    )
+                      i.fas.fa-heart.fa-sm
+                    
+                    button.btn.btn-sm.btn-outline-success(
+                      type="button"
+                      ng-click="sharePhoto(image)"
+                      title="Share photo"
+                    )
+                      i.fas.fa-share-alt.fa-sm
         // Audio Player Bar
         div#playerBar.fixed-bottom.bg-light.border-top.p-2(ng-if="playlist.length > 0")
           div.d-flex.align-items-center
@@ -178,6 +265,52 @@ html(ng-app="app")
       )
         i.fas.fa-arrow-up
 
+      //- Edit Tag Modal
+      div.modal.fade#editTagModal(tabindex="-1" aria-labelledby="editTagModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered
+          div.modal-content
+            div.modal-header
+              h5.modal-title#editTagModalLabel Update photo description
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              //- Show selected image if it's a photo
+              img.img-fluid#selectedFile(
+                ng-if="selectedPhoto.isPhoto"
+                ng-src="{{selectedPhoto.path}}"
+                width="225"
+                height="150"
+              )
+
+              form(name="editTagForm" novalidate)
+                input(type="hidden" name="id" ng-value="selectedPhoto.id")
+                input(type="hidden" name="name" ng-value="selectedPhoto.path")
+
+                .mb-3
+                  label.form-label(for="tags") Tags
+                  select.form-select(
+                    id="tags"
+                    ng-model="selectedOption"
+                    ng-change="selectedTag = selectedOption"
+                  )
+                    option(ng-repeat="tag in tags" value="{{tag.tags}}") {{tag.tags}}
+
+                .mb-3
+                  label.form-label(for="desc") Description
+                  textarea.form-control#desc(
+                    name="tags"
+                    rows="4"
+                    cols="80"
+                    ng-model="selectedPhoto.tags"
+                  )
+
+            div.modal-footer
+              button.btn.btn-primary(
+                type="button"
+                ng-click="submitEditTagForm()"
+                data-bs-dismiss="modal"
+              ) Update
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
+
       //- Search Modal
       div.modal.fade#searchModal(tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true")
         div.modal-dialog.modal-dialog-centered
@@ -198,15 +331,28 @@ html(ng-app="app")
             div.modal-footer
               button.btn.btn-primary(type="button" ng-click="search()" data-bs-dismiss="modal") Search
               button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
+      
+      //- EXIF Details Modal
+      div.modal.fade#exifModal(tabindex="-1" aria-labelledby="exifModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered.modal-lg
+          div.modal-content
+            div.modal-header
+              h5.modal-title#exifModalLabel 📸 Photo Details
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body#exif-modal-body
+              p.text-center.text-muted Loading EXIF data...
+            div.modal-footer
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
+      
       //- File upload Modal
       div.modal.fade#uploadModal(tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true")
-        div.modal-dialog
+        div.modal-dialog.modal-dialog-centered
           div.modal-content
             div.modal-header
               h5.modal-title#uploadModalLabel Upload File
               button.btn-close(type="button", data-bs-dismiss="modal" aria-label="Close")
             div.modal-body
-              form(name="uploadForm" ng-submit="submitUploadForm()")
+              form(name="uploadForm" novalidate)
                 div.mb-3
                   label.form-label(for="uploadFile") Select File                  
                   input.form-control(type="file" id="uploadFile" name="myFile" file-model="uploadFile" accept="*/*" required)
@@ -223,8 +369,8 @@ html(ng-app="app")
                     )
                     input.form-control(type="text" name="album" ng-model="uploadAlbum")
             div.modal-footer
-              button.btn.btn-primary(type="submit") Upload
-              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel              
+              button.btn.btn-primary(type="button" ng-click="submitUploadForm()" data-bs-dismiss="modal") Upload
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
     // Scripts
     script(src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js")
     script(src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.2.18/angular-ui-router.min.js")
@@ -239,4 +385,11 @@ html(ng-app="app")
     script(src="js/directives/shrinkHeaderDirective.js")
     script(src="js/services/photoService.js")
     script(src="js/services/modalService.js")
+    
+    //- Advanced Features Components
+    script(src="js/advanced-search.js")
+    script(src="js/exif-display.js")
+    script(src="js/bulk-operations.js")
+    script(src="js/social-features.js")
+    script(src="js/advanced-features-angular-integration.js")
     

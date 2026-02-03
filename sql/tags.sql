@@ -7,22 +7,13 @@
 -- Server version: 5.7.26
 -- PHP Version: 7.2.18
 
+-- Photo Gallery v2.0 - Tags Table Schema
+-- Optimized for MySQL 8.0+ with InnoDB engine
+-- Created: 2026-02-02
+
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-SET AUTOCOMMIT = 0;
-START TRANSACTION;
 SET time_zone = "+00:00";
-
-
-SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT ;
-SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS ;
-SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION ;
-SET NAMES utf8mb4 ;
-
---
--- Database: `mydb`
---
-
--- --------------------------------------------------------
+SET NAMES utf8mb4;
 
 --
 -- Table structure for table `tags`
@@ -30,12 +21,12 @@ SET NAMES utf8mb4 ;
 
 DROP TABLE IF EXISTS `tags`;
 CREATE TABLE IF NOT EXISTS `tags` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `tag` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=MyISAM AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
+  `id` int NOT NULL AUTO_INCREMENT,
+  `tag` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Tag name',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_tag_unique` (`tag`) COMMENT 'Ensure unique tags'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Available tags for photos';
 
-SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT ;
-SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS ;
-SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION ;
+-- Note: This table can be used for tag autocomplete functionality
 

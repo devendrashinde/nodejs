@@ -1,127 +1,128 @@
 'use strict';
-import sql from './db.js';
+import pool, { query } from './db.js';
 
-//Photo object constructor
+// Photo object constructor
 class Photo {
     constructor(photo) {
         this.id = photo.id;
         this.name = photo.name;
         this.tags = photo.tags;
     }
-    static createPhoto(newPhoto, result) {
-        if(newPhoto.id != null) {
-            console.log(newPhoto.id);
-            Photo.updateTagById(newPhoto.id, newPhoto.tags.trim(), result);
-            result(null, newPhoto.id);
 
-        } else {
-            sql.query("INSERT INTO photos set ?", newPhoto, function (err, res) {
-
-                if (err) {
-                    console.log("error: ", err);
-                    result(err, null);
-                }
-                else {
-                    console.log(res.insertId);
-                    result(null, res.insertId);
-                }
-            });
+    // Create or update photo (async version)
+    static async createPhoto(newPhoto, result) {
+        try {
+            if (newPhoto.id != null) {
+                console.log(`Updating photo ID: ${newPhoto.id}`);
+                await Photo.updateTagById(newPhoto.id, newPhoto.tags.trim());
+                result(null, newPhoto.id);
+            } else {
+                const res = await query("INSERT INTO photos SET ?", newPhoto);
+                console.log(`Created photo with ID: ${res.insertId}`);
+                result(null, res.insertId);
+            }
+        } catch (err) {
+            console.error("Error creating/updating photo:", err);
+            result(err, null);
         }
     }
 
-    static getPhotoById(id, result) {
-        sql.query("SELECT id, name, tags, album, path FROM photos WHERE id = ?", id, function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(err, null);
-            }
-            else {
-                result(null, res);
-
-            }
-        });
-    }
-    static getPhotoByName(name, result) {
-        sql.query("SELECT id, name, tags, album, path FROM photos WHERE name = ?", name, function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(err, null);
-            }
-            else {
-                result(null, res);
-
-            }
-        });
-    }
-    static getPhotosByTag(tag, result) {
-        sql.query("SELECT id, name, tags, album, CONCAT( path, '/', album, '/', name ) AS path FROM photos WHERE tags like ?", "%" + tag.trim() + "%", function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(err, null);
-            }
-            else {
-                result(null, res);
-
-            }
-        });
-    }
-    static getPhotosByAlbum(album, result) {
-        sql.query("SELECT id, name, tags, album, path FROM photos WHERE album = ?", album, function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(err, null);
-            }
-            else {
-                result(null, res);
-
-            }
-        });
+    static async getPhotoById(id, result) {
+        try {
+            const res = await query(
+                "SELECT id, name, tags, album, path FROM photos WHERE id = ?", 
+                [id]
+            );
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching photo by ID:", err);
+            result(err, null);
+        }
     }
 
-    static getTags(result) {
-        sql.query("SELECT tags FROM photos", function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(err, null);
-            }
-            else {
-                result(null, res);
-            }
-        });
+    static async getPhotoByName(name, result) {
+        try {
+            const res = await query(
+                "SELECT id, name, tags, album, path FROM photos WHERE name = ?", 
+                [name]
+            );
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching photo by name:", err);
+            result(err, null);
+        }
     }
 
-    static updateTag(changedTag, result) {
-        sql.query("UPDATE photos SET tags = ? WHERE name = ? AND album = ?", [changedTag.tags.trim(), changedTag.name, changedTag.album], function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(null, err);
-            }
-            else {
-                result(null, res.affectedRows);
-            }
-        });
+    static async getPhotosByTag(tag, result) {
+        try {
+            const res = await query(
+                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE tags LIKE ?", 
+                [`%${tag.trim()}%`]
+            );
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching photos by tag:", err);
+            result(err, null);
+        }
+    }
+
+    static async getPhotosByAlbum(album, result) {
+        try {
+            const res = await query(
+                "SELECT id, name, tags, album, path FROM photos WHERE album = ?", 
+                [album]
+            );
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching photos by album:", err);
+            result(err, null);
+        }
+    }
+
+    static async getTags(result) {
+        try {
+            const res = await query("SELECT DISTINCT tags FROM photos WHERE tags IS NOT NULL AND tags != ''");
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching tags:", err);
+            result(err, null);
+        }
+    }
+
+    static async updateTag(changedTag, result) {
+        try {
+            const res = await query(
+                "UPDATE photos SET tags = ? WHERE name = ? AND album = ?", 
+                [changedTag.tags.trim(), changedTag.name, changedTag.album]
+            );
+            result(null, res.affectedRows);
+        } catch (err) {
+            console.error("Error updating tag:", err);
+            result(err, null);
+        }
     }
     
-    static updateTagById(id, changedTag) {
-        sql.query("UPDATE photos SET tags = ? WHERE id = ?", [changedTag.trim(), id], function (err, res) {
-            if (err) {
-                console.log("failed to update tag, error: ", err);                
-            }
-        });
+    static async updateTagById(id, changedTag) {
+        try {
+            await query(
+                "UPDATE photos SET tags = ? WHERE id = ?", 
+                [changedTag.trim(), id]
+            );
+            console.log(`✓ Updated tag for photo ID: ${id}`);
+        } catch (err) {
+            console.error(`Failed to update tag for photo ID ${id}:`, err);
+            throw err;
+        }
     }
 
-    static remove(id, result) {
-        sql.query("DELETE FROM photos WHERE id = ?", id, function (err, res) {
-
-            if (err) {
-                console.log("error: ", err);
-                result(null, err);
-            }
-            else {
-
-                result(null, res);
-            }
-        });
+    static async remove(id, result) {
+        try {
+            const res = await query("DELETE FROM photos WHERE id = ?", [id]);
+            result(null, res);
+        } catch (err) {
+            console.error("Error deleting photo:", err);
+            result(err, null);
+        }
     }
 }
 

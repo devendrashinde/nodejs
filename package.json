@@ -1,36 +1,46 @@
 {
   "name": "photo-gallery",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Node js – Auto Generate a Photo Gallery from a Directory",
   "main": "server-photos.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server-photos.js"
+    "start": "node server-photos.js",
+    "dev": "nodemon server-photos.js",
+    "prod": "NODE_ENV=production node server-photos.js",
+    "cleanup-thumbnails": "node scripts/cleanup-thumbnails.js",
+    "cleanup-thumbnails:dry": "node scripts/cleanup-thumbnails.js --dry-run --verbose"
   },
   "author": "devendra <geetds@googlemail.com>",
   "license": "ISC",
   "dependencies": {
     "@fancyapps/fancybox": "^3.5.7",
+    "archiver": "^6.0.1",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
-    "express": "^4.17.1",
-    "express-fileupload": "^1.2.0",
+    "dotenv": "^16.0.3",
+    "exif-parser": "^0.1.12",
+    "express": "^4.18.2",
+    "express-fileupload": "^1.4.0",
     "fluent-ffmpeg": "^2.1.3",
     "gm": "^1.25.1",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
     "jquery-modal": "^0.9.2",
     "jsonwebtoken": "^9.0.2",
     "mime-types": "^3.0.1",
     "mysql": "^2.18.1",
     "pug": "^3.0.3",
     "shelljs": "^0.8.4",
-    "uuid": "^8.3.0"
+    "uuid": "^8.3.0",
+    "winston": "^3.11.0"
   },
   "devDependencies": {
     "curl": "^0.1.4",
     "jquery": "^3.5.1",
     "jsdom": "^16.4.0",
-    "nodemon": "^2.0.4"
+    "nodemon": "^3.0.2"
   }
 }

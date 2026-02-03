@@ -9,7 +9,9 @@ angular.module('photoController', [])
         $scope.allTags = [];
         $scope.filteredTags = []
         $scope.tagsLoaded = false;
-        $scope.photos = []; // all photos
+        $scope.photos = []; // current album photos
+        $scope.allPhotosByAlbum = {}; // Map of album -> photos for counting
+        $scope.selectedPhoto = {};
         $scope.filteredPhotos = [];// search-filtered photos
         $scope.albums = [];
 		$scope.folders = [];
@@ -17,6 +19,7 @@ angular.module('photoController', [])
 		$scope.noMorePhotos = false;
         $scope.showSearch = false;
         $scope.searchTag = ""; // user input for search
+        $scope.albumsSearchText = ""; // albums list search text
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
         imageTypes = ['jpg', 'png', 'jpeg', 'bmp', 'gif'];
@@ -64,6 +67,11 @@ angular.module('photoController', [])
         $scope.clearSearch = function() {
             $scope.searchTag = "";
             $scope.showSearch = false; // hide box after clearing
+        };
+
+        // Clear albums search and show all albums
+        $scope.clearAlbumsSearch = function() {
+            $scope.albumsSearchText = "";
         };
 
         // GET  ==================================================================
@@ -136,6 +144,7 @@ angular.module('photoController', [])
                 }
             }
 			addToTagList(tag);
+            addToAllTags(tag);
         };
         
         function addToTagList(tag) {
@@ -143,8 +152,23 @@ angular.module('photoController', [])
 				if(tags.tags == tag) {
 					return;
 				}
-			}            
+			}
             $scope.tags.unshift({ tags: tag });
+        }
+
+        function addToAllTags(tagString) {
+            const newTags = tagString
+                .split(/[\s,]+/)
+                .map(t => t.trim().toLowerCase())
+                .filter(t => t.length > 0);
+
+            newTags.forEach(newTag => {
+                const exists = $scope.allTags.some(existing => existing.tags === newTag);
+                if (!exists) {
+                    $scope.allTags.unshift({ tags: newTag });
+                    $scope.filteredTags.unshift({ tags: newTag });
+                }
+            });
         }
 
         function loadPhotos() {
@@ -166,9 +190,15 @@ angular.module('photoController', [])
 
         $scope.setAlbum = function (album) {
 			$scope.selectedAlbum = album;
-            loadPhotosAndTags(album.path);
+            if (!album.album || album.album === '') {
+                // "All Albums" selected - show all photos
+                loadPhotosAndTags("");
+            } else {
+                loadPhotosAndTags(album.path);
+            }
         }
 		
+
 		function showNoMorePhotos() {			
 			setTimeout(function() {
 				$scope.noMorePhotos = false;
@@ -249,9 +279,7 @@ angular.module('photoController', [])
                 }
                 if(photo.isAlbum){
                     found = false;
-					if($scope.selectedAlbum.path != photo.path){
-						$scope.folders.push(photo);
-					}
+					$scope.folders.push(photo);
                     for (x of $scope.albums) {
                         if(x.path == photo.path && x.name == photo.name) {
                             found = true;
@@ -264,10 +292,23 @@ angular.module('photoController', [])
                     }
                 } else {
                 	if(firstTime) {
-                		$scope.photos = [];
+						$scope.photos = [];
                 		firstTime = false;
                 	}
-                    $scope.photos.push(getImageType(photo));
+                    var photoObj = getImageType(photo);
+                    $scope.photos.push(photoObj);
+                    // Track all photos by album for counting
+                    var album = albumDetails.album || 'Home';
+                    if (!$scope.allPhotosByAlbum[album]) {
+                        $scope.allPhotosByAlbum[album] = [];
+                    }
+                    // Only add if not already in this album's list
+                    var exists = $scope.allPhotosByAlbum[album].some(function(p) {
+                        return p.path === photoObj.path;
+                    });
+                    if (!exists) {
+                        $scope.allPhotosByAlbum[album].push(photoObj);
+                    }
                 }
             }
 			$scope.noMorePhotos = firstTime;
@@ -334,7 +375,42 @@ angular.module('photoController', [])
             ModalService.Close(id);
         };      
 
-        $scope.editImageTag= function (photo) {
+        $scope.editImageTag = function(photo) {
+            $scope.selectedPhoto = angular.copy(photo);
+            var modalEl = document.getElementById('editTagModal');
+            var modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        };
+
+        $scope.updatePhotoTag = function(id, name, tags){
+            $scope.loading = true;
+            var photoTag = {};
+            if(parseInt(id) > 0){
+                photoTag = {"id": id, "name": name, "tags": tags};
+            } else {
+                photoTag = {"name": name, "tags": tags};
+            }
+            PhotoService.create(photoTag)
+                    .then(function successCallback(response) {
+                            $scope.updateTag(id, tags, response);
+                            $scope.loading = false;
+                            $('#editTagModal').modal('hide');
+                    }, function errorCallback(response) {
+                        // called asynchronously if an error occurs
+                        // or server returns response with an error status.
+                        alert('Update tag failed!');
+                    });
+        };
+      
+        $scope.$watch('uploadFile', function(newFile) {
+            if (newFile) $scope.previewFile();
+        });
+
+        $scope.submitEditTagForm = function() {
+            $scope.updatePhotoTag($scope.selectedPhoto.id, $scope.selectedPhoto.path, $scope.selectedPhoto.tags);
+        };
+
+        $scope.editImageTag2= function (photo) {
 
           var html = '<div class="message">';
           if(photo.isPhoto) {
@@ -369,10 +445,6 @@ angular.module('photoController', [])
         };
         
        
-        $scope.selectUploadFile = function () {
-            $('#uploadModal').modal('show');
-        };
-
         $scope.selectUploadFile2= function (photo) {
 
           var html = '<div class="message">';
@@ -523,7 +595,8 @@ angular.module('photoController', [])
         };
 
         $scope.selectUploadFile = function() {
-        $('#uploadModal').modal('show');
+            $scope.uploadAlbum = $scope.selectedAlbum.name;
+            $('#uploadModal').modal('show');
         };
 
         $scope.submitUploadForm = function() {

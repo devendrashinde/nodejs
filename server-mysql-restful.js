@@ -1,7 +1,8 @@
 import express from 'express';
-app = express();
-bodyParser = require('body-parser');
-port = process.env.PORT || 3000;
+import bodyParser from 'body-parser';
+
+const app = express();
+const port = process.env.PORT || 3000;
 
 app.listen(port);
 

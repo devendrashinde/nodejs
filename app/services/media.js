@@ -1,6 +1,6 @@
 'use strict';
 
-import { resolve, dirname} from 'path';
+import { resolve, dirname, extname } from 'path';
 import path from 'path';
 import gm from 'gm';
 import { statSync, writeFile } from 'fs';
@@ -8,8 +8,33 @@ import pkg from 'shelljs';
 import e from 'express';
 import mime from 'mime-types';
 import ffmpeg from 'fluent-ffmpeg';
+import which from 'which';
 
 const { mkdir } = pkg;
+
+// Configure FFmpeg and FFprobe paths
+const configureFfmpeg = async () => {
+    try {
+        const ffmpegPath = await which('ffmpeg');
+        const ffprobePath = await which('ffprobe');
+        
+        if (ffmpegPath) {
+            ffmpeg.setFfmpegPath(ffmpegPath);
+            console.log(`✓ FFmpeg configured: ${ffmpegPath}`);
+        }
+        if (ffprobePath) {
+            ffmpeg.setFfprobePath(ffprobePath);
+            console.log(`✓ FFprobe configured: ${ffprobePath}`);
+        }
+    } catch (err) {
+        console.warn('⚠ FFmpeg/FFprobe not found in PATH. Video thumbnails may not work.');
+        console.warn('Install FFmpeg: https://ffmpeg.org/download.html');
+    }
+};
+
+// Call configuration on module load
+configureFfmpeg();
+
 const videoMimeMap = {
   mp4: 'video/mp4',
   mov: 'video/quicktime',
@@ -151,42 +176,80 @@ class Media {
 
     async generateVideoThumbnail(response, image, thumb, thumbPath) {
         try {
-            const pngThumb = thumb + '.png';
-            const pngThumbPath = thumbPath + '.png';
+            // Generate PNG thumbnail for videos
+            const pngThumb = thumb.replace(/\.[^/.]+$/, '.png'); // Replace extension with .png
+            const pngThumbPath = thumbPath.replace(/\.[^/.]+$/, '.png');
             
             response.type("image/png");
             
             if (!exists(pngThumb)) {
-                mkdir('-p', dirname(thumbPath));
+                mkdir('-p', dirname(pngThumbPath));
                 
                 const thumbnailName = path.basename(pngThumbPath);
                 const outputDir = path.dirname(pngThumbPath);
                 
-                // Use FFmpeg to extract a frame at the middle of the video
-                ffmpeg(image)
-                    .on('end', () => {
-                        console.log('✓ Video thumbnail generated successfully');
-                        response.set('Cache-Control', 'public, max-age=86400');
-                        response.sendFile(pngThumbPath);
-                    })
-                    .on('error', (err) => {
-                        console.error('Error generating video thumbnail:', err);
-                        response.status(422).json({ error: 'Failed to generate video thumbnail' });
-                    })
-                    .screenshots({
-                        timestamps: ['50%'], // Middle of the video
-                        filename: thumbnailName,
-                        folder: outputDir,
-                        size: '300x200'
+                // Get video metadata to determine best capture time
+                return new Promise((resolve, reject) => {
+                    ffmpeg.ffprobe(image, (err, metadata) => {
+                        if (err) {
+                            console.warn(`⚠ Could not get video metadata, using default timestamp:`, err.message);
+                            this.captureVideoThumbnail(image, thumbnailName, outputDir, pngThumbPath, '3', response, resolve, reject);
+                        } else {
+                            const duration = metadata.format.duration || 0;
+                            
+                            // Intelligent timestamp selection
+                            let captureTime = '3'; // Default: 3 seconds in
+                            
+                            if (duration > 0) {
+                                // For longer videos, capture at 25% to avoid intros
+                                if (duration > 120) {
+                                    captureTime = Math.floor(duration * 0.25).toString();
+                                }
+                                // For medium videos, capture at 2-3 seconds
+                                else if (duration > 10) {
+                                    captureTime = Math.min(3, Math.floor(duration * 0.2)).toString();
+                                }
+                                // For very short videos, capture at 0.5 seconds
+                                else {
+                                    captureTime = Math.min(0.5, duration * 0.5).toString();
+                                }
+                            }
+                            
+                            console.log(`📹 Video duration: ${duration}s, capturing at ${captureTime}s`);
+                            this.captureVideoThumbnail(image, thumbnailName, outputDir, pngThumbPath, captureTime, response, resolve, reject);
+                        }
                     });
+                });
             } else {
                 response.set('Cache-Control', 'public, max-age=86400'); // 24 hours
                 response.sendFile(pngThumbPath);
             }
         } catch (err) {
-            console.error('Error in generateVideoThumbnail:', err);
+            console.error('❌ Error in generateVideoThumbnail:', err);
             response.status(500).json({ error: 'Internal server error' });
         }
+    }
+
+    // Helper function to capture video thumbnail at specified time
+    captureVideoThumbnail(videoPath, thumbnailName, outputDir, pngThumbPath, captureTime, response, resolve, reject) {
+        ffmpeg(videoPath)
+            .on('end', () => {
+                console.log('✓ Video thumbnail generated successfully at', captureTime, 's');
+                response.set('Cache-Control', 'public, max-age=86400');
+                response.sendFile(pngThumbPath);
+                resolve();
+            })
+            .on('error', (err) => {
+                console.error('❌ Error generating video thumbnail:', err.message);
+                response.status(422).json({ error: 'Failed to generate video thumbnail: ' + err.message });
+                reject(err);
+            })
+            .screenshots({
+                timestamps: [captureTime], // Intelligent timestamp
+                filename: thumbnailName,
+                folder: outputDir,
+                size: '300x200'
+            });
     }
 }
 

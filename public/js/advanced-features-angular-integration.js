@@ -23,6 +23,8 @@ angular.element(document).ready(function() {
     scope.showExifModal = function(image) {
       if (!image || !image.path) return;
       
+      console.log('Opening EXIF modal for:', image);
+      
       // Get or create Bootstrap modal instance
       const modalEl = document.getElementById('exifModal');
       const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
@@ -36,19 +38,24 @@ angular.element(document).ready(function() {
       
       // Load EXIF data using the advanced features component
       if (window.ExifDisplay) {
+        console.log('ExifDisplay available, creating instance for:', image.path);
         const exif = new ExifDisplay(image.path);
         exif.load()
           .then(() => {
+            console.log('EXIF load successful, calling render()');
             exif.render('exif-modal-body');
+            console.log('EXIF render completed');
           })
           .catch((error) => {
-            console.error('EXIF load error:', error);
+            console.error('EXIF load/render error:', error);
+            console.error('Error details:', error.message);
             document.getElementById('exif-modal-body').innerHTML = 
-              '<div class="alert alert-info">' +
-              '<i class="fas fa-info-circle"></i> No EXIF data available for this photo.' +
+              '<div class="alert alert-danger">' +
+              '<i class="fas fa-exclamation-circle"></i> Error: ' + error.message +
               '</div>';
           });
       } else {
+        console.error('ExifDisplay not available');
         document.getElementById('exif-modal-body').innerHTML = 
           '<div class="alert alert-warning">' +
           '<i class="fas fa-exclamation-triangle"></i> EXIF viewer not loaded. Please refresh the page.' +

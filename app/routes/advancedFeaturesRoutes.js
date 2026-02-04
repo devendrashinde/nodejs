@@ -30,7 +30,9 @@ import {
     getVideoCodecRecommendations,
     getUserFavorites,
     checkFavorite,
-    getFavoritesByAlbum
+    getFavoritesByAlbum,
+    autoTagPhoto,
+    batchAutoTag
 } from '../controllers/advancedFeaturesController.js';
 
 const router = express.Router();
@@ -102,6 +104,24 @@ router.post('/bulk/rate', (req, res) => {
     // Implementation for bulk rating
     res.json({ message: 'Bulk rating endpoint' });
 });
+
+// ============================================
+// Auto-Tagging Routes (ML-powered)
+// ============================================
+
+/**
+ * Auto-tag a single photo using ML
+ * POST /api/photos/autotag
+ * Body: { photoPath: "data/pictures/photo.jpg", options: {...} }
+ */
+router.post('/photos/autotag', autoTagPhoto);
+
+/**
+ * Batch auto-tag multiple photos with progress updates
+ * GET /api/photos/autotag/batch?photoIds=path1,path2,path3
+ * Returns: Server-Sent Events (SSE) stream with progress
+ */
+router.get('/photos/autotag/batch', batchAutoTag);
 
 // ============================================
 // Social Features Routes

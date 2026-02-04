@@ -35,6 +35,7 @@ class BulkOperations {
             />
             <button id="btn-bulk-add-tags" class="btn btn-small btn-success">➕ Add Tags</button>
             <button id="btn-bulk-remove-tags" class="btn btn-small btn-warning">➖ Remove Tags</button>
+            <button id="btn-bulk-autotag" class="btn btn-small btn-info">🤖 AI Auto-Tag</button>
           </div>
 
           <!-- Rating Section -->
@@ -96,6 +97,7 @@ class BulkOperations {
     // Bulk actions
     document.getElementById('btn-bulk-add-tags').addEventListener('click', () => this.bulkAddTags());
     document.getElementById('btn-bulk-remove-tags').addEventListener('click', () => this.bulkRemoveTags());
+    document.getElementById('btn-bulk-autotag').addEventListener('click', () => this.bulkAutoTag());
     document.getElementById('btn-bulk-favorite').addEventListener('click', () => this.bulkFavorite(true));
     document.getElementById('btn-bulk-unfavorite').addEventListener('click', () => this.bulkFavorite(false));
     document.getElementById('btn-bulk-download').addEventListener('click', () => this.bulkDownload());
@@ -204,6 +206,56 @@ class BulkOperations {
       tags,
     });
     tagsInput.value = '';
+  }
+
+  async bulkAutoTag() {
+    if (this.selectedPhotos.size === 0) {
+      alert('No photos selected');
+      return;
+    }
+
+    if (!confirm(`Use AI to auto-tag ${this.selectedPhotos.size} photos? This may take a few minutes.`)) {
+      return;
+    }
+
+    this.showProgress();
+    const progressText = document.getElementById('progress-text');
+    progressText.textContent = 'Initializing AI model...';
+
+    try {
+      const eventSource = new EventSource(`/api/photos/autotag/batch?photoIds=${Array.from(this.selectedPhotos).join(',')}`);
+      
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'progress') {
+          progressText.textContent = `Processing: ${data.current}/${data.total} - ${data.filename}`;
+        } else if (data.type === 'complete') {
+          progressText.textContent = `✓ Auto-tagged ${data.total} photos`;
+          eventSource.close();
+          
+          setTimeout(() => {
+            this.hideProgress();
+            this.updatePhotosInPlace(data.results);
+          }, 1500);
+        } else if (data.type === 'error') {
+          progressText.textContent = `Error: ${data.message}`;
+          eventSource.close();
+          setTimeout(() => this.hideProgress(), 3000);
+        }
+      };
+
+      eventSource.onerror = () => {
+        progressText.textContent = 'Connection error';
+        eventSource.close();
+        setTimeout(() => this.hideProgress(), 3000);
+      };
+
+    } catch (error) {
+      console.error('Auto-tag error:', error);
+      alert('Failed to auto-tag photos');
+      this.hideProgress();
+    }
   }
 
   async bulkFavorite(isFavorite) {
@@ -318,18 +370,38 @@ class BulkOperations {
         return;
       }
 
+      console.log('Updating photos with results:', results);
+
       // Update each photo's tags in the current view
       results.forEach(result => {
         if (result.success && result.newTags) {
-          // Find the photo in the current view by path
-          const photo = controller.photos.find(p => p.path === result.path);
+          // The result.path is the full path like "data/pictures/nature/file.jpg"
+          // Try multiple matching strategies
+          const photo = controller.photos.find(p => {
+            // Strategy 1: Exact path match
+            if (p.path === result.path) return true;
+            
+            // Strategy 2: Match by reconstructing path from photo object parts
+            // Angular photos might have path stored as: path + '/' + album + '/' + name
+            const reconstructedPath = p.album 
+              ? `${p.path}/${p.album}/${p.name}`.replace(/\/+/g, '/')
+              : `${p.path}/${p.name}`.replace(/\/+/g, '/');
+            if (reconstructedPath === result.path) return true;
+            
+            // Strategy 3: Match by filename (last resort)
+            const filename = result.path.split('/').pop();
+            return p.name === filename;
+          });
+          
           if (photo) {
             // Update the tags directly
             const newTagsString = Array.isArray(result.newTags) 
               ? result.newTags.join(', ') 
               : result.newTags;
             photo.tags = newTagsString;
-            console.log(`✓ Updated tags for ${result.path}: ${newTagsString}`);
+            console.log(`✓ Updated tags for ${photo.name}: ${newTagsString}`);
+          } else {
+            console.warn(`Could not find photo for path: ${result.path}`);
           }
         }
       });

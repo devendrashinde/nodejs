@@ -16,6 +16,7 @@ import BulkOperationsService from '../services/bulkOperationsService.js';
 import SocialFeaturesService from '../services/socialFeaturesService.js';
 import ImageEditingService from '../services/imageEditingService.js';
 import VideoEnhancementService from '../services/videoEnhancementService.js';
+import AutoTaggingService from '../services/autoTaggingService.js';
 import Photo from '../models/photoModel.js';
 import { query } from '../models/db.js';
 
@@ -760,6 +761,159 @@ export const getFavoritesByAlbum = async (req, res) => {
     }
 };
 
+/**
+ * Auto-tag a single photo using ML
+ * @route POST /api/photos/autotag
+ */
+export const autoTagPhoto = async (req, res) => {
+    try {
+        const { photoPath, options } = req.body;
+
+        if (!photoPath) {
+            return res.status(400).json({ success: false, error: 'Photo path required' });
+        }
+
+        const result = await AutoTaggingService.autoTagPhoto(photoPath, options);
+        
+        if (result.success && result.tags.length > 0) {
+            // Update database with generated tags
+            const pathParts = photoPath.split('/');
+            const fileName = pathParts[pathParts.length - 1];
+            const album = pathParts[pathParts.length - 2];
+            const path = pathParts.slice(0, -2).join('/');
+
+            // Find or create photo in database
+            const photos = await query(
+                "SELECT id, tags FROM photos WHERE name = ? AND album = ? AND path = ?",
+                [fileName, album, path]
+            );
+
+            let photoId;
+            if (photos.length > 0) {
+                photoId = photos[0].id;
+                // Merge with existing tags
+                const existingTags = photos[0].tags ? photos[0].tags.split(',').map(t => t.trim()) : [];
+                const allTags = [...new Set([...existingTags, ...result.tags])];
+                await Photo.updateTagById(photoId, allTags.join(', '));
+            } else {
+                // Create new photo entry
+                const insertResult = await query(
+                    "INSERT INTO photos (name, album, path, tags) VALUES (?, ?, ?, ?)",
+                    [fileName, album, path, result.tags.join(', ')]
+                );
+                photoId = insertResult.insertId;
+            }
+
+            res.json({
+                success: true,
+                photoId,
+                tags: result.tags,
+                mlTags: result.mlTags
+            });
+        } else {
+            res.json(result);
+        }
+    } catch (err) {
+        console.error('Error auto-tagging photo:', err);
+        res.status(500).json({ success: false, error: 'Auto-tagging failed', message: err.message });
+    }
+};
+
+/**
+ * Batch auto-tag multiple photos
+ * @route POST /api/photos/autotag/batch
+ */
+export const batchAutoTag = async (req, res) => {
+    try {
+        // Support both GET (with query params) and POST (with body)
+        let photoIds, options;
+        
+        if (req.method === 'GET') {
+            // Parse query parameters for SSE
+            photoIds = req.query.photoIds ? req.query.photoIds.split(',') : [];
+            options = {};
+        } else {
+            // Use body for POST requests
+            photoIds = req.body.photoIds;
+            options = req.body.options;
+        }
+
+        if (!Array.isArray(photoIds) || photoIds.length === 0) {
+            return res.status(400).json({ success: false, error: 'Photo IDs required' });
+        }
+
+        // Set up SSE for progress updates
+        res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive'
+        });
+
+        const results = await AutoTaggingService.batchAutoTag(
+            photoIds,
+            options,
+            (progress) => {
+                // Send progress update
+                res.write(`data: ${JSON.stringify({
+                    type: 'progress',
+                    current: progress.current,
+                    total: progress.total,
+                    filename: progress.photo.split('/').pop()
+                })}\n\n`);
+            }
+        );
+
+        // Update database and prepare UI update data
+        const uiUpdateResults = [];
+        
+        for (const [photoPath, tags] of Object.entries(results.tags)) {
+            if (tags.length > 0) {
+                const pathParts = photoPath.split('/');
+                const fileName = pathParts[pathParts.length - 1];
+                const album = pathParts[pathParts.length - 2];
+                const path = pathParts.slice(0, -2).join('/');
+
+                const photos = await query(
+                    "SELECT id, tags FROM photos WHERE name = ? AND album = ? AND path = ?",
+                    [fileName, album, path]
+                );
+
+                if (photos.length > 0) {
+                    const existingTags = photos[0].tags ? photos[0].tags.split(',').map(t => t.trim()) : [];
+                    const allTags = [...new Set([...existingTags, ...tags])];
+                    const newTagsString = allTags.join(', ');
+                    
+                    await Photo.updateTagById(photos[0].id, newTagsString);
+                    
+                    // Add to UI update results
+                    uiUpdateResults.push({
+                        success: true,
+                        path: photoPath,
+                        newTags: newTagsString
+                    });
+                }
+            }
+        }
+
+        // Send final result with formatted data for UI
+        res.write(`data: ${JSON.stringify({ 
+            type: 'complete', 
+            total: photoIds.length, 
+            results: uiUpdateResults 
+        })}\n\n`);
+        res.end();
+
+    } catch (err) {
+        console.error('Error in batch auto-tagging:', err);
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: 'Batch auto-tagging failed', message: err.message });
+        } else {
+            res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`);
+            res.end();
+        }
+    }
+};
+
 export default {
     getPhotoExif,
     advancedSearch,
@@ -779,5 +933,7 @@ export default {
     getVideoCodecRecommendations,
     getUserFavorites,
     checkFavorite,
-    getFavoritesByAlbum
+    getFavoritesByAlbum,
+    autoTagPhoto,
+    batchAutoTag
 };

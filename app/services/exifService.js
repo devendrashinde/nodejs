@@ -8,7 +8,7 @@
  * - Image dimensions and orientation
  */
 
-import ExifParser from 'exif-parser';
+import exifParser from 'exif-parser';
 import { readFileSync } from 'fs';
 
 class ExifService {
@@ -20,8 +20,7 @@ class ExifService {
     static extractExifData(imagePath) {
         try {
             const buffer = readFileSync(imagePath);
-            const parser = new ExifParser(buffer);
-            const result = parser.parse();
+            const result = exifParser.create(buffer).parse();
             
             if (!result || !result.tags) {
                 return {};
@@ -107,20 +106,65 @@ class ExifService {
     }
 
     /**
-     * Parse DateTime EXIF tag format (YYYY:MM:DD HH:MM:SS)
+     * Parse DateTime EXIF tag format (YYYY:MM:DD HH:MM:SS) or Unix timestamp
      * @private
      */
     static _parseDateTime(dateTimeStr) {
-        if (!dateTimeStr) return null;
-        const parts = dateTimeStr.split(' ');
-        const dateParts = parts[0].split(':');
-        const timeParts = parts[1] ? parts[1].split(':') : ['00', '00', '00'];
-        
-        return {
-            raw: dateTimeStr,
-            iso: new Date(`${dateParts[0]}-${dateParts[1]}-${dateParts[2]}T${timeParts[0]}:${timeParts[1]}:${timeParts[2]}`).toISOString(),
-            display: dateTimeStr
-        };
+        try {
+            if (!dateTimeStr) return null;
+            
+            // Handle case where dateTimeStr might not be a string
+            let dateStr = dateTimeStr;
+            if (typeof dateStr !== 'string') {
+                dateStr = String(dateTimeStr);
+            }
+            
+            if (!dateStr || dateStr.length === 0) {
+                return null;
+            }
+            
+            // Check if it's a Unix timestamp (10 digits = seconds, 13 digits = milliseconds)
+            if (/^\d{10,13}$/.test(dateStr.trim())) {
+                const timestamp = parseInt(dateStr.trim());
+                const milliseconds = dateStr.trim().length === 10 ? timestamp * 1000 : timestamp;
+                const date = new Date(milliseconds);
+                const displayStr = date.toLocaleString();
+                const isoStr = date.toISOString();
+                
+                return {
+                    raw: dateStr,
+                    display: displayStr,
+                    iso: isoStr
+                };
+            }
+            
+            // Handle traditional EXIF format: YYYY:MM:DD HH:MM:SS
+            const parts = dateStr.split(' ');
+            if (!parts || parts.length === 0) {
+                return { raw: dateStr, display: dateStr };
+            }
+            
+            const dateParts = parts[0] ? parts[0].split(':') : ['0000', '00', '00'];
+            const timeParts = parts[1] ? parts[1].split(':') : ['00', '00', '00'];
+            
+            if (dateParts.length < 3) {
+                return { raw: dateStr, display: dateStr };
+            }
+            
+            const isoDate = new Date(`${dateParts[0]}-${dateParts[1]}-${dateParts[2]}T${timeParts[0]}:${timeParts[1]}:${timeParts[2]}`);
+            
+            return {
+                raw: dateStr,
+                iso: isoDate.toISOString(),
+                display: isoDate.toLocaleString()
+            };
+        } catch (e) {
+            // If any error occurs, return safe object
+            return {
+                raw: String(dateTimeStr || ''),
+                display: String(dateTimeStr || '')
+            };
+        }
     }
 
     /**

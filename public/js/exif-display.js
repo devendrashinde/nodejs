@@ -18,7 +18,8 @@ class ExifDisplay {
       
       const response = await fetch(url);
       
-      if (!response.ok) {
+      // Handle both 200 OK and 304 Not Modified
+      if (response.status !== 200 && response.status !== 304) {
         console.error(`EXIF API returned ${response.status}: ${response.statusText}`);
         const errorData = await response.json().catch(() => ({}));
         throw new Error(`EXIF API error: ${errorData.error || response.statusText}`);
@@ -37,97 +38,108 @@ class ExifDisplay {
     const container = document.getElementById(containerId);
     if (!container) {
       console.error(`Container with ID "${containerId}" not found`);
-      return;
+      throw new Error(`Container not found: ${containerId}`);
     }
 
     if (!this.exifData) {
+      console.error('No EXIF data loaded');
       container.innerHTML = '<p>No EXIF data loaded</p>';
-      return;
+      throw new Error('No EXIF data loaded');
     }
 
     // Handle both direct exif object and wrapped response
     const exif = this.exifData.exif || this.exifData;
     const summary = this.exifData.summary;
     
-    if (!exif || Object.keys(exif).length === 0) {
+    console.log('=== EXIF RENDER DEBUG ===');
+    console.log('this.exifData:', this.exifData);
+    console.log('exif object:', exif);
+    console.log('exif type:', typeof exif);
+    console.log('exif keys:', exif ? Object.keys(exif) : 'exif is null/undefined');
+    
+    // Check if exif has any data
+    const hasData = exif && typeof exif === 'object' && Object.keys(exif).length > 0;
+    console.log('hasData check result:', hasData);
+    
+    if (!hasData) {
+      console.error('EXIF check failed. exifData:', this.exifData);
       container.innerHTML = '<p>No EXIF data available for this photo.</p>';
-      return;
+      throw new Error('No EXIF data available');
     }
 
-    let html = '<div class="exif-container">';
+    console.log('Proceeding to render HTML...');
+    let html = '<div class="exif-container" style="padding: 15px; font-size: 13px; line-height: 1.6; color: #333; background: #fff;">';
 
     // Summary section
     if (summary) {
       html += `
-        <div class="exif-summary">
-          <h3>📸 Quick Summary</h3>
-          <p class="summary-text">${summary}</p>
+        <div class="exif-summary" style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin-bottom: 15px; color: #222; border-left: 4px solid #0066cc;">
+          <h3 style="margin: 0 0 8px 0; color: #000; font-size: 16px;">📸 Quick Summary</h3>
+          <p class="summary-text" style="margin: 0; color: #444; font-size: 12px;">${summary}</p>
         </div>
       `;
     }
 
     // Camera section
-    if (exif.make || exif.model || exif.lens) {
+    const camera = exif.camera || {};
+    if (camera.make || camera.model || camera.lens) {
       html += `
-        <div class="exif-section">
-          <h4>📷 Camera</h4>
-          <table class="exif-table">
-            ${exif.make ? `<tr><td>Make</td><td>${this.escapeHtml(exif.make)}</td></tr>` : ''}
-            ${exif.model ? `<tr><td>Model</td><td>${this.escapeHtml(exif.model)}</td></tr>` : ''}
-            ${exif.serialNumber ? `<tr><td>Serial #</td><td>${this.escapeHtml(exif.serialNumber)}</td></tr>` : ''}
-            ${exif.lens ? `<tr><td>Lens</td><td>${this.escapeHtml(exif.lens)}</td></tr>` : ''}
-            ${exif.lensModel ? `<tr><td>Lens Model</td><td>${this.escapeHtml(exif.lensModel)}</td></tr>` : ''}
+        <div class="exif-section" style="margin-bottom: 12px;">
+          <h4 style="margin: 0 0 8px 0; color: #000; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 4px;">📷 Camera</h4>
+          <table class="exif-table" style="width: 100%; font-size: 12px;">
+            ${camera.make ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Make</strong></td><td style="color: #222;">${this.escapeHtml(camera.make)}</td></tr>` : ''}
+            ${camera.model ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Model</strong></td><td style="color: #222;">${this.escapeHtml(camera.model)}</td></tr>` : ''}
+            ${camera.serialNumber ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Serial #</strong></td><td style="color: #222;">${this.escapeHtml(camera.serialNumber)}</td></tr>` : ''}
+            ${camera.lens ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Lens</strong></td><td style="color: #222;">${this.escapeHtml(camera.lens)}</td></tr>` : ''}
           </table>
         </div>
       `;
     }
 
     // Shooting parameters section
-    if (exif.iso || exif.fNumber || exif.exposureTime || exif.focalLength) {
+    const shooting = exif.shooting || {};
+    if (shooting.iso || shooting.fNumber || shooting.exposureTime || shooting.focalLength) {
       html += `
-        <div class="exif-section">
-          <h4>⚙️ Shooting Parameters</h4>
-          <table class="exif-table">
-            ${exif.focalLength ? `<tr><td>Focal Length</td><td>${exif.focalLength}mm</td></tr>` : ''}
-            ${exif.fNumber ? `<tr><td>Aperture</td><td>f/${exif.fNumber}</td></tr>` : ''}
-            ${exif.exposureTime ? `<tr><td>Shutter Speed</td><td>${exif.exposureTime}s</td></tr>` : ''}
-            ${exif.iso ? `<tr><td>ISO</td><td>${exif.iso}</td></tr>` : ''}
-            ${exif.flash ? `<tr><td>Flash</td><td>${exif.flash}</td></tr>` : ''}
-            ${exif.flashEnergy ? `<tr><td>Flash Energy</td><td>${exif.flashEnergy}</td></tr>` : ''}
-            ${exif.meteringMode ? `<tr><td>Metering Mode</td><td>${exif.meteringMode}</td></tr>` : ''}
-            ${exif.exposureProgram ? `<tr><td>Exposure Program</td><td>${exif.exposureProgram}</td></tr>` : ''}
+        <div class="exif-section" style="margin-bottom: 12px;">
+          <h4 style="margin: 0 0 8px 0; color: #000; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 4px;">⚙️ Shooting Parameters</h4>
+          <table class="exif-table" style="width: 100%; font-size: 12px;">
+            ${shooting.focalLength ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Focal Length</strong></td><td style="color: #222;">${shooting.focalLength}</td></tr>` : ''}
+            ${shooting.fNumber ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Aperture</strong></td><td style="color: #222;">${shooting.fNumber}</td></tr>` : ''}
+            ${shooting.exposureTime ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Shutter Speed</strong></td><td style="color: #222;">${shooting.exposureTime}</td></tr>` : ''}
+            ${shooting.iso ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>ISO</strong></td><td style="color: #222;">${shooting.iso}</td></tr>` : ''}
+            ${shooting.flash ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Flash</strong></td><td style="color: #222;">${this.escapeHtml(String(shooting.flash))}</td></tr>` : ''}
+            ${shooting.meteringMode ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Metering Mode</strong></td><td style="color: #222;">${this.escapeHtml(String(shooting.meteringMode))}</td></tr>` : ''}
+            ${shooting.exposureProgram ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Exposure Program</strong></td><td style="color: #222;">${this.escapeHtml(String(shooting.exposureProgram))}</td></tr>` : ''}
           </table>
         </div>
       `;
     }
 
     // Image properties section
-    if (exif.imageWidth || exif.imageHeight || exif.colorSpace) {
+    const image = exif.image || {};
+    if (image.width || image.height || image.colorSpace) {
       html += `
-        <div class="exif-section">
-          <h4>🖼️ Image Properties</h4>
-          <table class="exif-table">
-            ${exif.imageWidth ? `<tr><td>Width</td><td>${exif.imageWidth}px</td></tr>` : ''}
-            ${exif.imageHeight ? `<tr><td>Height</td><td>${exif.imageHeight}px</td></tr>` : ''}
-            ${exif.xResolution ? `<tr><td>X Resolution</td><td>${exif.xResolution} dpi</td></tr>` : ''}
-            ${exif.yResolution ? `<tr><td>Y Resolution</td><td>${exif.yResolution} dpi</td></tr>` : ''}
-            ${exif.colorSpace ? `<tr><td>Color Space</td><td>${exif.colorSpace}</td></tr>` : ''}
-            ${exif.orientation ? `<tr><td>Orientation</td><td>${exif.orientation}</td></tr>` : ''}
-            ${exif.bitsPerSample ? `<tr><td>Bits Per Sample</td><td>${exif.bitsPerSample}</td></tr>` : ''}
+        <div class="exif-section" style="margin-bottom: 12px;">
+          <h4 style="margin: 0 0 8px 0; color: #000; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 4px;">🖼️ Image Properties</h4>
+          <table class="exif-table" style="width: 100%; font-size: 12px;">
+            ${image.width ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Width</strong></td><td style="color: #222;">${image.width}px</td></tr>` : ''}
+            ${image.height ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Height</strong></td><td style="color: #222;">${image.height}px</td></tr>` : ''}
+            ${image.colorSpace ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Color Space</strong></td><td style="color: #222;">${image.colorSpace}</td></tr>` : ''}
+            ${image.orientation ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Orientation</strong></td><td style="color: #222;">${image.orientation}</td></tr>` : ''}
           </table>
         </div>
       `;
     }
 
     // Date/Time section
-    if (exif.dateTime || exif.dateTimeOriginal || exif.dateTimeDigitized) {
+    if (shooting.dateTime || shooting.dateTimeOriginal || shooting.dateTimeDigitized) {
       html += `
-        <div class="exif-section">
-          <h4>📅 Date & Time</h4>
-          <table class="exif-table">
-            ${exif.dateTime ? `<tr><td>Date Modified</td><td>${this.formatDateTime(exif.dateTime)}</td></tr>` : ''}
-            ${exif.dateTimeOriginal ? `<tr><td>Date Taken</td><td>${this.formatDateTime(exif.dateTimeOriginal)}</td></tr>` : ''}
-            ${exif.dateTimeDigitized ? `<tr><td>Date Digitized</td><td>${this.formatDateTime(exif.dateTimeDigitized)}</td></tr>` : ''}
+        <div class="exif-section" style="margin-bottom: 12px;">
+          <h4 style="margin: 0 0 8px 0; color: #000; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 4px;">📅 Date & Time</h4>
+          <table class="exif-table" style="width: 100%; font-size: 12px;">
+            ${shooting.dateTime ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Date Modified</strong></td><td style="color: #222;">${this.formatDateTime(shooting.dateTime)}</td></tr>` : ''}
+            ${shooting.dateTimeOriginal ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Date Taken</strong></td><td style="color: #222;">${this.formatDateTime(shooting.dateTimeOriginal)}</td></tr>` : ''}
+            ${shooting.dateTimeDigitized ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Date Digitized</strong></td><td style="color: #222;">${this.formatDateTime(shooting.dateTimeDigitized)}</td></tr>` : ''}
           </table>
         </div>
       `;
@@ -152,14 +164,16 @@ class ExifDisplay {
     }
 
     // Copyright/Artist section
-    if (exif.artist || exif.copyright || exif.software) {
+    const copyright = exif.copyright || {};
+    const software = exif.software || {};
+    if (copyright.artist || copyright.copyright || software.software) {
       html += `
-        <div class="exif-section">
-          <h4>📝 Copyright & Credits</h4>
-          <table class="exif-table">
-            ${exif.artist ? `<tr><td>Photographer</td><td>${this.escapeHtml(exif.artist)}</td></tr>` : ''}
-            ${exif.copyright ? `<tr><td>Copyright</td><td>${this.escapeHtml(exif.copyright)}</td></tr>` : ''}
-            ${exif.software ? `<tr><td>Software</td><td>${this.escapeHtml(exif.software)}</td></tr>` : ''}
+        <div class="exif-section" style="margin-bottom: 12px;">
+          <h4 style="margin: 0 0 8px 0; color: #000; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 4px;">📝 Copyright & Credits</h4>
+          <table class="exif-table" style="width: 100%; font-size: 12px;">
+            ${copyright.artist ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Photographer</strong></td><td style="color: #222;">${this.escapeHtml(copyright.artist)}</td></tr>` : ''}
+            ${copyright.copyright ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Copyright</strong></td><td style="color: #222;">${this.escapeHtml(copyright.copyright)}</td></tr>` : ''}
+            ${software.software ? `<tr><td style="width: 40%; padding: 4px 0; color: #666; font-weight: 500;"><strong>Software</strong></td><td style="color: #222;">${this.escapeHtml(software.software)}</td></tr>` : ''}
           </table>
         </div>
       `;
@@ -199,10 +213,32 @@ class ExifDisplay {
   }
 
   formatDateTime(dateString) {
-    // EXIF format is typically "YYYY:MM:DD HH:MM:SS"
+    // Handle both string and object formats
     if (!dateString) return '';
-    const formatted = dateString.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
-    return new Date(formatted).toLocaleString();
+    
+    // If it's an object with display property, use that
+    if (typeof dateString === 'object') {
+      if (dateString.display) return dateString.display;
+      if (dateString.iso) return new Date(dateString.iso).toLocaleString();
+      return '';
+    }
+    
+    // If it's a numeric timestamp
+    if (!isNaN(dateString) && dateString.length < 13) {
+      return new Date(parseInt(dateString) * 1000).toLocaleString();
+    }
+    
+    // EXIF format is typically "YYYY:MM:DD HH:MM:SS"
+    if (typeof dateString === 'string') {
+      const formatted = dateString.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+      try {
+        return new Date(formatted).toLocaleString();
+      } catch (e) {
+        return dateString;
+      }
+    }
+    
+    return String(dateString);
   }
 }
 
@@ -250,3 +286,6 @@ async function embedExifData(photoId, containerId) {
     }
   }
 }
+
+// Expose to global scope for integration
+window.ExifDisplay = ExifDisplay;

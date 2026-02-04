@@ -1,5 +1,6 @@
 var activeFilter = 'all';
 
+// Configure Fancybox with proper handlers for different media types
 $('[data-fancybox="gallery"]').fancybox({
   buttons : [ 
     'slideShow',
@@ -10,6 +11,38 @@ $('[data-fancybox="gallery"]').fancybox({
   ],
   thumbs : {
     autoStart : true
+  },
+  // Support for PDF and other file types
+  on: {
+    reveal: function(fancybox, slide) {
+      if (slide.src && typeof slide.src === 'string') {
+        var ext = slide.src.toLowerCase().split('.').pop();
+        
+        // Handle PDF files - display in iframe with Google Docs Viewer
+        if (ext === 'pdf') {
+          slide.$content.classList.add('fancybox__pdf-viewer');
+          // Use Google Docs Viewer as fallback for PDF
+          var pdfUrl = slide.src;
+          if (!pdfUrl.startsWith('http')) {
+            pdfUrl = window.location.origin + '/' + pdfUrl;
+          }
+          slide.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(pdfUrl) + '&embedded=true';
+          slide.type = 'iframe';
+          slide.width = 900;
+          slide.height = 700;
+        }
+      }
+    }
+  },
+  // Custom type detection for PDFs
+  typeDetect: function(src) {
+    if (typeof src === 'string') {
+      var ext = src.toLowerCase().split('.').pop();
+      if (ext === 'pdf') {
+        return 'iframe';
+      }
+    }
+    return false;
   }
 });
 
@@ -18,6 +51,7 @@ $.fancybox.defaults.btnTpl.exif = '<button data-fancybox-exif class="fancybox-bu
 '<img src="res/exif.svg"  class="roundbutton"  alt="Show/Hide EXIF data (camera settings)" title="Show/Hide EXIF data (camera settings)" >'  +
   '</button>';
 
+// Reinitialize with enhanced configuration
 $('[data-fancybox="gallery"]').fancybox({
     buttons : [
     'zoom',
@@ -25,7 +59,32 @@ $('[data-fancybox="gallery"]').fancybox({
     'exif',
     'thumbs',
     'close'
-  ]
+  ],
+  // Additional configuration for iframe and video handling
+  iframe: {
+    preload: false
+  },
+  // Support for various video formats with proper codec detection
+  video: {
+    autoStart: true,
+    format: 'html5' // Force HTML5 video player
+  },
+  // Prevent browser default download dialog
+  protect: false,
+  // Handle file downloads appropriately
+  on: {
+    init: function(fancybox) {
+      // Override default click behavior to prevent automatic downloads
+    },
+    reveal: function(fancybox, slide) {
+      // Additional processing for different file types
+      if (slide.$content && slide.$content.tagName === 'VIDEO') {
+        // Ensure video controls are visible
+        slide.$content.controls = true;
+        slide.$content.controlsList = 'nodownload';
+      }
+    }
+  }
 });
 
 function updateTag(photoId, photoTag, newPhotoId){

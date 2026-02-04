@@ -169,25 +169,241 @@ export const bulkAddTags = async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid input format' });
         }
 
-        const validation = BulkOperationsService.validateBulkOperation(photoIds);
-        if (!validation.valid) {
-            return res.status(400).json({ success: false, errors: validation.errors });
+        if (photoIds.length === 0 || tags.length === 0) {
+            return res.status(400).json({ success: false, error: 'No photos or tags provided' });
         }
 
-        // In real implementation, would fetch photos and perform operations
-        const mockPhotos = [];
-        const batch = BulkOperationsService.bulkAddTags(photoIds, tags, mockPhotos);
+        // Fetch all photos from database - reconstruct full paths for matching
+        const allPhotos = await query("SELECT id, name, tags, album, path FROM photos");
+        
+        console.log('=== BULK ADD TAGS DEBUG ===');
+        console.log('Requested photoIds:', photoIds);
+        console.log('Total photos in DB:', allPhotos.length);
+        
+        // Create a map with full paths for easy lookup
+        const photoMap = {};
+        allPhotos.forEach(photo => {
+            const fullPath = `${photo.path}/${photo.album}/${photo.name}`;
+            photoMap[fullPath] = photo;
+        });
+        
+        const results = [];
+        let successCount = 0;
+        let errorCount = 0;
+
+        // Process each photo path
+        for (const photPath of photoIds) {
+            console.log(`\nLooking for: "${photPath}"`);
+            try {
+                let photo = photoMap[photPath];
+                
+                // If not found in database, try to add it
+                if (!photo) {
+                    console.log(`  Photo not in DB, attempting to auto-add...`);
+                    // Parse the path to extract components
+                    const pathParts = photPath.split('/');
+                    if (pathParts.length >= 2) {
+                        const fileName = pathParts[pathParts.length - 1];
+                        const album = pathParts[pathParts.length - 2];
+                        const path = pathParts.slice(0, -2).join('/');
+                        
+                        try {
+                            // Try to insert the photo into the database
+                            const insertResult = await query(
+                                "INSERT INTO photos (name, album, path) VALUES (?, ?, ?)",
+                                [fileName, album, path]
+                            );
+                            
+                            console.log(`  ✓ Auto-added photo ID: ${insertResult.insertId}`);
+                            
+                            // Fetch the newly inserted photo
+                            photo = {
+                                id: insertResult.insertId,
+                                name: fileName,
+                                album: album,
+                                path: path,
+                                tags: ''
+                            };
+                        } catch (insertErr) {
+                            console.error(`  Failed to auto-add photo:`, insertErr.message);
+                            results.push({ path: photPath, success: false, error: 'Photo not found and could not be added' });
+                            errorCount++;
+                            continue;
+                        }
+                    } else {
+                        results.push({ path: photPath, success: false, error: 'Invalid photo path format' });
+                        errorCount++;
+                        continue;
+                    }
+                }
+
+                console.log(`  ✓ Found/added photo ID: ${photo.id}`);
+                
+                // Parse existing tags
+                const existingTags = (photo.tags || '')
+                    .split(',')
+                    .map(t => t.trim())
+                    .filter(t => t);
+
+                // Add new tags without duplicates
+                const newTags = tags.filter(t => !existingTags.includes(t));
+                const allTags = [...existingTags, ...newTags].join(', ');
+
+                // Update the database
+                await Photo.updateTagById(photo.id, allTags);
+
+                results.push({
+                    path: photPath,
+                    success: true,
+                    oldTags: existingTags,
+                    newTags: allTags.split(', '),
+                    addedTags: newTags
+                });
+                successCount++;
+            } catch (err) {
+                console.error(`Error updating tags for ${photPath}:`, err);
+                results.push({
+                    path: photPath,
+                    success: false,
+                    error: err.message
+                });
+                errorCount++;
+            }
+        }
 
         res.json({
-            success: true,
-            message: `Added ${tags.length} tag(s) to ${photoIds.length} photo(s)`,
-            batchId: batch.id,
-            total: batch.total,
-            results: batch.results,
-            status: batch.status
+            success: errorCount === 0,
+            message: `Added ${tags.length} tag(s) to ${successCount} photo(s)${errorCount > 0 ? `. ${errorCount} failed.` : ''}`,
+            total: photoIds.length,
+            successCount,
+            errorCount,
+            results: results,
+            status: 'completed'
         });
     } catch (err) {
         console.error('Error in bulk tag operation:', err);
+        res.status(500).json({ success: false, error: 'Bulk operation failed', message: err.message });
+    }
+};
+
+/**
+ * Bulk remove tags from photos
+ * @route POST /api/bulk/tags/remove
+ */
+export const bulkRemoveTags = async (req, res) => {
+    try {
+        const { photoIds, tags } = req.body;
+
+        // Validate input
+        if (!Array.isArray(photoIds) || !Array.isArray(tags)) {
+            return res.status(400).json({ success: false, error: 'Invalid input format' });
+        }
+
+        if (photoIds.length === 0 || tags.length === 0) {
+            return res.status(400).json({ success: false, error: 'No photos or tags provided' });
+        }
+
+        // Fetch all photos from database - reconstruct full paths for matching
+        const allPhotos = await query("SELECT id, name, tags, album, path FROM photos");
+        
+        // Create a map with full paths for easy lookup
+        const photoMap = {};
+        allPhotos.forEach(photo => {
+            const fullPath = `${photo.path}/${photo.album}/${photo.name}`;
+            photoMap[fullPath] = photo;
+        });
+        
+        const results = [];
+        let successCount = 0;
+        let errorCount = 0;
+
+        // Process each photo path
+        for (const photPath of photoIds) {
+            try {
+                let photo = photoMap[photPath];
+                
+                // If not found in database, try to add it
+                if (!photo) {
+                    console.log(`Photo not in DB: "${photPath}", attempting to auto-add...`);
+                    // Parse the path to extract components
+                    const pathParts = photPath.split('/');
+                    if (pathParts.length >= 2) {
+                        const fileName = pathParts[pathParts.length - 1];
+                        const album = pathParts[pathParts.length - 2];
+                        const path = pathParts.slice(0, -2).join('/');
+                        
+                        try {
+                            // Try to insert the photo into the database
+                            const insertResult = await query(
+                                "INSERT INTO photos (name, album, path) VALUES (?, ?, ?)",
+                                [fileName, album, path]
+                            );
+                            
+                            // Fetch the newly inserted photo
+                            photo = {
+                                id: insertResult.insertId,
+                                name: fileName,
+                                album: album,
+                                path: path,
+                                tags: ''
+                            };
+                        } catch (insertErr) {
+                            console.error(`Failed to auto-add photo:`, insertErr.message);
+                            results.push({ path: photPath, success: false, error: 'Photo not found and could not be added' });
+                            errorCount++;
+                            continue;
+                        }
+                    } else {
+                        results.push({ path: photPath, success: false, error: 'Invalid photo path format' });
+                        errorCount++;
+                        continue;
+                    }
+                }
+                
+                // Parse existing tags
+                const currentTags = (photo.tags || '')
+                    .split(',')
+                    .map(t => t.trim())
+                    .filter(t => t);
+
+                // Remove specified tags
+                const remainingTags = currentTags.filter(t => !tags.includes(t));
+                const removedTags = currentTags.filter(t => tags.includes(t));
+                const updatedTagString = remainingTags.length > 0 ? remainingTags.join(', ') : '';
+
+                // Update the database
+                await Photo.updateTagById(photo.id, updatedTagString);
+
+                results.push({
+                    path: photPath,
+                    success: true,
+                    oldTags: currentTags,
+                    newTags: remainingTags,
+                    removedTags: removedTags
+                });
+                successCount++;
+            } catch (err) {
+                console.error(`Error removing tags for ${photPath}:`, err);
+                results.push({
+                    path: photPath,
+                    success: false,
+                    error: err.message
+                });
+                errorCount++;
+            }
+        }
+
+        res.json({
+            success: errorCount === 0,
+            message: `Removed ${tags.length} tag(s) from ${successCount} photo(s)${errorCount > 0 ? `. ${errorCount} failed.` : ''}`,
+            total: photoIds.length,
+            successCount,
+            errorCount,
+            results: results,
+            status: 'completed'
+        });
+    } catch (err) {
+        console.error('Error in bulk tag removal operation:', err);
         res.status(500).json({ success: false, error: 'Bulk operation failed', message: err.message });
     }
 };
@@ -549,6 +765,7 @@ export default {
     advancedSearch,
     getSearchSuggestions,
     bulkAddTags,
+    bulkRemoveTags,
     prepareBulkDownload,
     bulkFavorite,
     addComment,

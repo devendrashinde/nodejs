@@ -290,10 +290,14 @@ class BulkOperations {
       this.hideProgress();
 
       if (result.success) {
-        alert(`✓ Operation completed: ${result.message}`);
+        // Operation completed - update photos without showing alert
+        
+        // Update photos in-place with new tags instead of reloading
+        if (endpoint.includes('tags')) {
+          this.updatePhotosInPlace(result.results);
+        }
+        
         this.clearSelection();
-        // Optionally reload the gallery
-        window.location.reload();
       } else {
         alert(`✗ Operation failed: ${result.message}`);
       }
@@ -301,6 +305,45 @@ class BulkOperations {
       console.error('Bulk operation error:', error);
       this.hideProgress();
       alert('Operation failed');
+    }
+  }
+
+  updatePhotosInPlace(results) {
+    try {
+      // Get the Angular controller scope
+      const controller = angular.element(document.querySelector('#controller')).scope();
+      
+      if (!controller || !controller.photos) {
+        console.warn('Could not find controller or photos array');
+        return;
+      }
+
+      // Update each photo's tags in the current view
+      results.forEach(result => {
+        if (result.success && result.newTags) {
+          // Find the photo in the current view by path
+          const photo = controller.photos.find(p => p.path === result.path);
+          if (photo) {
+            // Update the tags directly
+            const newTagsString = Array.isArray(result.newTags) 
+              ? result.newTags.join(', ') 
+              : result.newTags;
+            photo.tags = newTagsString;
+            console.log(`✓ Updated tags for ${result.path}: ${newTagsString}`);
+          }
+        }
+      });
+
+      // Trigger Angular digest cycle to update the view
+      if (controller.$apply) {
+        try {
+          controller.$apply();
+        } catch (e) {
+          console.log('Angular digest already in progress');
+        }
+      }
+    } catch (err) {
+      console.error('Error updating photos in place:', err);
     }
   }
 

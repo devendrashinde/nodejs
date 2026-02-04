@@ -742,3 +742,22 @@ body {
     font-size: 0.85rem;
   }
 }
+
+/* Fancybox PDF Viewer Styling */
+.fancybox__pdf-viewer {
+  width: 100%;
+  height: 100%;
+}
+
+.fancybox__pdf-viewer iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Ensure proper sizing for iframes in fancybox */
+.fancybox__stage iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

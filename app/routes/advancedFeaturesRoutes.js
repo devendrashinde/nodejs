@@ -16,6 +16,7 @@ import {
     advancedSearch,
     getSearchSuggestions,
     bulkAddTags,
+    bulkRemoveTags,
     prepareBulkDownload,
     bulkFavorite,
     addComment,
@@ -76,10 +77,7 @@ router.post('/bulk/tags', bulkAddTags);
  * POST /api/bulk/tags/remove
  * Body: { photoIds: [...], tags: [...] }
  */
-router.post('/bulk/tags/remove', (req, res) => {
-    // Implementation similar to bulkAddTags
-    res.json({ message: 'Bulk tag removal endpoint' });
-});
+router.post('/bulk/tags/remove', bulkRemoveTags);
 
 /**
  * Prepare bulk download as ZIP

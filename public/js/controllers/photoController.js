@@ -45,6 +45,9 @@ angular.module('photoController', [])
         $scope.favoritesCount = 0; // Count of favorited media
         $scope.allFavorites = []; // Store all favorites
         
+        // Extended video formats support (includes WebM, Ogg Theora, and more)
+        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v', 'divx', 'xvid', 'webm', 'ogg', 'ogv', 'flv', 'wmv', 'asf', 'rm', 'rmvb', 'ts', 'vob', 'f4v'];
+        
         // GET =====================================================================
         // when landing on the page, get all photos and tags and show them
         // use the service to get all the photo tags

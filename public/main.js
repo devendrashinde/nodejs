@@ -5,6 +5,30 @@ $.fancybox.defaults.btnTpl.exif = '<button data-fancybox-exif class="fancybox-bu
 '<img src="res/exif.svg"  class="roundbutton"  alt="Show/Hide EXIF data (camera settings)" title="Show/Hide EXIF data (camera settings)" >'  +
   '</button>';
 
+// Detect mobile device
+var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+// Handle PDF clicks on mobile BEFORE fancybox processes them
+if (isMobile) {
+  $(document).on('click', 'a[data-fancybox="gallery"]', function(e) {
+    var href = $(this).attr('href') || $(this).attr('data-src');
+    if (href && href.toLowerCase().endsWith('.pdf')) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      
+      var pdfUrl = href;
+      if (!pdfUrl.startsWith('http')) {
+        pdfUrl = window.location.origin + '/' + pdfUrl.replace(/^\/+/, '');
+      }
+      
+      // Open directly in new tab - uses browser's native PDF viewer
+      window.open(pdfUrl, '_blank');
+      return false;
+    }
+  });
+}
+
 // Configure Fancybox with proper handlers for different media types
 $('[data-fancybox="gallery"]').fancybox({
   buttons : [
@@ -35,8 +59,8 @@ $('[data-fancybox="gallery"]').fancybox({
   // Handle file downloads appropriately
   on: {
     beforeLoad: function(instance, slide) {
-      // Handle PDF files BEFORE loading the slide
-      if (slide.src && typeof slide.src === 'string') {
+      // Handle PDF files on desktop with Google Docs Viewer
+      if (slide.src && typeof slide.src === 'string' && !isMobile) {
         var ext = slide.src.toLowerCase().split('.').pop().split('?')[0];
         
         if (ext === 'pdf') {
@@ -45,28 +69,16 @@ $('[data-fancybox="gallery"]').fancybox({
             pdfUrl = window.location.origin + '/' + pdfUrl.replace(/^\/+/, '');
           }
           
-          // Check if mobile device
-          var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-          
-          if (isMobile) {
-            // On mobile, open PDF in new tab instead of iframe
-            // This avoids download prompts and uses native PDF viewer
-            window.open(pdfUrl, '_blank');
-            // Close fancybox and prevent loading
-            instance.close();
-            return false;
-          } else {
-            // On desktop, use Google Docs Viewer
-            slide.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(pdfUrl) + '&embedded=true';
-            slide.type = 'iframe';
-            slide.opts.iframe = {
-              preload: false,
-              css: {
-                width: '90%',
-                height: '90%'
-              }
-            };
-          }
+          // On desktop, use Google Docs Viewer
+          slide.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(pdfUrl) + '&embedded=true';
+          slide.type = 'iframe';
+          slide.opts.iframe = {
+            preload: false,
+            css: {
+              width: '90%',
+              height: '90%'
+            }
+          };
         }
       }
     },

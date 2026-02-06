@@ -20,6 +20,9 @@ CREATE TABLE `photos_backup` AS SELECT * FROM `photos`;
 DROP TABLE IF EXISTS `tags_backup`;
 CREATE TABLE `tags_backup` AS SELECT * FROM `tags`;
 
+DROP TABLE IF EXISTS `users_backup`;
+CREATE TABLE `users_backup` AS SELECT * FROM `users`;
+
 SELECT '✓ Backup tables created' AS Status;
 
 -- ============================================
@@ -133,6 +136,25 @@ DROP TABLE IF EXISTS `users`;
 RENAME TABLE `users_new` TO `users`;
 
 SELECT CONCAT('✓ Users table migrated: ', COUNT(*), ' records') AS Status FROM `users`;
+
+-- ============================================
+-- Step 5: Create New Tables
+-- ============================================
+
+-- Tasks table for background jobs
+DROP TABLE IF EXISTS `tasks`;
+CREATE TABLE `tasks` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `task` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Task description',
+  `status` enum('pending','processing','completed','failed') NOT NULL DEFAULT 'pending' COMMENT 'Task status',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'Task creation time',
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT 'Last update time',
+  `completed_at` timestamp NULL DEFAULT NULL COMMENT 'Task completion time',
+  PRIMARY KEY (`id`),
+  KEY `idx_status` (`status`) COMMENT 'Index for status queries'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+SELECT '✓ Tasks table created' AS Status;
 
 -- Schema version tracking
 DROP TABLE IF EXISTS `schema_version`;

@@ -1,68 +1,29 @@
 var activeFilter = 'all';
 
-// Configure Fancybox with proper handlers for different media types
-$('[data-fancybox="gallery"]').fancybox({
-  buttons : [ 
-    'slideShow',
-    'share',
-    'zoom',
-    'fullScreen',
-    'close'
-  ],
-  thumbs : {
-    autoStart : true
-  },
-  // Support for PDF and other file types
-  on: {
-    reveal: function(fancybox, slide) {
-      if (slide.src && typeof slide.src === 'string') {
-        var ext = slide.src.toLowerCase().split('.').pop();
-        
-        // Handle PDF files - display in iframe with Google Docs Viewer
-        if (ext === 'pdf') {
-          slide.$content.classList.add('fancybox__pdf-viewer');
-          // Use Google Docs Viewer as fallback for PDF
-          var pdfUrl = slide.src;
-          if (!pdfUrl.startsWith('http')) {
-            pdfUrl = window.location.origin + '/' + pdfUrl;
-          }
-          slide.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(pdfUrl) + '&embedded=true';
-          slide.type = 'iframe';
-          slide.width = 900;
-          slide.height = 700;
-        }
-      }
-    }
-  },
-  // Custom type detection for PDFs
-  typeDetect: function(src) {
-    if (typeof src === 'string') {
-      var ext = src.toLowerCase().split('.').pop();
-      if (ext === 'pdf') {
-        return 'iframe';
-      }
-    }
-    return false;
-  }
-});
-
 // Create templates for buttons
 $.fancybox.defaults.btnTpl.exif = '<button data-fancybox-exif class="fancybox-button fancybox-button--exif" title="Show/Hide EXIF data (camera settings)"  onClick="javascript:toggleExif()" >' +
 '<img src="res/exif.svg"  class="roundbutton"  alt="Show/Hide EXIF data (camera settings)" title="Show/Hide EXIF data (camera settings)" >'  +
   '</button>';
 
-// Reinitialize with enhanced configuration
+// Configure Fancybox with proper handlers for different media types
 $('[data-fancybox="gallery"]').fancybox({
-    buttons : [
+  buttons : [
     'zoom',
     'slideShow',
     'exif',
     'thumbs',
     'close'
   ],
+  thumbs : {
+    autoStart : true
+  },
   // Additional configuration for iframe and video handling
   iframe: {
-    preload: false
+    preload: false,
+    css: {
+      width: '100%',
+      height: '100%'
+    }
   },
   // Support for various video formats with proper codec detection
   video: {
@@ -73,10 +34,43 @@ $('[data-fancybox="gallery"]').fancybox({
   protect: false,
   // Handle file downloads appropriately
   on: {
-    init: function(fancybox) {
-      // Override default click behavior to prevent automatic downloads
+    beforeLoad: function(instance, slide) {
+      // Handle PDF files BEFORE loading the slide
+      if (slide.src && typeof slide.src === 'string') {
+        var ext = slide.src.toLowerCase().split('.').pop().split('?')[0];
+        
+        if (ext === 'pdf') {
+          var pdfUrl = slide.src;
+          if (!pdfUrl.startsWith('http')) {
+            pdfUrl = window.location.origin + '/' + pdfUrl.replace(/^\/+/, '');
+          }
+          
+          // Check if mobile device
+          var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          
+          if (isMobile) {
+            // On mobile, open PDF in new tab instead of iframe
+            // This avoids download prompts and uses native PDF viewer
+            window.open(pdfUrl, '_blank');
+            // Close fancybox and prevent loading
+            instance.close();
+            return false;
+          } else {
+            // On desktop, use Google Docs Viewer
+            slide.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(pdfUrl) + '&embedded=true';
+            slide.type = 'iframe';
+            slide.opts.iframe = {
+              preload: false,
+              css: {
+                width: '90%',
+                height: '90%'
+              }
+            };
+          }
+        }
+      }
     },
-    reveal: function(fancybox, slide) {
+    reveal: function(instance, slide) {
       // Additional processing for different file types
       if (slide.$content && slide.$content.tagName === 'VIDEO') {
         // Ensure video controls are visible

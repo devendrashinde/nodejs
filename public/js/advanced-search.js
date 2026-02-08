@@ -23,7 +23,7 @@ class AdvancedSearch {
           <button class="btn-close-search" aria-label="Close search">&times;</button>
         </div>
 
-        <div class="search-main">
+        <div class="search-container">
           <!-- Search Input with Autocomplete -->
           <div class="search-input-group">
             <input 
@@ -38,88 +38,90 @@ class AdvancedSearch {
             </div>
           </div>
 
-          <!-- Filter Section -->
-          <div class="filters-section">
-            <details open>
-              <summary class="filter-title">📅 Date Range</summary>
-              <div class="filter-group">
-                <input type="date" id="filterDateFrom" class="filter-input" />
-                <span>to</span>
-                <input type="date" id="filterDateTo" class="filter-input" />
-              </div>
-            </details>
+          <!-- Filters - Collapsible for mobile -->
+          <div class="filters-wrapper">
+            <div class="filters-section">
+              <details open>
+                <summary class="filter-title">📅 Date Range</summary>
+                <div class="filter-group">
+                  <input type="date" id="filterDateFrom" class="filter-input" />
+                  <span>to</span>
+                  <input type="date" id="filterDateTo" class="filter-input" />
+                </div>
+              </details>
 
-            <details open>
-              <summary class="filter-title">🏷️ Tags (AND/OR)</summary>
-              <div class="filter-group">
-                <input 
-                  type="text" 
-                  id="filterTags" 
-                  class="filter-input" 
-                  placeholder="Enter tags, comma-separated"
-                />
-                <label>
-                  <input type="radio" name="tagMode" value="AND" checked />
-                  All tags (AND)
-                </label>
-                <label>
-                  <input type="radio" name="tagMode" value="OR" />
-                  Any tag (OR)
-                </label>
-              </div>
-            </details>
+              <details open>
+                <summary class="filter-title">🏷️ Tags (AND/OR)</summary>
+                <div class="filter-group">
+                  <input 
+                    type="text" 
+                    id="filterTags" 
+                    class="filter-input" 
+                    placeholder="Enter tags, comma-separated"
+                  />
+                  <label>
+                    <input type="radio" name="tagMode" value="AND" checked />
+                    All tags (AND)
+                  </label>
+                  <label>
+                    <input type="radio" name="tagMode" value="OR" />
+                    Any tag (OR)
+                  </label>
+                </div>
+              </details>
 
-            <details>
-              <summary class="filter-title">📁 File Type</summary>
-              <div class="filter-group">
-                <label><input type="checkbox" name="fileType" value="photos" checked /> 📷 Photos (JPG, PNG, GIF, WebP)</label>
-                <label><input type="checkbox" name="fileType" value="video" /> 🎬 Videos (MP4, 3GP)</label>
-                <label><input type="checkbox" name="fileType" value="audio" /> 🎵 Music (MP3, WAV, AAC)</label>
-                <label><input type="checkbox" name="fileType" value="documents" /> 📄 Documents (PDF, DOC, DOCX)</label>
-              </div>
-            </details>
+              <details>
+                <summary class="filter-title">📁 File Type</summary>
+                <div class="filter-group">
+                  <label><input type="checkbox" name="fileType" value="photos" checked /> 📷 Photos (JPG, PNG, GIF, WebP)</label>
+                  <label><input type="checkbox" name="fileType" value="video" /> 🎬 Videos (MP4, 3GP)</label>
+                  <label><input type="checkbox" name="fileType" value="audio" /> 🎵 Music (MP3, WAV, AAC)</label>
+                  <label><input type="checkbox" name="fileType" value="documents" /> 📄 Documents (PDF, DOC, DOCX)</label>
+                </div>
+              </details>
 
-            <details>
-              <summary class="filter-title">📏 File Size</summary>
-              <div class="filter-group">
-                <select id="filterSize" class="filter-input">
-                  <option value="">Any size</option>
-                  <option value="0-1mb">0 - 1 MB</option>
-                  <option value="1-5mb">1 - 5 MB</option>
-                  <option value="5-20mb">5 - 20 MB</option>
-                  <option value="20mb+">20 MB+</option>
-                </select>
-              </div>
-            </details>
+              <details>
+                <summary class="filter-title">📏 File Size</summary>
+                <div class="filter-group">
+                  <select id="filterSize" class="filter-input">
+                    <option value="">Any size</option>
+                    <option value="0-1mb">0 - 1 MB</option>
+                    <option value="1-5mb">1 - 5 MB</option>
+                    <option value="5-20mb">5 - 20 MB</option>
+                    <option value="20mb+">20 MB+</option>
+                  </select>
+                </div>
+              </details>
 
-            <details>
-              <summary class="filter-title">🎯 Sort By</summary>
-              <div class="filter-group">
-                <select id="filterSort" class="filter-input">
-                  <option value="name-asc">Name (A-Z)</option>
-                  <option value="name-desc">Name (Z-A)</option>
-                  <option value="date-newest">Date (Newest)</option>
-                  <option value="date-oldest">Date (Oldest)</option>
-                  <option value="size-largest">Size (Largest)</option>
-                  <option value="size-smallest">Size (Smallest)</option>
-                </select>
-              </div>
-            </details>
+              <details>
+                <summary class="filter-title">🎯 Sort By</summary>
+                <div class="filter-group">
+                  <select id="filterSort" class="filter-input">
+                    <option value="name-asc">Name (A-Z)</option>
+                    <option value="name-desc">Name (Z-A)</option>
+                    <option value="date-newest">Date (Newest)</option>
+                    <option value="date-oldest">Date (Oldest)</option>
+                    <option value="size-largest">Size (Largest)</option>
+                    <option value="size-smallest">Size (Smallest)</option>
+                  </select>
+                </div>
+              </details>
+            </div>
           </div>
 
-          <!-- Action Buttons -->
-          <div class="search-actions">
-            <button id="btn-search" class="btn btn-primary">🔍 Search</button>
-            <button id="btn-reset" class="btn btn-secondary">↻ Reset</button>
-          </div>
-        </div>
-
-        <!-- Results Section -->
-        <div class="search-results">
+          <!-- Search Stats -->
           <div id="search-stats" class="search-stats" style="display: none;">
             <span id="result-count"></span>
           </div>
+
+          <!-- Results -->
           <div id="results-container" class="results-container"></div>
+        </div>
+
+        <!-- Action Buttons - Always Visible -->
+        <div class="search-footer">
+          <button id="btn-search" class="btn btn-primary">🔍 Search</button>
+          <button id="btn-reset" class="btn btn-secondary">↻ Reset</button>
         </div>
       </div>
     `;

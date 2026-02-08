@@ -157,9 +157,9 @@ aside .list-group-item.active {
 /* Back to Top Button */
 #goTopBtn {
   position: fixed;
-  bottom: 20px;
+  bottom: 90px;
   right: 20px;
-  z-index: 1040;
+  z-index: 1050;
   display: none;
   width: 45px; height: 45px;
   font-size: 18px;
@@ -167,7 +167,7 @@ aside .list-group-item.active {
   align-items: center;
   justify-content: center;
   display: flex;
-  transition: opacity 0.3s ease;
+  transition: all 0.3s ease;
 }
 #goTopBtn.show {
   display: flex;

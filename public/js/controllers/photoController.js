@@ -2,7 +2,7 @@
 angular.module('photoController', [])
 
     // inject the Photo service factory into our controller
-    .controller('photoController', ['$scope','$http', '$location','PhotoService','ModalService', function($scope, $http, $location, PhotoService, ModalService) {
+    .controller('photoController', ['$scope','$http', '$location','PhotoService','ModalService','RecentlyViewedService', function($scope, $http, $location, PhotoService, ModalService, RecentlyViewedService) {
 
         $scope.formData = {};
         $scope.tags = [];
@@ -36,7 +36,11 @@ angular.module('photoController', [])
         $scope.isPlaying = false;
         $scope.currentTime = "0:00";
         $scope.duration = "0:00";
-        $scope.progress = 0;   
+        $scope.progress = 0;
+        $scope.volume = 80; // Default volume 80%
+        $scope.isShuffle = false;
+        $scope.isRepeat = false;
+        $scope.showPlaylist = false;   
         // file upload
         $scope.uploadFile = null;
         $scope.filePreviewUrl = '';
@@ -44,6 +48,10 @@ angular.module('photoController', [])
         $scope.uploadAlbum = $scope.selectedAlbum ? $scope.selectedAlbum.path : '';
         $scope.favoritesCount = 0; // Count of favorited media
         $scope.allFavorites = []; // Store all favorites
+        
+        // Recently viewed
+        $scope.recentlyViewed = [];
+        $scope.showRecentlyViewed = false;
         
         // Extended video formats support (includes WebM, Ogg Theora, and more)
         videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v', 'divx', 'xvid', 'webm', 'ogg', 'ogv', 'flv', 'wmv', 'asf', 'rm', 'rmvb', 'ts', 'vob', 'f4v'];
@@ -225,6 +233,26 @@ angular.module('photoController', [])
 
         $scope.setAlbum = function (album) {
 			$scope.selectedAlbum = album;
+            
+            // Track recently viewed albums (exclude "All Albums" and "favorites")
+            if (album && album.path && album.path !== '' && album.path !== 'favorites') {
+                // Get photo count for this album
+                var photoCount = 0;
+                if ($scope.allPhotosByAlbum && $scope.allPhotosByAlbum[album.path]) {
+                    photoCount = $scope.allPhotosByAlbum[album.path].length;
+                }
+                
+                var albumToTrack = {
+                    album: album.album,
+                    path: album.path,
+                    name: album.name || album.album,
+                    photoCount: photoCount
+                };
+                
+                RecentlyViewedService.addAlbum(albumToTrack);
+                $scope.loadRecentlyViewed();
+            }
+            
             if (!album.album || album.album === '') {
                 // "All Albums" selected - show all photos
                 loadPhotosAndTags("");
@@ -346,10 +374,155 @@ angular.module('photoController', [])
         };
 
 
+        // Handle search modal events
         $('#searchModal').on('shown.bs.modal', function () {
             const scope = angular.element(this).scope();
             scope.$apply(function () {
                 scope.loadAllTags();
+            });
+            // Auto-focus on search input when modal opens
+            setTimeout(function() {
+                $('#searchInput').focus();
+            }, 100);
+        });
+
+        // Prevent sidebar from closing when search modal is opened
+        $('#searchModal').on('show.bs.modal', function (e) {
+            // Store the current state of the sidebar
+            const sidebar = document.getElementById('folderSidebar');
+            if (sidebar) {
+                const isCollapsed = !sidebar.classList.contains('show');
+                // Store state in data attribute
+                sidebar.setAttribute('data-was-collapsed', isCollapsed);
+            }
+        });
+
+        // Restore sidebar state when modal is hidden
+        $('#searchModal').on('hidden.bs.modal', function (e) {
+            const sidebar = document.getElementById('folderSidebar');
+            if (sidebar) {
+                const wasCollapsed = sidebar.getAttribute('data-was-collapsed') === 'true';
+                // Restore the state if needed
+                if (!wasCollapsed && !sidebar.classList.contains('show')) {
+                    $(sidebar).collapse('show');
+                }
+            }
+        });
+
+        // Keyboard shortcut to open search modal (Ctrl+K)
+        $(document).on('keydown', function(e) {
+            // Ctrl+K or Cmd+K to open search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                $('#searchModal').modal('show');
+            }
+            // Escape key to close search modal
+            if (e.key === 'Escape' && $('#searchModal').hasClass('show')) {
+                $('#searchModal').modal('hide');
+            }
+        });
+
+        // =========== CACHE MANAGEMENT FUNCTIONS ===========
+        
+        // Initialize cache stats scope variables
+        $scope.cacheStats = {
+            hits: 0,
+            misses: 0,
+            hitRate: '0%',
+            cacheEntries: 0,
+            cacheSizeBytes: 0,
+            cacheSizeMB: '0',
+            maxCacheBytes: '0',
+            maxCacheEntries: 0
+        };
+        $scope.topAlbums = [];
+        
+        /**
+         * Load cache statistics from server
+         */
+        $scope.loadCacheStats = function() {
+            $http.get('/api/cache/stats')
+                .then(function successCallback(response) {
+                    if (response.data.stats) {
+                        $scope.cacheStats = response.data.stats;
+                    }
+                    if (response.data.topAlbums) {
+                        $scope.topAlbums = response.data.topAlbums;
+                    }
+                    console.log('Cache stats loaded:', $scope.cacheStats);
+                }, function errorCallback(error) {
+                    console.error('Error loading cache stats:', error);
+                    alert('Failed to load cache statistics');
+                });
+        };
+        
+        /**
+         * Scan for new albums manually
+         */
+        $scope.scanForNewAlbums = function() {
+            $http.get('/api/cache/scan-albums')
+                .then(function(response) {
+                    const data = response.data;
+                    if (data.newAlbumsFound > 0) {
+                        alert(`Found ${data.newAlbumsFound} new album(s):\n${data.albums.join('\n')}\n\nTotal albums tracked: ${data.totalAlbumsTracked}`);
+                    } else {
+                        alert('No new albums found.\n\nTotal albums tracked: ' + data.totalAlbumsTracked);
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error scanning for albums:', error);
+                    alert('Failed to scan for new albums. See console for details.');
+                });
+        };
+
+        /**
+         * Clear cache for current album
+         */
+        $scope.clearCurrentAlbumCache = function() {
+            const album = $scope.selectedAlbum.album || $scope.selectedAlbum.path;
+            if (!album || album === 'Home') {
+                alert('No specific album selected');
+                return;
+            }
+            
+            if (confirm(`Clear cache for album: ${$scope.selectedAlbum.name}?`)) {
+                $http.post('/api/cache/invalidate', { album: album })
+                    .then(function successCallback(response) {
+                        if (response.data.success) {
+                            alert(`✓ Cleared ${response.data.entriesRemoved} cache entries for: ${$scope.selectedAlbum.name}`);
+                            // Reload cache stats
+                            $scope.loadCacheStats();
+                        }
+                    }, function errorCallback(error) {
+                        console.error('Error clearing cache:', error);
+                        alert('Failed to clear cache');
+                    });
+            }
+        };
+        
+        /**
+         * Clear all cache
+         */
+        $scope.clearAllCache = function() {
+            if (confirm('Clear entire cache? This will force a full disk scan on next access.')) {
+                $http.post('/api/cache/invalidate', {})
+                    .then(function successCallback(response) {
+                        if (response.data.success) {
+                            alert(`✓ Cleared entire cache (${response.data.entriesRemoved} entries)`);
+                            // Reload cache stats
+                            $scope.loadCacheStats();
+                        }
+                    }, function errorCallback(error) {
+                        console.error('Error clearing cache:', error);
+                        alert('Failed to clear cache');
+                    });
+            }
+        };
+        
+        // Load cache stats when modal is opened
+        $('#cacheStatsModal').on('show.bs.modal', function() {
+            $scope.$apply(function() {
+                $scope.loadCacheStats();
             });
         });
 
@@ -372,6 +545,8 @@ angular.module('photoController', [])
 
         function updatePhotoTagsFromDb(photos){
             firstTime = true;
+			// Preserve folders array if we're doing a search (not album navigation)
+            var preservedFolders = $scope.folders;
 			$scope.folders = [];
             $scope.playlist = [];
             $scope.currentIndex = -1;
@@ -429,6 +604,12 @@ angular.module('photoController', [])
 			} else {
 				$scope.noMorePhotos = $scope.photos.length < $scope.numberOfItemsOnPage;
 			}
+            
+            // Restore folders if they were cleared during search
+            if ($scope.folders.length === 0 && preservedFolders && preservedFolders.length > 0) {
+                $scope.folders = preservedFolders;
+            }
+            
             if($scope.playlist.length > 0) {
                 $scope.currentIndex = 0;
             }
@@ -484,28 +665,46 @@ angular.module('photoController', [])
 
         $scope.editImageTag = function(photo) {
             $scope.selectedPhoto = angular.copy(photo);
+            $scope.selectedOption = null; // Reset dropdown
             var modalEl = document.getElementById('editTagModal');
             var modal = new bootstrap.Modal(modalEl);
             modal.show();
         };
 
+        // Handle tag selection from dropdown
+        $scope.onTagSelected = function(selectedTag) {
+            if (selectedTag) {
+                // Replace or append the selected tag to the textarea
+                $scope.selectedPhoto.tags = selectedTag;
+            }
+        };
+
         $scope.updatePhotoTag = function(id, name, tags){
+            // Trim whitespace from tags
+            var cleanTags = (tags || '').trim();
+            if (!cleanTags) {
+                alert('Please enter at least one tag or description');
+                return;
+            }
+            
             $scope.loading = true;
             var photoTag = {};
             if(parseInt(id) > 0){
-                photoTag = {"id": id, "name": name, "tags": tags};
+                photoTag = {"id": id, "name": name, "tags": cleanTags};
             } else {
-                photoTag = {"name": name, "tags": tags};
+                photoTag = {"name": name, "tags": cleanTags};
             }
             PhotoService.create(photoTag)
                     .then(function successCallback(response) {
-                            $scope.updateTag(id, tags, response);
+                            $scope.updateTag(id, cleanTags, response);
                             $scope.loading = false;
                             $('#editTagModal').modal('hide');
+                            $scope.selectedOption = null;
                     }, function errorCallback(response) {
                         // called asynchronously if an error occurs
                         // or server returns response with an error status.
                         alert('Update tag failed!');
+                        $scope.loading = false;
                     });
         };
       
@@ -515,6 +714,14 @@ angular.module('photoController', [])
 
         $scope.submitEditTagForm = function() {
             $scope.updatePhotoTag($scope.selectedPhoto.id, $scope.selectedPhoto.path, $scope.selectedPhoto.tags);
+        };
+
+        // Clear tag text from modal
+        $scope.clearTagText = function() {
+            if (confirm('Clear all tag text?')) {
+                $scope.selectedPhoto.tags = '';
+                $scope.selectedOption = null; // Reset dropdown selection
+            }
         };
 
         $scope.editImageTag2= function (photo) {
@@ -649,7 +856,19 @@ angular.module('photoController', [])
 
         $scope.next = function() {
             if ($scope.playlist.length === 0) return;
-            $scope.currentIndex = ($scope.currentIndex + 1) % $scope.playlist.length;
+            
+            if ($scope.isShuffle) {
+                // Random next track (but not the current one if playlist has more than 1 track)
+                var nextIndex;
+                do {
+                    nextIndex = Math.floor(Math.random() * $scope.playlist.length);
+                } while (nextIndex === $scope.currentIndex && $scope.playlist.length > 1);
+                $scope.currentIndex = nextIndex;
+            } else {
+                // Sequential next track
+                $scope.currentIndex = ($scope.currentIndex + 1) % $scope.playlist.length;
+            }
+            
             startPlayback();
         };
 
@@ -679,9 +898,76 @@ angular.module('photoController', [])
         // auto-play next when finished
         audio.addEventListener("ended", function() {
             $scope.$apply(function() {
-            $scope.next();
+                if ($scope.isRepeat) {
+                    // Repeat current track
+                    audio.currentTime = 0;
+                    audio.play();
+                } else {
+                    $scope.next();
+                }
             });
         });
+
+        // Set initial volume
+        audio.volume = $scope.volume / 100;
+
+        // Volume control
+        $scope.setVolume = function() {
+            audio.volume = $scope.volume / 100;
+        };
+
+        // Toggle shuffle
+        $scope.toggleShuffle = function() {
+            $scope.isShuffle = !$scope.isShuffle;
+        };
+
+        // Toggle repeat
+        $scope.toggleRepeat = function() {
+            $scope.isRepeat = !$scope.isRepeat;
+        };
+
+        // Play track by index
+        $scope.playTrackByIndex = function(index) {
+            if (index >= 0 && index < $scope.playlist.length) {
+                $scope.currentIndex = index;
+                $scope.playAudio($scope.playlist[index]);
+            }
+        };
+
+        // Remove track from playlist
+        $scope.removeFromPlaylist = function(index) {
+            if (index >= 0 && index < $scope.playlist.length) {
+                // If removing currently playing track
+                if (index === $scope.currentIndex) {
+                    $scope.next(); // Play next track
+                } else if (index < $scope.currentIndex) {
+                    $scope.currentIndex--; // Adjust current index
+                }
+                $scope.playlist.splice(index, 1);
+                
+                // If playlist is empty, stop playback
+                if ($scope.playlist.length === 0) {
+                    audio.pause();
+                    $scope.isPlaying = false;
+                    $scope.currentIndex = -1;
+                }
+            }
+        };
+
+        // Add to playlist queue (without auto-play)
+        $scope.addToPlaylistQueue = function(image) {
+            // Check if already in playlist
+            var alreadyExists = $scope.playlist.some(function(track) {
+                return track.path === image.path;
+            });
+            
+            if (!alreadyExists) {
+                $scope.playlist.push(image);
+                ModalService.showModal('Added to Playlist', image.tags || 'Track added to playlist');
+            } else {
+                ModalService.showModal('Already in Playlist', 'This track is already in the playlist');
+            }
+        };
 
         $scope.previewFile = function() {
             if ($scope.uploadFile && $scope.uploadFile.type) {
@@ -787,5 +1073,54 @@ angular.module('photoController', [])
                     alert('Failed to load EXIF data');
                 });
         };
+
+        // Recently Viewed Functions
+        // ================================================================
+        
+        /**
+         * Load recently viewed albums
+         */
+        $scope.loadRecentlyViewed = function() {
+            $scope.recentlyViewed = RecentlyViewedService.getRecentAlbums();
+        };
+        
+        /**
+         * Toggle recently viewed section visibility
+         */
+        $scope.toggleRecentlyViewed = function() {
+            $scope.showRecentlyViewed = !$scope.showRecentlyViewed;
+        };
+        
+        /**
+         * Clear all recently viewed items
+         */
+        $scope.clearRecentlyViewed = function() {
+            if (confirm('Clear all recently viewed albums?')) {
+                RecentlyViewedService.clearRecentlyViewed();
+                $scope.loadRecentlyViewed();
+            }
+        };
+        
+        /**
+         * Format timestamp for display
+         */
+        $scope.formatRecentTime = function(timestamp) {
+            return RecentlyViewedService.formatTimestamp(timestamp);
+        };
+        
+        /**
+         * View a recently viewed album
+         */
+        $scope.viewRecentAlbum = function(recentItem) {
+            var album = {
+                album: recentItem.album,
+                path: recentItem.path,
+                name: recentItem.name
+            };
+            $scope.setAlbum(album);
+        };
+        
+        // Initialize recently viewed on page load
+        $scope.loadRecentlyViewed();
 
 }]);

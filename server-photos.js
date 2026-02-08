@@ -1,4 +1,5 @@
 import { createReadStream, readdirSync, statSync } from 'fs';
+import { promises as fs } from 'fs';
 import express from 'express';
 import fileUpload from 'express-fileupload';
 import { join, sep, extname } from 'path';
@@ -9,6 +10,10 @@ import { createPhoto, getPhotos, getTags } from './app/controllers/photoControll
 import media from './app/services/media.js';
 import advancedFeaturesRoutes from './app/routes/advancedFeaturesRoutes.js';
 import pkg from 'body-parser';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 const { urlencoded, json } = pkg;
 const app = express();
@@ -28,7 +33,11 @@ const MIME_TYPES = {
 const MONTHS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
 const SKIP_FILE_TYPES = ['.db','.exe','.tmp','.doc','.dat','.ini', '.srt','.idx','.rar','.sub','.zip','.php','.wmdb'];
 const ITEMS_PER_PAGE = 20;
-const CACHE_CLEAR_INTERVAL = 10 * 60 * 1000; // 10 minutes
+
+// Cache configuration - optimized for static albums
+const MAX_CACHE_SIZE = parseInt(process.env.MAX_CACHE_SIZE) || 500; // maximum cached pages
+const MAX_CACHE_BYTES = parseInt(process.env.MAX_CACHE_BYTES) || (100 * 1024 * 1024); // 100MB max cache size
+const CACHE_FILE = process.env.CACHE_FILE_PATH || './cache/album-cache.json';
 
 // Thumbnail directory - separate from media files
 const THUMBNAIL_DIR = process.env.THUMBNAIL_DIR || './temp-pic/thumbnails';
@@ -38,6 +47,9 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
+
+const dataDir = join(__dirname, "data");
+const BASE_DIR = 'data/';
 
 app.set('view engine', 'pug');
 app.set('views', __dirname);
@@ -55,22 +67,260 @@ app.use('/api', advancedFeaturesRoutes);
 app.use(express.static(join(__dirname, 'public')));
 app.use('/data', express.static(join(__dirname, "data")));
 
-const dataDir = join(__dirname, "data");
-const BASE_DIR = 'data/';
+// ============================================================
+// OPTIMIZED CACHING SYSTEM FOR STATIC ALBUMS
+// ============================================================
 
-// Cache configuration
-const imageCache = new Map();
-const cacheStats = { hits: 0, misses: 0 };
+// In-memory cache with mtime tracking and size limits
+const imageCache = new Map(); // { cacheKey: cacheData }
+const albumMetaCache = new Map(); // { albumPath: { mtime, indexed, hits } }
+const cacheStats = { hits: 0, misses: 0, diskLoads: 0, cacheSizeBytes: 0 };
 
+/**
+ * Calculate size of cache entry in bytes (approximate)
+ */
+const calculateCacheSize = (value) => {
+  try {
+    return JSON.stringify(value).length;
+  } catch {
+    return 1000; // fallback estimate
+  }
+};
 
-// Clear cache periodically
+/**
+ * Add item to cache with size-based eviction
+ */
+const addToCache = (key, value) => {
+  const size = calculateCacheSize(value);
+  
+  // Size limit check - evict oldest entries if needed
+  if (cacheStats.cacheSizeBytes + size > MAX_CACHE_BYTES || imageCache.size >= MAX_CACHE_SIZE) {
+    evictCacheEntries(Math.ceil((imageCache.size * 0.2))); // Remove 20% oldest
+  }
+  
+  imageCache.set(key, value);
+  cacheStats.cacheSizeBytes += size;
+};
+
+/**
+ * Evict oldest cache entries by hit count
+ */
+const evictCacheEntries = (count) => {
+  const entries = Array.from(imageCache.entries());
+  
+  // Sort by last hit (albums with most hits are kept)
+  entries.sort((a, b) => {
+    const keyA = a[0];
+    const keyB = b[0];
+    const hitsA = albumMetaCache.get(extractAlbumFromKey(keyA))?.hits || 0;
+    const hitsB = albumMetaCache.get(extractAlbumFromKey(keyB))?.hits || 0;
+    return hitsA - hitsB;
+  });
+  
+  // Remove oldest
+  for (let i = 0; i < Math.min(count, entries.length); i++) {
+    const size = calculateCacheSize(entries[i][1]);
+    imageCache.delete(entries[i][0]);
+    cacheStats.cacheSizeBytes -= size;
+  }
+  
+  console.log(`🗑️  Evicted ${Math.min(count, entries.length)} cache entries. Cache size: ${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB`);
+};
+
+/**
+ * Extract album path from cache key (format: "albumPath_page_items")
+ */
+const extractAlbumFromKey = (cacheKey) => {
+  const parts = cacheKey.split('_');
+  // Last two parts are page and items
+  return cacheKey.substring(0, cacheKey.length - parts[parts.length - 1].length - parts[parts.length - 2].length - 2);
+};
+
+/**
+ * Load persistent cache from disk on startup
+ */
+const loadPersistentCache = async () => {
+  try {
+    // Ensure cache directory exists
+    await fs.mkdir(join(__dirname, 'cache'), { recursive: true });
+    
+    const cacheData = await fs.readFile(CACHE_FILE, 'utf8');
+    
+    // Skip if file is empty (first run)
+    if (!cacheData || cacheData.trim() === '') {
+      console.log(`ℹ️  Cache file is empty (first run)`);
+      return false;
+    }
+    
+    const cached = JSON.parse(cacheData);
+    
+    // New format: { imageCache: {...}, albumMeta: {...} }
+    // Old format: { key1: value1, key2: value2 } (direct entries)
+    const isNewFormat = cached.imageCache !== undefined;
+    
+    if (isNewFormat) {
+      // Load image cache
+      if (cached.imageCache) {
+        for (const [key, value] of Object.entries(cached.imageCache)) {
+          imageCache.set(key, value);
+          cacheStats.cacheSizeBytes += calculateCacheSize(value);
+        }
+      }
+      
+      // Load album metadata cache
+      if (cached.albumMeta) {
+        for (const [album, meta] of Object.entries(cached.albumMeta)) {
+          // Restore Date objects from ISO strings
+          albumMetaCache.set(album, {
+            mtime: meta.mtime,
+            indexed: meta.indexed ? new Date(meta.indexed) : null,
+            hits: meta.hits || 0,
+            discovered: meta.discovered ? new Date(meta.discovered) : null
+          });
+        }
+      }
+      
+      console.log(`✓ Loaded ${imageCache.size} cached pages and ${albumMetaCache.size} album metadata entries (${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB)`);
+    } else {
+      // Backward compatibility - old format (direct entries)
+      for (const [key, value] of Object.entries(cached)) {
+        imageCache.set(key, value);
+        cacheStats.cacheSizeBytes += calculateCacheSize(value);
+      }
+      console.log(`✓ Loaded ${imageCache.size} cached albums from disk (old format, ${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB)`);
+    }
+    
+    cacheStats.diskLoads++;
+    return true;
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      // File doesn't exist - first run
+      console.log(`ℹ️  No persistent cache found (first run)`);
+      return false;
+    } else if (err instanceof SyntaxError) {
+      // Corrupted JSON - delete and start fresh
+      console.warn(`⚠️  Cache file corrupted, starting fresh. Error: ${err.message}`);
+      try {
+        await fs.unlink(CACHE_FILE);
+        console.log(`✓ Removed corrupted cache file`);
+      } catch (unlinkErr) {
+        console.error('Failed to remove corrupted cache:', unlinkErr.message);
+      }
+      return false;
+    } else {
+      console.error('Error loading persistent cache:', err.message);
+      return false;
+    }
+  }
+};
+
+/**
+ * Save cache to disk for persistence across restarts
+ */
+const savePersistentCache = async () => {
+  try {
+    await fs.mkdir(join(__dirname, 'cache'), { recursive: true });
+    
+    // Save both image cache and album metadata
+    const cacheData = {
+      imageCache: Object.fromEntries(imageCache),
+      albumMeta: Object.fromEntries(albumMetaCache),
+      savedAt: new Date().toISOString(),
+      stats: {
+        entries: imageCache.size,
+        albums: albumMetaCache.size,
+        sizeBytes: cacheStats.cacheSizeBytes
+      }
+    };
+    
+    await fs.writeFile(CACHE_FILE, JSON.stringify(cacheData, null, 2), 'utf8');
+    console.log(`✓ Saved ${imageCache.size} pages and ${albumMetaCache.size} album metadata to persistent cache (${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB)`);
+  } catch (err) {
+    console.error('Error saving persistent cache:', err);
+  }
+};
+
+/**
+ * Lightweight scan for new albums (folders) in data directory
+ * Only reads directory names, doesn't scan contents
+ */
+const scanForNewAlbums = async () => {
+  try {
+    const knownAlbums = new Set(albumMetaCache.keys());
+    const discoveredAlbums = [];
+    
+    // Scan top-level data directory
+    const entries = await fs.readdir(dataDir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const albumName = entry.name;
+        
+        // Check if this is a new album
+        if (!knownAlbums.has(albumName)) {
+          // Initialize metadata for new album
+          albumMetaCache.set(albumName, {
+            mtime: null,
+            indexed: null,
+            hits: 0,
+            discovered: new Date()
+          });
+          discoveredAlbums.push(albumName);
+        }
+        
+        // Also scan one level deep for nested albums (e.g., "pictures/2020-Jan")
+        try {
+          const subPath = join(dataDir, albumName);
+          const subEntries = await fs.readdir(subPath, { withFileTypes: true });
+          
+          for (const subEntry of subEntries) {
+            if (subEntry.isDirectory()) {
+              const nestedAlbumName = `${albumName}/${subEntry.name}`;
+              
+              if (!knownAlbums.has(nestedAlbumName)) {
+                albumMetaCache.set(nestedAlbumName, {
+                  mtime: null,
+                  indexed: null,
+                  hits: 0,
+                  discovered: new Date()
+                });
+                discoveredAlbums.push(nestedAlbumName);
+              }
+            }
+          }
+        } catch (err) {
+          // Skip if can't read subdirectory
+        }
+      }
+    }
+    
+    if (discoveredAlbums.length > 0) {
+      console.log(`🆕 Discovered ${discoveredAlbums.length} new album(s): ${discoveredAlbums.join(', ')}`);
+    }
+    
+    return discoveredAlbums;
+  } catch (err) {
+    console.error('Error scanning for new albums:', err.message);
+    return [];
+  }
+};
+
+/**
+ * Save cache every 5 minutes
+ */
+setInterval(savePersistentCache, 5 * 60 * 1000);
+
+/**
+ * Log cache statistics every 10 minutes
+ */
 setInterval(() => {
-    const size = imageCache.size;
-    console.log(`Clearing image cache. Stats - Size: ${size}, Hits: ${cacheStats.hits}, Misses: ${cacheStats.misses}`);
-    imageCache.clear();
-    cacheStats.hits = 0;
-    cacheStats.misses = 0;
-}, CACHE_CLEAR_INTERVAL);
+  console.log(`📊 Cache Stats - Size: ${imageCache.size} entries (${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB), Hits: ${cacheStats.hits}, Misses: ${cacheStats.misses}, Hit Rate: ${((cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100) || 0).toFixed(1)}%`);
+}, 10 * 60 * 1000);
+
+/**
+ * Scan for new albums every 15 minutes (lightweight directory scan)
+ */
+setInterval(scanForNewAlbums, 15 * 60 * 1000);
 
 // Validation helpers
 const isValidFileType = (filename) => {
@@ -185,40 +435,157 @@ app.get('/photos', asyncHandler(async (req, res) => {
     // Validate and sanitize pagination
     const { page, items } = validatePagination(req.query.page, req.query.items);
     
-    // Check if page is cached
+    // ===== OPTIMIZED MTIME-BASED CACHING =====
     const cacheKey = getCacheKey(targetDir, page, items);
     
-    if (imageCache.has(cacheKey)) {
-        cacheStats.hits++;
-        console.log(`✓ Cache HIT for album "${album}" page ${page} items ${items}`);
-        const result = imageCache.get(cacheKey);
-        
-        return res.json({
-            totalPhotos: result.totalPhotos,
-            data: result.images,
-            cached: true
-        });
-    }
-    
-    cacheStats.misses++;
-    console.log(`✗ Cache MISS for album "${album}" page ${page} items ${items}`);
-    
     try {
+        // Check directory modification time (single fast stat call)
+        const stats = await fs.stat(targetDir);
+        const currentMtime = stats.mtime.getTime();
+        
+        // Get or initialize album metadata
+        let albumMeta = albumMetaCache.get(album) || { mtime: null, indexed: null, hits: 0 };
+        albumMeta.hits++;
+        
+        // If cached and mtime matches, return cached result
+        if (albumMeta.mtime === currentMtime && imageCache.has(cacheKey)) {
+            cacheStats.hits++;
+            console.log(`✓ Cache HIT (mtime match) for album "${album}" page ${page} items ${items} [${albumMeta.hits} hits]`);
+            albumMetaCache.set(album, albumMeta);
+            
+            const result = imageCache.get(cacheKey);
+            return res.json({
+                totalPhotos: result.totalPhotos,
+                data: result.images,
+                cached: true,
+                mtimeMatch: true
+            });
+        }
+        
+        // Directory changed or first access - read from disk
+        if (albumMeta.mtime !== currentMtime) {
+            console.log(`✗ Cache MISS (mtime changed) for album "${album}" - was ${albumMeta.mtime}, now ${currentMtime}`);
+        } else {
+            console.log(`✗ Cache MISS (page not cached) for album "${album}" page ${page} items ${items}`);
+        }
+        
+        cacheStats.misses++;
+        albumMeta.mtime = currentMtime;
+        albumMeta.indexed = new Date();
+        albumMetaCache.set(album, albumMeta);
+        
+        // Get images from directory
         const result = getImagesFromDir(targetDir, album, page, false, items);
-        imageCache.set(cacheKey, result);
+        
+        // Add to cache with size tracking
+        addToCache(cacheKey, result);
         
         res.setHeader('Content-Type', 'application/json');
-        res.setHeader('Cache-Control', 'public, max-age=300'); // Cache for 5 minutes
+        res.setHeader('Cache-Control', 'public, max-age=300'); // Browser cache 5 minutes
         
         res.json({
             totalPhotos: result.totalPhotos,
             data: result.images,
-            cached: false
+            cached: false,
+            mtimeMatch: false
         });
     } catch (error) {
         console.error('Error reading directory:', error);
         return res.status(500).json({ error: 'Failed to read album directory.' });
     }
+}));
+
+// ===== CACHE MANAGEMENT ENDPOINTS =====
+
+/**
+ * Manual cache invalidation endpoint
+ * POST /api/cache/invalidate?album=optional_album_name
+ */
+app.post('/api/cache/invalidate', (req, res) => {
+    const { album } = req.body || req.query;
+    let count = 0;
+    
+    try {
+        if (album) {
+            // Clear specific album from cache
+            for (const [key, _] of imageCache.entries()) {
+                if (key.includes(album)) {
+                    const size = calculateCacheSize(_);
+                    imageCache.delete(key);
+                    cacheStats.cacheSizeBytes -= size;
+                    count++;
+                }
+            }
+            albumMetaCache.delete(album);
+            console.log(`✓ Cleared cache for album: ${album} (${count} entries)`);
+        } else {
+            // Clear all cache
+            count = imageCache.size;
+            const totalSize = cacheStats.cacheSizeBytes;
+            imageCache.clear();
+            albumMetaCache.clear();
+            cacheStats.cacheSizeBytes = 0;
+            console.log(`✓ Cleared entire cache (${count} entries, ${(totalSize / 1024 / 1024).toFixed(2)}MB)`);
+        }
+        
+        res.json({ 
+            success: true, 
+            cleared: album || 'all', 
+            entriesRemoved: count,
+            cacheSize: `${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB`
+        });
+    } catch (err) {
+        console.error('Cache invalidation error:', err);
+        res.status(500).json({ error: 'Failed to invalidate cache', details: err.message });
+    }
+});
+
+/**
+ * Cache health/stats endpoint
+ * GET /api/cache/stats
+ */
+app.get('/api/cache/stats', (req, res) => {
+    const hitRate = ((cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100) || 0).toFixed(1);
+    const topAlbums = Array.from(albumMetaCache.entries())
+        .sort((a, b) => b[1].hits - a[1].hits)
+        .slice(0, 10)
+        .map(([album, meta]) => ({
+            album,
+            hits: meta.hits,
+            lastIndexed: meta.indexed,
+            mtime: new Date(meta.mtime)
+        }));
+    
+    res.json({
+        stats: {
+            cacheEntries: imageCache.size,
+            cacheSizeBytes: cacheStats.cacheSizeBytes,
+            cacheSizeMB: (cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2),
+            maxCacheBytes: (MAX_CACHE_BYTES / 1024 / 1024).toFixed(2),
+            maxCacheEntries: MAX_CACHE_SIZE,
+            hits: cacheStats.hits,
+            misses: cacheStats.misses,
+            hitRate: `${hitRate}%`,
+            diskLoads: cacheStats.diskLoads,
+            totalAlbumsTracked: albumMetaCache.size
+        },
+        topAlbums
+    });
+});
+
+/**
+ * Trigger manual album scan
+ * GET /api/cache/scan-albums
+ */
+app.get('/api/cache/scan-albums', asyncHandler(async (req, res) => {
+    const discoveredAlbums = await scanForNewAlbums();
+    
+    res.json({
+        success: true,
+        newAlbumsFound: discoveredAlbums.length,
+        albums: discoveredAlbums,
+        totalAlbumsTracked: albumMetaCache.size
+    });
 }));
 
 app.route('/')
@@ -380,20 +747,36 @@ app.use((err, req, res, next) => {
 // 404 handler should be defined after error handler in this case it's handled by app.get('*')
 
 const PORT = process.env.PORT || 8082;
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
+    // Load persistent cache from disk on startup
+    await loadPersistentCache();
+    
+    // Initial album scan to populate metadata
+    const newAlbums = await scanForNewAlbums();
+    if (newAlbums.length > 0) {
+        console.log(`✓ Initial scan discovered ${newAlbums.length} albums`);
+    }
+    
     console.log(`✓ Application is running at: http://localhost:${PORT}`);
-    console.log(`✓ Cache clear interval: ${CACHE_CLEAR_INTERVAL / 1000}s`);
+    console.log(`✓ Max cache size: ${MAX_CACHE_SIZE} entries / ${(MAX_CACHE_BYTES / 1024 / 1024).toFixed(0)}MB`);
+    console.log(`✓ Cache persistence: ${CACHE_FILE}`);
     console.log(`✓ Data directory: ${dataDir}`);
+    console.log(`✓ Album discovery: Scanning every 15 minutes`);
     console.log(`✓ Advanced features enabled (EXIF, Search, Bulk Ops, Social, Editing, Video)`);
 });
 
-// Graceful shutdown
-const gracefulShutdown = () => {
+// Graceful shutdown - save cache before exit
+const gracefulShutdown = async () => {
     console.log('\n⚠ Received shutdown signal, closing server gracefully...');
     
+    // Save cache to disk
+    await savePersistentCache();
+    
     server.close(() => {
+        const hitRate = ((cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100) || 0).toFixed(1);
         console.log('✓ Server closed');
-        console.log(`Final cache stats - Hits: ${cacheStats.hits}, Misses: ${cacheStats.misses}`);
+        console.log(`📊 Final cache stats - Hits: ${cacheStats.hits}, Misses: ${cacheStats.misses}, Hit Rate: ${hitRate}%`);
+        console.log(`💾 Cache saved: ${imageCache.size} page entries, ${albumMetaCache.size} album metadata (${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB)`);
         process.exit(0);
     });
     

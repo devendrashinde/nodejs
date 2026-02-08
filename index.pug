@@ -10,6 +10,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
     link(rel="stylesheet", href="main.css")
     link(rel="stylesheet", href="css/advanced-features.css")
+    link(rel="stylesheet", href="css/music-player.css")
   
   body#top
     div(class="container-fluid py-3" id="controller" ng-controller="photoController")
@@ -29,7 +30,7 @@ html(ng-app="app")
                 type="button" 
                 data-bs-toggle="modal" 
                 data-bs-target="#searchModal"
-                title="Quick search"
+                title="Quick search (Ctrl+K)"
               )
                 i.fas.fa-search
               
@@ -47,13 +48,43 @@ html(ng-app="app")
             )
               i.fas.fa-upload.me-1
 
-            // Hamburger menu (aligned right)
-            button.btn.btn-outline-secondary.btn-sm.d-md-none(
+            // Cache management dropdown
+            div.dropdown
+              button.btn.btn-outline-warning.btn-sm.dropdown-toggle(
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                title="Cache management"
+              )
+                i.fas.fa-database
+              ul.dropdown-menu.dropdown-menu-end
+                li
+                  a.dropdown-item(href="#" data-bs-toggle="modal" data-bs-target="#cacheStatsModal")
+                    i.fas.fa-chart-pie.me-2
+                    | Cache Stats
+                li
+                  hr.dropdown-divider
+                li
+                  a.dropdown-item(href="#" ng-click="scanForNewAlbums()")
+                    i.fas.fa-sync.me-2
+                    | Scan for New Albums
+                li
+                  a.dropdown-item(href="#" ng-click="clearCurrentAlbumCache()")
+                    i.fas.fa-eraser.me-2
+                    | Clear Current Album
+                li
+                  a.dropdown-item(href="#" ng-click="clearAllCache()")
+                    i.fas.fa-trash.me-2
+                    | Clear All Cache
+
+            // Hamburger menu (album toggle)
+            button.btn.btn-outline-secondary.btn-sm(
               type="button"
               data-bs-toggle="collapse"
               data-bs-target="#folderSidebar"
               aria-expanded="false"
               aria-controls="folderSidebar"
+              title="Toggle albums sidebar"
             )
               i.fas.fa-bars
 
@@ -129,25 +160,67 @@ html(ng-app="app")
                 i.fas.fa-times
             
             //- All Albums button
-            button.btn.btn-sm.btn-outline-primary.w-100.mb-2(
+            button.btn.btn-sm.btn-outline-primary.w-100(
               ng-click="setAlbum({album: '', path: ''})"
               ng-class="{'active': selectedAlbum.album == '' || !selectedAlbum.album}"
-              style="font-size: 0.85rem;"
+              style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-bottom: 4px;"
             )
               i.fas.fa-th.me-1
               | All Albums
               span.badge.bg-primary.float-end {{(folders | filter:{album: albumsSearchText}).length}}
             
             //- Favorites button
-            button.btn.btn-sm.btn-outline-danger.w-100.mb-2(
+            button.btn.btn-sm.btn-outline-danger.w-100(
               ng-click="viewFavorites()"
               ng-class="{'active': selectedAlbum.album == 'favorites'}"
-              style="font-size: 0.85rem;"
+              style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-bottom: 4px;"
               title="View all favorite media"
             )
               i.bi.bi-heart-fill.me-1
               | Favorites
               span.badge.bg-danger.float-end {{favoritesCount}}
+            
+            //- Recently Viewed Section (hidden by default)
+            div.recently-viewed-section(ng-if="recentlyViewed.length > 0 && showRecentlyViewed")
+              div.d-flex.justify-content-between.align-items-center
+                h6(style="font-size: 0.75rem; margin: 0;")
+                  i.fas.fa-clock.me-1
+                  | Recent
+                div.d-flex.gap-1
+                  button.btn.btn-link.p-0(
+                    ng-click="clearRecentlyViewed()"
+                    title="Clear recently viewed"
+                    style="font-size: 0.6rem; text-decoration: none; padding: 2px !important;"
+                  )
+                    i.fas.fa-trash
+                  button.btn.btn-link.p-0(
+                    ng-click="toggleRecentlyViewed()"
+                    title="Hide recently viewed"
+                    style="font-size: 0.6rem; text-decoration: none; padding: 2px !important;"
+                  )
+                    i.fas.fa-times
+              
+              ul.list-group.list-group-flush
+                li.list-group-item.list-group-item-action.recent-item(
+                  ng-repeat="item in recentlyViewed"
+                  ng-click="viewRecentAlbum(item)"
+                  title="{{item.name}} - {{formatRecentTime(item.timestamp)}}"
+                )
+                  div.d-flex.justify-content-between.align-items-center
+                    div.text-truncate
+                      i.fas.fa-folder.text-muted
+                      span {{item.name}}
+                    span.badge.bg-secondary(style="font-size: 0.6rem;" ng-if="item.photoCount") {{item.photoCount}}
+            
+            //- Toggle Recently Viewed (shown when there are items and list is hidden)
+            button.btn.btn-sm.btn-outline-secondary.w-100(
+              ng-if="recentlyViewed.length > 0 && !showRecentlyViewed"
+              ng-click="toggleRecentlyViewed()"
+              style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-bottom: 4px;"
+              title="Show recently viewed albums"
+            )
+              i.fas.fa-clock.me-1
+              | Show Recent ({{recentlyViewed.length}})
             
             //- Albums list (filtered)
             ul.list-group.list-group-flush.albums-list
@@ -181,24 +254,54 @@ html(ng-app="app")
                   style="position: absolute; bottom: 10px; right: 10px; z-index: 5; width: 20px; height: 20px; cursor: pointer;"
                   title="Select for bulk operations"
                 )
+                //- Now Playing Indicator for audio
+                div.now-playing-badge(
+                  ng-if="image.isAudio && currentIndex >= 0 && (playlist[currentIndex] || {}).path === image.path"
+                  style="position: absolute; top: 10px; left: 10px; z-index: 5;"
+                )
+                  span.badge.bg-success(
+                    style="animation: pulse 1.5s infinite;"
+                  )
+                    i.fas.fa-volume-up.me-1
+                    | Now Playing
+                
+                //- Audio file - clickable to play
+                a(
+                  ng-if="image.isAudio"
+                  href="javascript:void(0)"
+                  ng-click="playAudio(image)"
+                  title="Click to play"
+                )
+                  figure(style="position: relative;")
+                    img.card-img-top.img-fluid(
+                      ng-src="music.png"
+                      alt="{{image.tags}}"
+                      loading="lazy"
+                      style="object-fit: contain; width: 100%; height: auto;"
+                    )
+                    i.overlay-icon.fas.fa-play-circle(
+                      style="font-size: 3rem;"
+                    )
+                
+                //- Non-audio files - fancybox
                 a(
                   ng-if="!image.isAudio"
                   ng-href="{{image.path}}"
                   data-fancybox="gallery"
                   data-caption="{{image.tags}}"
-                  ng-attr-data-type="{{image.isAudio ? 'iframe' : (image.isVideo ? 'video' : (image.isPdf ? 'iframe' : 'image'))}}"
+                  ng-attr-data-type="{{image.isVideo ? 'video' : (image.isPdf ? 'iframe' : 'image')}}"
                   ng-attr-data-width="{{image.isVideo ? '640' : undefined}}"
                   ng-attr-data-height="{{image.isVideo ? '360' : undefined}}"
                 )
                   figure
                     img.card-img-top.img-fluid(
-                      ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? 'pdf.png' : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
+                      ng-src="{{image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? 'pdf.png' : '/thumbs?id=' + image.path + '&w=300&h=200')}}"
                       alt="{{image.tags}}"
                       loading="lazy"
                       style="object-fit: contain; width: 100%; height: auto;"
                     )
                     i.overlay-icon(
-                      ng-class="{'fas fa-play-circle': image.isAudio || image.isVideo,'fas fa-file-pdf': image.isPdf,'fas fa-search-plus': image.isPhoto}"
+                      ng-class="{'fas fa-play-circle': image.isVideo,'fas fa-file-pdf': image.isPdf,'fas fa-search-plus': image.isPhoto}"
                     )
                 div.card-body.p-2
                   h6.card-title.mb-1.text-truncate
@@ -209,6 +312,7 @@ html(ng-app="app")
                     ) {{image.tags || 'Untitled'}}
                   
                   //- Action buttons for advanced features
+                  //- For photos and videos
                   div.d-flex.gap-1.mt-2(ng-if="!image.isAudio && !image.isPdf")
                     button.btn.btn-sm.btn-outline-info(
                       type="button"
@@ -231,124 +335,368 @@ html(ng-app="app")
                       title="Share photo"
                     )
                       i.fas.fa-share-alt.fa-sm
+                  
+                  //- For audio files
+                  div.d-flex.gap-1.mt-2(ng-if="image.isAudio")
+                    button.btn.btn-sm.btn-outline-primary(
+                      type="button"
+                      ng-click="playAudio(image)"
+                      title="Play audio"
+                    )
+                      i.fas.fa-play.fa-sm
+                    
+                    button.btn.btn-sm.btn-outline-danger(
+                      type="button"
+                      ng-click="toggleFavorite(image)"
+                      ng-class="{'active': image.isFavorite}"
+                      title="Favorite"
+                    )
+                      i.fas.fa-heart.fa-sm
+                    
+                    button.btn.btn-sm.btn-outline-success(
+                      type="button"
+                      ng-click="sharePhoto(image)"
+                      title="Share"
+                    )
+                      i.fas.fa-share-alt.fa-sm
+                    
+                    button.btn.btn-sm.btn-outline-secondary(
+                      type="button"
+                      ng-click="addToPlaylistQueue(image)"
+                      title="Add to playlist"
+                    )
+                      i.fas.fa-list.fa-sm
         // Audio Player Bar
-        div#playerBar.fixed-bottom.bg-light.border-top.p-2(ng-if="playlist.length > 0")
-          div.d-flex.align-items-center
-            i.fas.fa-music.me-2
-            strong.me-2 {{ playlist[currentIndex].tags || 'Untitled' }}
-
-            // Controls
-            button.btn.btn-sm.btn-outline-secondary.me-2(ng-click="prev()")
-              i.fas.fa-backward
-            button.btn.btn-sm.btn-outline-primary.me-2(ng-click="togglePlay()")
-              i(ng-class="{'fas fa-pause': isPlaying, 'fas fa-play': !isPlaying}")
-            button.btn.btn-sm.btn-outline-secondary.me-2(ng-click="next()")
-              i.fas.fa-forward
-
-            // Progress bar
-            div.flex-grow-1.mx-2.progress-bar-container(
-              ng-click="seek($event)"
-              style="height:6px; background:#ddd; cursor:pointer; position:relative;"
-            )
-              div(style="height:100%; background:#4285f4; width:{{progress}}%;")
-
-            small.text-muted.ms-2 {{ currentTime }} / {{ duration }}
-
-          // Playlist display
-          div.mt-2(style="max-height:150px; overflow-y:auto;")
-            ul.list-group
-              li.list-group-item(
-                ng-repeat="track in playlist track by $index"
-                ng-class="{'active': $index === currentIndex}"
-                ng-click="playAudio(track)"
-                style="cursor:pointer;"
+        div#playerBar.fixed-bottom.bg-light.border-top.shadow-lg(ng-if="playlist.length > 0" style="z-index: 1030;")
+          div.p-2
+            div.d-flex.align-items-center.justify-content-between.mb-2
+              div.d-flex.align-items-center.flex-grow-1
+                i.fas.fa-music.me-2.text-primary
+                div.flex-grow-1
+                  strong.d-block.text-truncate(style="max-width: 250px;") {{ playlist[currentIndex].tags || 'Untitled' }}
+                  small.text-muted Track {{currentIndex + 1}} of {{playlist.length}}
+              
+              //- Playlist toggle button
+              button.btn.btn-sm.btn-outline-secondary(
+                ng-click="showPlaylist = !showPlaylist"
+                title="Toggle playlist"
               )
-                i.fas.fa-music.me-2
-                | {{ track.tags || 'Untitled' }}   
+                i.fas.fa-list.me-1
+                | Playlist ({{playlist.length}})
+                i.fas(
+                  ng-class="{'fa-chevron-up': showPlaylist, 'fa-chevron-down': !showPlaylist}"
+                  style="margin-left: 4px;"
+                )
+
+            div.d-flex.align-items-center
+              // Controls
+              button.btn.btn-sm.btn-outline-secondary.me-2(ng-click="prev()" title="Previous")
+                i.fas.fa-backward
+              button.btn.btn-sm.btn-primary.me-2(ng-click="togglePlay()" title="Play/Pause" style="width: 40px;")
+                i(ng-class="{'fas fa-pause': isPlaying, 'fas fa-play': !isPlaying}")
+              button.btn.btn-sm.btn-outline-secondary.me-2(ng-click="next()" title="Next")
+                i.fas.fa-forward
+              
+              button.btn.btn-sm.btn-outline-secondary.me-2(
+                ng-click="toggleRepeat()"
+                ng-class="{'btn-success': isRepeat}"
+                title="Repeat"
+              )
+                i.fas.fa-redo
+              
+              button.btn.btn-sm.btn-outline-secondary.me-2(
+                ng-click="toggleShuffle()"
+                ng-class="{'btn-success': isShuffle}"
+                title="Shuffle"
+              )
+                i.fas.fa-random
+
+              // Progress bar
+              div.flex-grow-1.mx-2.progress(
+                ng-click="seek($event)"
+                style="height:8px; cursor:pointer;"
+              )
+                div.progress-bar.bg-primary(style="width:{{progress}}%;")
+
+              small.text-muted.ms-2(style="min-width: 80px; text-align: right;") {{ currentTime }} / {{ duration }}
+              
+              //- Volume control
+              div.ms-2.d-flex.align-items-center
+                i.fas.fa-volume-up.me-1
+                input.form-range(
+                  type="range"
+                  min="0"
+                  max="100"
+                  ng-model="volume"
+                  ng-change="setVolume()"
+                  style="width: 80px;"
+                  title="Volume"
+                )
+
+          // Collapsible Playlist display
+          div.playlist-container(
+            ng-if="showPlaylist"
+            style="max-height:200px; overflow-y:auto; border-top: 1px solid #dee2e6;"
+          )
+            ul.list-group.list-group-flush
+              li.list-group-item.d-flex.justify-content-between.align-items-center(
+                ng-repeat="track in playlist track by $index"
+                ng-class="{'active bg-primary text-white': $index === currentIndex}"
+                ng-click="playTrackByIndex($index)"
+                style="cursor:pointer; padding: 8px 12px;"
+              )
+                div.d-flex.align-items-center.flex-grow-1
+                  i.fas(
+                    ng-class="{'fa-volume-up': $index === currentIndex && isPlaying, 'fa-music': $index !== currentIndex || !isPlaying}"
+                    style="margin-right: 8px;"
+                  )
+                  span.text-truncate(style="max-width: 300px;") {{ track.tags || 'Untitled' }}
+                button.btn.btn-sm.btn-link.text-danger(
+                  ng-click="removeFromPlaylist($index); $event.stopPropagation();"
+                  title="Remove from playlist"
+                  style="padding: 0; margin-left: 8px;"
+                )
+                  i.fas.fa-times   
       button#goTopBtn.btn.btn-primary.rounded-circle.shadow(
         ng-click="scrollToTop()"
         title="Go to top"
       )
         i.fas.fa-arrow-up
 
-      //- Edit Tag Modal
+      //- Cache Stats Modal
+      div.modal.fade#cacheStatsModal(tabindex="-1" aria-labelledby="cacheStatsLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered.modal-lg
+          div.modal-content
+            div.modal-header.bg-light
+              h5.modal-title#cacheStatsLabel
+                i.fas.fa-chart-pie.me-2
+                | Cache Statistics
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              //- Stats Summary
+              div.row.mb-4
+                div.col-md-4
+                  div.card.border-primary
+                    div.card-body
+                      h6.card-title.text-primary
+                        i.fas.fa-database.me-2
+                        | Performance
+                      p.mb-1
+                        small.text-muted Cache Hit Rate:
+                        br
+                        strong {{cacheStats.hitRate}}
+                      p.mb-1
+                        small.text-muted Total Hits:
+                        br
+                        strong {{cacheStats.hits}}
+                      p.mb-0
+                        small.text-muted Total Misses:
+                        br
+                        strong {{cacheStats.misses}}
+                div.col-md-4
+                  div.card.border-success
+                    div.card-body
+                      h6.card-title.text-success
+                        i.fas.fa-memory.me-2
+                        | Memory Usage
+                      p.mb-1
+                        small.text-muted Cache Size:
+                        br
+                        strong {{cacheStats.cacheSizeMB}} MB
+                      p.mb-1
+                        small.text-muted Max Size:
+                        br
+                        strong {{cacheStats.maxCacheBytes}} MB
+                      p.mb-0
+                        small.text-muted Entries:
+                        br
+                        strong {{cacheStats.cacheEntries}} / {{cacheStats.maxCacheEntries}}
+                div.col-md-4
+                  div.card.border-info
+                    div.card-body
+                      h6.card-title.text-info
+                        i.fas.fa-folder-open.me-2
+                        | Album Discovery
+                      p.mb-1
+                        small.text-muted Albums Tracked:
+                        br
+                        strong {{cacheStats.totalAlbumsTracked || 0}}
+                      p.mb-1
+                        small.text-muted Scan Frequency:
+                        br
+                        strong Every 15 min
+                      p.mb-0
+                        small.text-muted
+                          a(href="#" ng-click="scanForNewAlbums()" style="text-decoration: none;")
+                            i.fas.fa-sync.me-1
+                            | Scan Now
+              
+              //- Top Albums Table
+              div(ng-if="topAlbums.length > 0")
+                h6.text-muted.mb-3
+                  i.fas.fa-star.me-2
+                  | Most Accessed Albums
+                div.table-responsive
+                  table.table.table-sm.table-hover
+                    thead.table-light
+                      tr
+                        th Album
+                        th Hits
+                        th Last Indexed
+                    tbody
+                      tr(ng-repeat="album in topAlbums")
+                        td
+                          span.text-truncate(title="{{album.album}}")
+                            i.fas.fa-folder.me-1
+                            | {{album.album | limitTo:40}}
+                        td
+                          span.badge.bg-info {{album.hits}}
+                        td
+                          small.text-muted {{album.lastIndexed | date:'short'}}
+            div.modal-footer
+              button.btn.btn-outline-danger(
+                type="button"
+                ng-click="clearAllCache()"
+                ng-disabled="!cacheStats.cacheEntries"
+              )
+                i.fas.fa-trash.me-1
+                | Clear All
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal")
+                i.fas.fa-times.me-1
+                | Close
+
+      //- Edit Tags Modal (for existing photos)
       div.modal.fade#editTagModal(tabindex="-1" aria-labelledby="editTagModalLabel" aria-hidden="true")
         div.modal-dialog.modal-dialog-centered
           div.modal-content
             div.modal-header
-              h5.modal-title#editTagModalLabel Update photo description
+              h5.modal-title#editTagModalLabel
+                i.fas.fa-tags.me-2
+                | Edit Photo Tags
               button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
             div.modal-body
-              //- Show selected image if it's a photo
-              img.img-fluid#selectedFile(
-                ng-if="selectedPhoto.isPhoto"
-                ng-src="{{selectedPhoto.path}}"
-                width="225"
-                height="150"
-              )
-
-              form(name="editTagForm" novalidate)
-                input(type="hidden" name="id" ng-value="selectedPhoto.id")
-                input(type="hidden" name="name" ng-value="selectedPhoto.path")
-
-                .mb-3
-                  label.form-label(for="tags") Tags
-                  select.form-select(
-                    id="tags"
-                    ng-model="selectedOption"
-                    ng-change="selectedTag = selectedOption"
-                  )
-                    option(ng-repeat="tag in tags" value="{{tag.tags}}") {{tag.tags}}
-
-                .mb-3
-                  label.form-label(for="desc") Description
-                  textarea.form-control#desc(
-                    name="tags"
-                    rows="4"
-                    cols="80"
-                    ng-model="selectedPhoto.tags"
-                  )
+              div.mb-3(ng-if="selectedPhoto.tags")
+                h6.text-muted.mb-2
+                  i.fas.fa-th.me-2
+                  | Current Tags
+                div(ng-repeat="tag in selectedPhoto.tags.split(',')" ng-if="selectedPhoto.tags")
+                  span.badge.bg-secondary.me-1 {{tag.trim()}}
+              div.mb-3
+                label.form-label Tags
+                textarea.form-control(
+                  ng-model="selectedPhoto.tags"
+                  rows="4"
+                  placeholder="Enter tags (comma-separated) or detailed description"
+                  required
+                )
+                small.text-muted
+                  | You can: 1) Select and copy a tag from above, 2) Manually type/edit tags, 3) Add comma-separated tags
 
             div.modal-footer
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
+              button.btn.btn-outline-danger(
+                type="button"
+                ng-click="clearTagText()"
+                ng-if="selectedPhoto.tags && selectedPhoto.tags.trim() !== ''"
+                title="Clear all text"
+              )
+                i.fas.fa-eraser.me-1
+                | Clear
               button.btn.btn-primary(
                 type="button"
                 ng-click="submitEditTagForm()"
                 data-bs-dismiss="modal"
-              ) Update
-              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
+                ng-disabled="!selectedPhoto.tags || selectedPhoto.tags.trim() === ''"
+              ) 
+                i.fas.fa-save.me-1
+                | Update
 
       //- Search Modal
       div.modal.fade#searchModal(tabindex="-1" aria-labelledby="searchModalLabel" aria-hidden="true")
         div.modal-dialog.modal-dialog-centered
           div.modal-content
             div.modal-header
-              h5.modal-title#searchModalLabel Search
+              h5.modal-title#searchModalLabel
+                i.fas.fa-search.me-2
+                | Search Photos
               button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
             div.modal-body
-              input.form-control(type="text" placeholder="Type to search..." ng-model="searchTag" ng-keypress="($event.which === 13) && search()")
-              div.mt-3
-                h6.text-muted Tags
-                div.d-flex.flex-wrap.gap-2
+              //- Search input with clear button
+              div.position-relative.mb-3
+                input.form-control#searchInput(
+                  type="text"
+                  placeholder="Type to search..."
+                  ng-model="searchTag"
+                  ng-keypress="($event.which === 13) && search()"
+                  autofocus
+                )
+                button.btn-search-clear(
+                  ng-show="searchTag"
+                  ng-click="searchTag = ''"
+                  type="button"
+                  title="Clear search"
+                )
+                  i.fas.fa-times
+              //- Tags section
+              div(ng-if="filteredTags.length > 0")
+                div.d-flex.justify-content-between.align-items-center.mb-2
+                  h6.text-muted.mb-0
+                    i.fas.fa-tags.me-2
+                    | Available Tags
+                  span.badge.bg-info {{filteredTags.length}} tags
+                div.d-flex.flex-wrap.gap-2(style="max-height: 200px; overflow-y: auto;")
                   a.badge.bg-secondary.text-white.text-decoration-none(
                     ng-repeat="tag in filteredTags"
                     ng-click="searchByTag(tag.tag)"
                     style="cursor: pointer;"
+                    title="Click to search for {{tag.tag}}"
                   ) {{tag.tag}}
-            div.modal-footer
-              button.btn.btn-primary(type="button" ng-click="search()" data-bs-dismiss="modal") Search
-              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
+            div.modal-footer.d-flex.justify-content-between
+              button.btn.btn-outline-secondary(
+                type="button"
+                ng-click="searchTag = ''"
+                ng-disabled="!searchTag"
+              )
+                i.fas.fa-eraser.me-1
+                | Clear
+              div
+                button.btn.btn-secondary.me-2(type="button" data-bs-dismiss="modal")
+                  i.fas.fa-times.me-1
+                  | Cancel
+                button.btn.btn-primary(
+                  type="button"
+                  ng-click="search()"
+                  ng-disabled="!searchTag || searchTag.trim() === ''"
+                  data-bs-dismiss="modal"
+                )
+                  i.fas.fa-search.me-1
+                  | Search
       
       //- EXIF Details Modal
       div.modal.fade#exifModal(tabindex="-1" aria-labelledby="exifModalLabel" aria-hidden="true")
-        div.modal-dialog.modal-dialog-centered.modal-lg
+        div.modal-dialog.modal-dialog-centered.modal-lg(style="max-width: 90vw;")
           div.modal-content
-            div.modal-header
-              h5.modal-title#exifModalLabel 📸 Photo Details
+            div.modal-header.d-flex.justify-content-between.align-items-center
+              div.d-flex.align-items-center.gap-2
+                button.btn.btn-sm.btn-outline-secondary(
+                  type="button"
+                  data-bs-dismiss="modal"
+                  title="Go back"
+                  style="padding: 0.25rem 0.5rem;"
+                )
+                  i.fas.fa-arrow-left
+                h5.modal-title#exifModalLabel 📸 Photo Details
               button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
-            div.modal-body#exif-modal-body
+            div.modal-body#exif-modal-body(style="max-height: 70vh; overflow-y: auto;")
               p.text-center.text-muted Loading EXIF data...
             div.modal-footer
-              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
+              button.btn.btn-secondary(
+                type="button"
+                data-bs-dismiss="modal"
+                style="width: 100%;"
+              ) 
+                i.fas.fa-times.me-1
+                | Close
       
       //- File upload Modal
       div.modal.fade#uploadModal(tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true")
@@ -391,6 +739,7 @@ html(ng-app="app")
     script(src="js/directives/shrinkHeaderDirective.js")
     script(src="js/services/photoService.js")
     script(src="js/services/modalService.js")
+    script(src="js/services/recentlyViewedService.js")
     
     //- Advanced Features Components
     script(src="js/advanced-search.js")

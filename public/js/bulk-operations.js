@@ -17,14 +17,20 @@ class BulkOperations {
   createBulkUI() {
     const html = `
       <div id="bulk-toolbar" class="bulk-toolbar" style="display: none;">
-        <div class="bulk-info">
-          <label>
-            <input type="checkbox" id="select-all-checkbox" />
-            <strong id="selected-count">0 selected</strong>
-          </label>
+        <div class="bulk-toolbar-header">
+          <div class="bulk-info">
+            <label>
+              <input type="checkbox" id="select-all-checkbox" />
+              <strong id="selected-count">0 selected</strong>
+            </label>
+          </div>
+          <button id="btn-bulk-toggle" class="bulk-toggle-btn" title="Toggle bulk operations">
+            <i class="fas fa-chevron-down"></i>
+            <span>Options</span>
+          </button>
         </div>
 
-        <div class="bulk-actions">
+        <div class="bulk-actions" id="bulk-actions-container">
           <!-- Tag Section -->
           <div class="action-group">
             <input 
@@ -89,6 +95,18 @@ class BulkOperations {
   }
 
   attachEventListeners() {
+    // Toggle bulk actions on mobile
+    const toggleBtn = document.getElementById('btn-bulk-toggle');
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', () => {
+        const toolbar = document.getElementById('bulk-toolbar');
+        toolbar.classList.toggle('collapsed');
+        const icon = toggleBtn.querySelector('i');
+        icon.classList.toggle('fa-chevron-down');
+        icon.classList.toggle('fa-chevron-up');
+      });
+    }
+
     // Select/Deselect all
     document.getElementById('select-all-checkbox').addEventListener('change', (e) => {
       this.selectAll(e.target.checked);

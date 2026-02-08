@@ -512,8 +512,8 @@ body {
   background: #f8f9fa;
   border: 1px solid #dee2e6;
   border-radius: 8px;
-  padding: 15px;
-  height: calc(100vh - 200px);
+  padding: 10px;
+  height: calc(100vh - 140px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -523,28 +523,31 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 12px;
+  gap: 0.3rem;
+  margin-bottom: 6px;
 }
 
 .albums-title {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #333;
   margin: 0;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #dee2e6;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #dee2e6;
   display: flex;
   align-items: center;
   flex: 1;
 }
 
+.albums-title i {
+  font-size: 0.8rem;
+}
+
 .back-button {
   white-space: nowrap;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.85rem;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
   flex-shrink: 0;
-  margin-bottom: 10px;
 }
 
 .back-button:disabled {
@@ -554,18 +557,19 @@ body {
 }
 
 .albums-search {
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   position: relative;
 }
 
 .albums-search input {
-  border-radius: 4px;
-  font-size: 0.85rem;
-  padding-left: 12px;
-  padding-right: 36px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  padding-right: 28px;
   width: 100%;
   border: 1px solid #dee2e6;
   transition: border-color 0.2s, box-shadow 0.2s;
+  height: 28px;
 }
 
 .albums-search input::placeholder {
@@ -581,24 +585,24 @@ body {
 
 .btn-albums-clear {
   position: absolute;
-  right: 4px;
+  right: 2px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
   border: none;
   color: #6c757d;
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 2px 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: 0.9rem;
   transition: color 0.2s;
   z-index: 100;
   pointer-events: all;
   line-height: 1;
-  min-width: 24px;
-  min-height: 24px;
+  min-width: 20px;
+  min-height: 20px;
 }
 
 .btn-albums-clear:hover {
@@ -616,6 +620,72 @@ body {
 .albums-list {
   flex: 1;
   overflow-y: auto;
+  min-height: 200px;
+}
+
+/* Compact button styles for albums sidebar */
+.albums-sidebar .btn-sm {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  height: 28px;
+  line-height: 1;
+}
+
+.albums-sidebar .btn-sm i {
+  font-size: 0.75rem;
+}
+
+.albums-sidebar .badge {
+  font-size: 0.65rem;
+  padding: 2px 4px;
+}
+
+.recently-viewed-section {
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  padding: 8px;
+  background: #fff;
+  max-height: 120px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.recently-viewed-section ul {
+  margin-bottom: 0;
+}
+
+.recently-viewed-section h6 {
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+
+.recently-viewed-section .btn-link {
+  padding: 0;
+  font-size: 0.7rem;
+}
+
+.recent-item {
+  transition: all 0.2s ease;
+  border-left: 2px solid transparent;
+  padding: 3px 4px !important;
+  font-size: 0.75rem !important;
+  margin-bottom: 2px;
+}
+
+.recent-item:hover {
+  background: #e9ecef;
+  border-left-color: #007bff;
+  transform: translateX(2px);
+}
+
+.recent-item i {
+  font-size: 0.65rem;
+}
+
+.recent-item .badge {
+  font-size: 0.65rem;
+  padding: 2px 4px;
 }
 
 .albums-no-results {
@@ -760,4 +830,152 @@ body {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* Search modal clear button */
+.btn-search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  z-index: 10;
+  border-radius: 3px;
+}
+
+.btn-search-clear:hover {
+  color: #fff;
+  background: #dc3545;
+}
+
+.btn-search-clear:active {
+  color: #fff;
+  background: #c82333;
+  transform: translateY(-50%) scale(0.95);
+}
+
+.btn-search-clear:focus {
+  outline: none;
+}
+
+/* Add padding to search input to make room for clear button */
+#searchInput {
+  padding-right: 35px;
+}
+
+/* Improve search modal styling */
+#searchModal .modal-body {
+  padding: 1.5rem;
+}
+
+#searchModal .modal-footer {
+  padding: 1rem 1.5rem;
+  background-color: #f8f9fa;
+}
+
+/* Responsive improvements for search modal */
+@media (max-width: 576px) {
+  #searchModal .modal-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  #searchModal .modal-footer > div {
+    width: 100%;
+    display: flex;
+    gap: 0.5rem;
+  }
+  
+  #searchModal .modal-footer button {
+    flex: 1;
+  }
+}
+
+/* Better tag badge styling in search modal */
+#searchModal .badge {
+  font-size: 0.85rem;
+  padding: 0.4em 0.65em;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+#searchModal .badge:hover {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Tag count badge */
+#searchModal .badge.bg-info {
+  font-size: 0.75rem;
+  padding: 0.25em 0.5em;
+}
+
+/* Cache management dropdown styles */
+.dropdown-toggle::after {
+  margin-left: 0.5em;
+}
+
+.dropdown-menu {
+  min-width: 180px;
+}
+
+.dropdown-item {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+}
+
+.dropdown-item small {
+  font-size: 0.8rem;
+}
+
+/* Cache stats modal styles */
+#cacheStatsModal .card {
+  border-width: 2px;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+#cacheStatsModal .card-body {
+  padding: 1rem;
+}
+
+#cacheStatsModal .card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+#cacheStatsModal .table {
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
+#cacheStatsModal .table th {
+  border-top: 1px solid #dee2e6;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+}
+
+#cacheStatsModal .table td {
+  padding: 0.5rem;
+  vertical-align: middle;
+}
+
+#cacheStatsModal .badge {
+  font-size: 0.75rem;
 }

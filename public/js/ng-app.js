@@ -1,1 +1,1 @@
-angular.module('app', ['photoController', 'PhotoService', 'ModalService', 'ModalDirective', 'FileModel']);
+angular.module('app', ['photoController', 'PhotoService', 'ModalService', 'ModalDirective', 'FileModel', 'RecentlyViewedService']);

@@ -1,0 +1,487 @@
+{
+  "imageCache": {
+    "C:\\MyData\\photos\\data\\pictures\\2018-Nov_0_20": {
+      "totalPhotos": 5,
+      "images": [
+        {
+          "id": "album0",
+          "path": "pictures/2018-Nov",
+          "name": "2018-Nov",
+          "isAlbum": true,
+          "album": "2018-Nov"
+        },
+        {
+          "id": "photo1",
+          "path": "data/pictures/2018-Nov/IMG_20181119_115115.jpg",
+          "name": "IMG_20181119_115115.jpg",
+          "isAlbum": false,
+          "album": "pictures/2018-Nov",
+          "tags": "IMG_20181119_115115"
+        },
+        {
+          "id": "photo2",
+          "path": "data/pictures/2018-Nov/IMG_20181122_085223.jpg",
+          "name": "IMG_20181122_085223.jpg",
+          "isAlbum": false,
+          "album": "pictures/2018-Nov",
+          "tags": "IMG_20181122_085223"
+        },
+        {
+          "id": "photo3",
+          "path": "data/pictures/2018-Nov/IMG_20181122_085248.jpg",
+          "name": "IMG_20181122_085248.jpg",
+          "isAlbum": false,
+          "album": "pictures/2018-Nov",
+          "tags": "IMG_20181122_085248"
+        },
+        {
+          "id": "photo4",
+          "path": "data/pictures/2018-Nov/sample-mkv-file.mkv",
+          "name": "sample-mkv-file.mkv",
+          "isAlbum": false,
+          "album": "pictures/2018-Nov",
+          "tags": "sample-mkv-file"
+        },
+        {
+          "id": "photo5",
+          "path": "data/pictures/2018-Nov/VID_20181114_131006.3gp",
+          "name": "VID_20181114_131006.3gp",
+          "isAlbum": false,
+          "album": "pictures/2018-Nov",
+          "tags": "VID_20181114_131006"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data_0_20": {
+      "totalPhotos": 0,
+      "images": [
+        {
+          "id": "album0",
+          "path": "",
+          "name": "Home",
+          "isAlbum": true,
+          "album": "Home"
+        },
+        {
+          "id": "album1",
+          "path": ".gitkeep",
+          "name": ".gitkeep",
+          "isAlbum": true,
+          "album": ".gitkeep"
+        },
+        {
+          "id": "album2",
+          "path": "711b-Feb",
+          "name": "711b-Feb",
+          "isAlbum": true,
+          "album": "711b-Feb"
+        },
+        {
+          "id": "album3",
+          "path": "books",
+          "name": "books",
+          "isAlbum": true,
+          "album": "books"
+        },
+        {
+          "id": "album4",
+          "path": "empty",
+          "name": "empty",
+          "isAlbum": true,
+          "album": "empty"
+        },
+        {
+          "id": "album5",
+          "path": "Home",
+          "name": "Home",
+          "isAlbum": true,
+          "album": "Home"
+        },
+        {
+          "id": "album6",
+          "path": "movies",
+          "name": "movies",
+          "isAlbum": true,
+          "album": "movies"
+        },
+        {
+          "id": "album7",
+          "path": "music",
+          "name": "music",
+          "isAlbum": true,
+          "album": "music"
+        },
+        {
+          "id": "album8",
+          "path": "pictures",
+          "name": "pictures",
+          "isAlbum": true,
+          "album": "pictures"
+        },
+        {
+          "id": "album9",
+          "path": "uploaded",
+          "name": "uploaded",
+          "isAlbum": true,
+          "album": "uploaded"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\pictures_0_20": {
+      "totalPhotos": 7,
+      "images": [
+        {
+          "id": "album0",
+          "path": "pictures",
+          "name": "pictures",
+          "isAlbum": true,
+          "album": "pictures"
+        },
+        {
+          "id": "photo1",
+          "path": "data/pictures/000_0147.jpg",
+          "name": "000_0147.jpg",
+          "isAlbum": false,
+          "album": "pictures",
+          "tags": "000_0147"
+        },
+        {
+          "id": "photo2",
+          "path": "data/pictures/000_0151.jpg",
+          "name": "000_0151.jpg",
+          "isAlbum": false,
+          "album": "pictures",
+          "tags": "000_0151"
+        },
+        {
+          "id": "photo3",
+          "path": "data/pictures/000_0221_1.jpg",
+          "name": "000_0221_1.jpg",
+          "isAlbum": false,
+          "album": "pictures",
+          "tags": "000_0221_1"
+        },
+        {
+          "id": "photo4",
+          "path": "data/pictures/000_0223.jpg",
+          "name": "000_0223.jpg",
+          "isAlbum": false,
+          "album": "pictures",
+          "tags": "000_0223"
+        },
+        {
+          "id": "photo5",
+          "path": "data/pictures/100_0004.jpg",
+          "name": "100_0004.jpg",
+          "isAlbum": false,
+          "album": "pictures",
+          "tags": "100_0004"
+        },
+        {
+          "id": "photo6",
+          "path": "data/pictures/100_0013.jpg",
+          "name": "100_0013.jpg",
+          "isAlbum": false,
+          "album": "pictures",
+          "tags": "100_0013"
+        },
+        {
+          "id": "album7",
+          "path": "pictures/2003-Jan",
+          "name": "2003-Jan",
+          "isAlbum": true,
+          "album": "2003-Jan"
+        },
+        {
+          "id": "album8",
+          "path": "pictures/2015-May",
+          "name": "2015-May",
+          "isAlbum": true,
+          "album": "2015-May"
+        },
+        {
+          "id": "album9",
+          "path": "pictures/2018-Nov",
+          "name": "2018-Nov",
+          "isAlbum": true,
+          "album": "2018-Nov"
+        },
+        {
+          "id": "album10",
+          "path": "pictures/2020-Jun",
+          "name": "2020-Jun",
+          "isAlbum": true,
+          "album": "2020-Jun"
+        },
+        {
+          "id": "album11",
+          "path": "pictures/nature",
+          "name": "nature",
+          "isAlbum": true,
+          "album": "nature"
+        },
+        {
+          "id": "album12",
+          "path": "pictures/nature2",
+          "name": "nature2",
+          "isAlbum": true,
+          "album": "nature2"
+        },
+        {
+          "id": "photo13",
+          "path": "data/pictures/small.mp4",
+          "name": "small.mp4",
+          "isAlbum": false,
+          "album": "pictures",
+          "tags": "small"
+        },
+        {
+          "id": "album14",
+          "path": "pictures/thumbs",
+          "name": "thumbs",
+          "isAlbum": true,
+          "album": "thumbs"
+        },
+        {
+          "id": "album15",
+          "path": "pictures/uploaded",
+          "name": "uploaded",
+          "isAlbum": true,
+          "album": "uploaded"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\pictures\\2015-May_0_20": {
+      "totalPhotos": 6,
+      "images": [
+        {
+          "id": "album0",
+          "path": "pictures/2015-May",
+          "name": "2015-May",
+          "isAlbum": true,
+          "album": "2015-May"
+        },
+        {
+          "id": "photo1",
+          "path": "data/pictures/2015-May/20150522_234311.jpg",
+          "name": "20150522_234311.jpg",
+          "isAlbum": false,
+          "album": "pictures/2015-May",
+          "tags": "20150522_234311"
+        },
+        {
+          "id": "photo2",
+          "path": "data/pictures/2015-May/20150523_055755.jpg",
+          "name": "20150523_055755.jpg",
+          "isAlbum": false,
+          "album": "pictures/2015-May",
+          "tags": "20150523_055755"
+        },
+        {
+          "id": "photo3",
+          "path": "data/pictures/2015-May/20150523_055806.jpg",
+          "name": "20150523_055806.jpg",
+          "isAlbum": false,
+          "album": "pictures/2015-May",
+          "tags": "20150523_055806"
+        },
+        {
+          "id": "photo4",
+          "path": "data/pictures/2015-May/20150523_055819.jpg",
+          "name": "20150523_055819.jpg",
+          "isAlbum": false,
+          "album": "pictures/2015-May",
+          "tags": "20150523_055819"
+        },
+        {
+          "id": "photo5",
+          "path": "data/pictures/2015-May/20150523_055830.jpg",
+          "name": "20150523_055830.jpg",
+          "isAlbum": false,
+          "album": "pictures/2015-May",
+          "tags": "20150523_055830"
+        },
+        {
+          "id": "photo6",
+          "path": "data/pictures/2015-May/small.3gp",
+          "name": "small.3gp",
+          "isAlbum": false,
+          "album": "pictures/2015-May",
+          "tags": "small"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\pictures\\2020-Jun_0_20": {
+      "totalPhotos": 5,
+      "images": [
+        {
+          "id": "album0",
+          "path": "pictures/2020-Jun",
+          "name": "2020-Jun",
+          "isAlbum": true,
+          "album": "2020-Jun"
+        },
+        {
+          "id": "photo1",
+          "path": "data/pictures/2020-Jun/IMG20200605114312.jpg",
+          "name": "IMG20200605114312.jpg",
+          "isAlbum": false,
+          "album": "pictures/2020-Jun",
+          "tags": "IMG20200605114312"
+        },
+        {
+          "id": "photo2",
+          "path": "data/pictures/2020-Jun/IMG20200605114339.jpg",
+          "name": "IMG20200605114339.jpg",
+          "isAlbum": false,
+          "album": "pictures/2020-Jun",
+          "tags": "IMG20200605114339"
+        },
+        {
+          "id": "photo3",
+          "path": "data/pictures/2020-Jun/sample-avi-file.avi",
+          "name": "sample-avi-file.avi",
+          "isAlbum": false,
+          "album": "pictures/2020-Jun",
+          "tags": "sample-avi-file"
+        },
+        {
+          "id": "photo4",
+          "path": "data/pictures/2020-Jun/sample-mov-file.mov",
+          "name": "sample-mov-file.mov",
+          "isAlbum": false,
+          "album": "pictures/2020-Jun",
+          "tags": "sample-mov-file"
+        },
+        {
+          "id": "photo5",
+          "path": "data/pictures/2020-Jun/sample-mpg-file.mpg",
+          "name": "sample-mpg-file.mpg",
+          "isAlbum": false,
+          "album": "pictures/2020-Jun",
+          "tags": "sample-mpg-file"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    }
+  },
+  "albumMeta": {
+    ".gitkeep": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.121Z"
+    },
+    "711b-Feb": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.122Z"
+    },
+    "books": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.122Z"
+    },
+    "empty": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.122Z"
+    },
+    "Home": {
+      "mtime": 1769597994089,
+      "indexed": "2026-02-08T22:30:03.963Z",
+      "hits": 1,
+      "discovered": "2026-02-08T22:29:16.122Z"
+    },
+    "movies": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.122Z"
+    },
+    "music": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures": {
+      "mtime": 1770043030480,
+      "indexed": "2026-02-08T22:30:18.694Z",
+      "hits": 1,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures/2003-Jan": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures/2015-May": {
+      "mtime": 1733740968628,
+      "indexed": "2026-02-08T22:30:49.573Z",
+      "hits": 1,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures/2018-Nov": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures/2020-Jun": {
+      "mtime": 1733740972695,
+      "indexed": "2026-02-08T22:31:08.173Z",
+      "hits": 1,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures/nature": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures/nature2": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures/thumbs": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures/uploaded": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "uploaded": {
+      "mtime": null,
+      "indexed": null,
+      "hits": 0,
+      "discovered": "2026-02-08T22:29:16.123Z"
+    }
+  },
+  "savedAt": "2026-02-08T22:34:16.121Z",
+  "stats": {
+    "entries": 5,
+    "albums": 17,
+    "sizeBytes": 5768
+  }
+}

@@ -61,6 +61,11 @@ app.use(fileUpload({
 app.use(urlencoded({ extended: true }));
 app.use(json());
 
+// Handle favicon.ico requests - prevent 404 errors
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end(); // No Content response
+});
+
 // Mount API routes BEFORE static file serving to prevent conflicts
 app.use('/api', advancedFeaturesRoutes);
 

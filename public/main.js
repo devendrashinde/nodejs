@@ -1,14 +1,25 @@
 var activeFilter = 'all';
 
-// Create templates for buttons
-$.fancybox.defaults.btnTpl.exif = '<button data-fancybox-exif class="fancybox-button fancybox-button--exif" title="Show/Hide EXIF data (camera settings)"  onClick="javascript:toggleExif()" >' +
-'<img src="res/exif.svg"  class="roundbutton"  alt="Show/Hide EXIF data (camera settings)" title="Show/Hide EXIF data (camera settings)" >'  +
-  '</button>';
-
 // Detect mobile device
 var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-// Handle PDF clicks on mobile BEFORE fancybox processes them
+// Initialize Fancybox on gallery links
+function initFancybox() {
+  if (typeof $.fancybox === 'undefined') return;
+  
+  // Bind Fancybox to gallery links
+  $('[data-fancybox="gallery"]').fancybox({
+    loop: true,
+    autoSize: true,
+    buttons: ['zoom', 'slideShow', 'close']
+  });
+}
+
+$(document).ready(function() {
+  initFancybox();
+});
+
+// Handle PDF clicks
 if (isMobile) {
   $(document).on('click', 'a[data-fancybox="gallery"]', function(e) {
     var href = $(this).attr('href') || $(this).attr('data-src');
@@ -28,70 +39,6 @@ if (isMobile) {
     }
   });
 }
-
-// Configure Fancybox with proper handlers for different media types
-$('[data-fancybox="gallery"]').fancybox({
-  buttons : [
-    'zoom',
-    'slideShow',
-    'exif',
-    'thumbs',
-    'close'
-  ],
-  thumbs : {
-    autoStart : true
-  },
-  // Additional configuration for iframe and video handling
-  iframe: {
-    preload: false,
-    css: {
-      width: '100%',
-      height: '100%'
-    }
-  },
-  // Support for various video formats with proper codec detection
-  video: {
-    autoStart: true,
-    format: 'html5' // Force HTML5 video player
-  },
-  // Prevent browser default download dialog
-  protect: false,
-  // Handle file downloads appropriately
-  on: {
-    beforeLoad: function(instance, slide) {
-      // Handle PDF files on desktop with Google Docs Viewer
-      if (slide.src && typeof slide.src === 'string' && !isMobile) {
-        var ext = slide.src.toLowerCase().split('.').pop().split('?')[0];
-        
-        if (ext === 'pdf') {
-          var pdfUrl = slide.src;
-          if (!pdfUrl.startsWith('http')) {
-            pdfUrl = window.location.origin + '/' + pdfUrl.replace(/^\/+/, '');
-          }
-          
-          // On desktop, use Google Docs Viewer
-          slide.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(pdfUrl) + '&embedded=true';
-          slide.type = 'iframe';
-          slide.opts.iframe = {
-            preload: false,
-            css: {
-              width: '90%',
-              height: '90%'
-            }
-          };
-        }
-      }
-    },
-    reveal: function(instance, slide) {
-      // Additional processing for different file types
-      if (slide.$content && slide.$content.tagName === 'VIDEO') {
-        // Ensure video controls are visible
-        slide.$content.controls = true;
-        slide.$content.controlsList = 'nodownload';
-      }
-    }
-  }
-});
 
 function updateTag(photoId, photoTag, newPhotoId){
   var controller = angular.element(document.querySelector('#controller')).scope();

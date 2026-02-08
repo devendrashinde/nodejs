@@ -2,7 +2,7 @@
 angular.module('photoController', [])
 
     // inject the Photo service factory into our controller
-    .controller('photoController', ['$scope','$http', '$location','PhotoService','ModalService','RecentlyViewedService', function($scope, $http, $location, PhotoService, ModalService, RecentlyViewedService) {
+    .controller('photoController', ['$scope','$http', '$location','$timeout','PhotoService','ModalService','RecentlyViewedService', function($scope, $http, $location, $timeout, PhotoService, ModalService, RecentlyViewedService) {
 
         $scope.formData = {};
         $scope.tags = [];
@@ -100,7 +100,14 @@ angular.module('photoController', [])
                         updatePhotoTagsFromDb(response.data);
                         // Load favorites for these photos
                         $scope.loadUserFavorites();
-                        $scope.loading = false;                     
+                        $scope.loading = false;
+                        
+                        // Reinitialize Fancybox after Angular renders new images
+                        $timeout(function() {
+                          if (typeof initFancybox === 'function') {
+                            initFancybox();
+                          }
+                        }, 100);
                 }, function errorCallback(response) {
                     // called asynchronously if an error occurs
                     // or server returns response with an error status.
@@ -326,6 +333,13 @@ angular.module('photoController', [])
                     $scope.totalPages = 1;
                     $scope.tags = [];
                     $scope.loading = false;
+                    
+                    // Reinitialize Fancybox after Angular renders favorites
+                    $timeout(function() {
+                      if (typeof initFancybox === 'function') {
+                        initFancybox();
+                      }
+                    }, 100);
                 }, function errorCallback(response) {
                     console.error('Error loading favorites:', response);
                     $scope.photos = [];

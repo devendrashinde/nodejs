@@ -61,6 +61,45 @@ CREATE TABLE `albums` (
   COMMENT='Album metadata and tagging';
 
 -- ============================================
+-- Playlists Table - User-created playlists grouping media files
+-- ============================================
+DROP TABLE IF EXISTS `playlists`;
+CREATE TABLE `playlists` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Playlist name',
+  `tags` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Comma-separated playlist tags',
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Playlist description',
+  `item_count` int NOT NULL DEFAULT 0 COMMENT 'Number of items in playlist',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation time',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_playlist_name` (`name`(255)) COMMENT 'Unique playlist name',
+  KEY `idx_item_count` (`item_count`) COMMENT 'Index for sorting by size',
+  FULLTEXT KEY `idx_playlist_tags_fulltext` (`tags`) COMMENT 'Full-text search on playlist tags'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci 
+  COMMENT='User-created playlists for grouping media';
+
+-- ============================================
+-- Playlist Items Table - Many-to-many relationship between playlists and photos
+-- ============================================
+DROP TABLE IF EXISTS `playlist_items`;
+CREATE TABLE `playlist_items` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `playlist_id` int NOT NULL COMMENT 'Reference to playlist',
+  `photo_id` int NOT NULL COMMENT 'Reference to photo/media',
+  `position` int NOT NULL DEFAULT 0 COMMENT 'Order position in playlist',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_playlist_photo` (`playlist_id`, `photo_id`) COMMENT 'Prevent duplicates',
+  KEY `idx_playlist_id` (`playlist_id`) COMMENT 'Index for playlist queries',
+  KEY `idx_photo_id` (`photo_id`) COMMENT 'Index for photo queries',
+  KEY `idx_position` (`playlist_id`, `position`) COMMENT 'Index for ordering',
+  CONSTRAINT `fk_playlist_items_playlist` FOREIGN KEY (`playlist_id`) REFERENCES `playlists` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_playlist_items_photo` FOREIGN KEY (`photo_id`) REFERENCES `photos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci 
+  COMMENT='Media items in playlists (many-to-many relationship)';
+
+-- ============================================
 -- Tags Table - Tag management for autocomplete
 -- ============================================
 DROP TABLE IF EXISTS `tags`;

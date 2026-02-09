@@ -1,6 +1,15 @@
 
 angular.module('photoController', [])
 
+    // Custom filter to remove file extension
+    .filter('stripExtension', function() {
+        return function(filename) {
+            if (!filename) return filename;
+            const lastDot = filename.lastIndexOf('.');
+            return lastDot > 0 ? filename.substring(0, lastDot) : filename;
+        };
+    })
+
     // inject the Photo service factory into our controller
     .controller('photoController', ['$scope','$http', '$location','$timeout','PhotoService','ModalService','RecentlyViewedService', function($scope, $http, $location, $timeout, PhotoService, ModalService, RecentlyViewedService) {
 
@@ -23,6 +32,14 @@ angular.module('photoController', [])
         $scope.albumsSearchText = ""; // albums list search text
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
+        
+        // Playlist variables
+        $scope.playlists = []; // Array of user playlists
+        $scope.selectedView = 'albums'; // Toggle between 'albums' and 'playlists'
+        $scope.playlistsSearchText = ""; // Playlists list search text
+        $scope.editingPlaylist = {}; // For playlist creation/edit modal
+        $scope.selectedPlaylistItems = []; // Photos in selected playlist
+        $scope.showPlaylistModal = false; // Toggle playlist creation modal
         imageTypes = ['jpg', 'png', 'jpeg', 'bmp', 'gif'];
         videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v', 'divx', 'xvid'];
         audioTypes = ['mp3', 'amr', 'wav'];
@@ -61,6 +78,24 @@ angular.module('photoController', [])
         // when landing on the page, get all photos and tags and show them
         // use the service to get all the photo tags
         loadPhotos();
+        loadPlaylists(); // Load playlists for display in sidebar
+        
+        // Dynamically adjust main content padding when player bar appears/disappears
+        $scope.$watch('playlist.length', function(newVal, oldVal) {
+            if (newVal > 0) {
+                // Player bar is visible
+                $timeout(function() {
+                    const playerBar = document.getElementById('playerBar');
+                    if (playerBar) {
+                        const playerHeight = playerBar.offsetHeight || 250;
+                        document.querySelector('main').style.paddingBottom = (playerHeight + 50) + 'px';
+                    }
+                }, 100);
+            } else {
+                // Player bar is hidden
+                document.querySelector('main').style.paddingBottom = '0';
+            }
+        });
 
         $scope.search = function() {
             if($scope.searchTag && $scope.searchTag.trim() !== ''){
@@ -918,6 +953,268 @@ angular.module('photoController', [])
                     console.error('Error searching albums by tag:', error);
                     $scope.loading = false;
                     alert('Failed to search albums by tag');
+                });
+        };
+
+        // =====================================================================
+        // PLAYLIST FUNCTIONS ===================================================
+        // =====================================================================
+
+        // Load playlists from database
+        function loadPlaylists() {
+            PhotoService.getPlaylists()
+                .then(function(playlists) {
+                    console.log('Loaded playlists:', playlists);
+                    $scope.playlists = playlists || [];
+                })
+                .catch(function(error) {
+                    console.error('Error loading playlists:', error);
+                    $scope.playlists = [];
+                });
+        }
+
+        // Switch between Albums and Playlists view
+        $scope.switchView = function(view) {
+            $scope.selectedView = view;
+            if (view === 'playlists') {
+                loadPlaylists();
+            }
+        };
+
+        // Set selected playlist
+        $scope.setPlaylist = function(playlist) {
+            $scope.loading = true;
+            
+            PhotoService.getPlaylistItems(playlist.id)
+                .then(function(items) {
+                    console.log('Loaded playlist items:', items);
+                    $scope.selectedPlaylistItems = items || [];
+                    $scope.selectedAlbum = {
+                        id: playlist.id,
+                        name: playlist.name,
+                        isPlaylist: true
+                    };
+                    $scope.loading = false;
+                    
+                    // Display playlist items like album photos
+                    // Important: set media type properties for each item
+                    const photos = (items || []).map(photo => getImageType(photo));
+                    $scope.photos = photos;
+                    $scope.totalPhotos = photos.length;
+                    $scope.totalPages = 1;
+                })
+                .catch(function(error) {
+                    console.error('Error loading playlist items:', error);
+                    $scope.loading = false;
+                    alert('Failed to load playlist items');
+                });
+        };
+
+        // Open create playlist modal
+        $scope.openCreatePlaylistModal = function() {
+            $scope.editingPlaylist = {
+                name: '',
+                description: '',
+                tags: ''
+            };
+            $scope.showPlaylistModal = true;
+            
+            // Show modal using Bootstrap 5
+            $timeout(function() {
+                var modalEl = document.getElementById('createPlaylistModal');
+                if (modalEl) {
+                    var modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                }
+            }, 100);
+        };
+
+        // Create new playlist
+        $scope.createNewPlaylist = function() {
+            if (!$scope.editingPlaylist.name || !$scope.editingPlaylist.name.trim()) {
+                alert('Playlist name is required');
+                return;
+            }
+
+            $scope.loading = true;
+            
+            PhotoService.createPlaylist(
+                $scope.editingPlaylist.name.trim(),
+                $scope.editingPlaylist.description || '',
+                $scope.editingPlaylist.tags || ''
+            )
+                .then(function(response) {
+                    console.log('Playlist created:', response);
+                    $scope.loading = false;
+                    alert('Playlist created successfully');
+                    
+                    // Hide modal
+                    $('#createPlaylistModal').modal('hide');
+                    
+                    // Reload playlists
+                    loadPlaylists();
+                })
+                .catch(function(error) {
+                    console.error('Error creating playlist:', error);
+                    $scope.loading = false;
+                    
+                    var errorMsg = 'Failed to create playlist. ';
+                    if (error.data && error.data.message) {
+                        errorMsg += error.data.message;
+                    } else if (error.status === 409) {
+                        errorMsg += 'A playlist with this name already exists.';
+                    } else {
+                        errorMsg += 'Check console for details.';
+                    }
+                    alert(errorMsg);
+                });
+        };
+
+        // Update playlist tags
+        $scope.editPlaylistTag = function(playlist) {
+            if (!playlist.name) {
+                alert('Playlist name not found');
+                return;
+            }
+            
+            $scope.editingPlaylist = {
+                id: playlist.id,
+                name: playlist.name,
+                tags: playlist.tags || '',
+                isEdit: true
+            };
+            
+            var modalEl = document.getElementById('editPlaylistTagModal');
+            if (modalEl) {
+                var modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            } else {
+                alert('Edit playlist modal not found. Please add the modal to the template.');
+            }
+        };
+
+        // Update playlist tags
+        $scope.updatePlaylistTagText = function() {
+            if (!$scope.editingPlaylist || !$scope.editingPlaylist.id) {
+                alert('Playlist ID not found');
+                return;
+            }
+
+            var cleanTags = ($scope.editingPlaylist.tags || '').trim();
+            
+            $scope.loading = true;
+            
+            PhotoService.updatePlaylistTag($scope.editingPlaylist.id, cleanTags)
+                .then(function(response) {
+                    console.log('Playlist tags updated successfully:', response);
+                    $scope.loading = false;
+                    $('#editPlaylistTagModal').modal('hide');
+                    alert('Playlist tags updated successfully');
+                    
+                    // Update the playlist in the list
+                    for (var i = 0; i < $scope.playlists.length; i++) {
+                        if ($scope.playlists[i].id === $scope.editingPlaylist.id) {
+                            $scope.playlists[i].tags = cleanTags;
+                            break;
+                        }
+                    }
+                    
+                    // Reload playlists to ensure sync with database
+                    loadPlaylists();
+                })
+                .catch(function(error) {
+                    console.error('Error updating playlist tags:', error);
+                    $scope.loading = false;
+                    
+                    var errorMsg = 'Failed to update playlist tags. ';
+                    if (error.data && error.data.message) {
+                        errorMsg += error.data.message;
+                    } else if (error.message) {
+                        errorMsg += error.message;
+                    } else {
+                        errorMsg += 'Check console for details.';
+                    }
+                    alert(errorMsg);
+                });
+        };
+
+        // Clear playlist tag text
+        $scope.clearPlaylistTagText = function() {
+            if (confirm('Clear all playlist tag text?')) {
+                $scope.editingPlaylist.tags = '';
+            }
+        };
+
+        // Submit edit playlist tag form
+        $scope.submitEditPlaylistTagForm = function() {
+            $scope.updatePlaylistTagText();
+        };
+
+        // Remove playlist
+        $scope.removePlaylist = function(playlist) {
+            if (!confirm('Are you sure you want to delete the "' + playlist.name + '" playlist?')) {
+                return;
+            }
+            
+            $scope.loading = true;
+            
+            PhotoService.removePlaylist(playlist.id)
+                .then(function(response) {
+                    console.log('Playlist deleted:', response);
+                    $scope.loading = false;
+                    alert('Playlist deleted successfully');
+                    
+                    // Reload playlists
+                    loadPlaylists();
+                })
+                .catch(function(error) {
+                    console.error('Error deleting playlist:', error);
+                    $scope.loading = false;
+                    alert('Failed to delete playlist');
+                });
+        };
+
+        // Remove item from playlist
+        $scope.removePlaylistItem = function(itemId) {
+            if (!$scope.selectedAlbum || !$scope.selectedAlbum.id) {
+                alert('No playlist selected');
+                return;
+            }
+            
+            if (!confirm('Remove item from playlist?')) {
+                return;
+            }
+            
+            $scope.loading = true;
+            
+            PhotoService.removePlaylistItem($scope.selectedAlbum.id, itemId)
+                .then(function(response) {
+                    console.log('Item removed from playlist:', response);
+                    $scope.loading = false;
+                    
+                    // Reload playlist items
+                    $scope.setPlaylist($scope.selectedAlbum);
+                })
+                .catch(function(error) {
+                    console.error('Error removing item from playlist:', error);
+                    $scope.loading = false;
+                    alert('Failed to remove item from playlist');
+                });
+        };
+
+        // Search playlists by tag
+        $scope.searchPlaylistsByTag = function(tag) {
+            $scope.loading = true;
+            PhotoService.getPlaylistsByTag(tag)
+                .then(function(playlists) {
+                    console.log('Playlists with tag:', playlists);
+                    $scope.playlists = playlists || [];
+                    $scope.loading = false;
+                })
+                .catch(function(error) {
+                    console.error('Error searching playlists by tag:', error);
+                    $scope.loading = false;
+                    alert('Failed to search playlists by tag');
                 });
         };
 

@@ -63,6 +63,12 @@ body {
 
 .pp-gallery {
   min-height: 500px;
+  padding-bottom: 300px; /* Account for fixed audio player bar */
+}
+
+/* Main content padding for player bar */
+main {
+  padding-bottom: 300px;
 }
 
 .pp-gallery .card-columns .card {
@@ -521,10 +527,17 @@ body {
 
 .albums-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 0.3rem;
   margin-bottom: 6px;
+}
+
+.albums-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .albums-title {
@@ -545,15 +558,13 @@ body {
 
 .back-button {
   white-space: nowrap;
-  padding: 0.25rem 0.4rem;
-  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
   flex-shrink: 0;
 }
 
 .back-button:disabled {
-  opacity: 0;
-  pointer-events: none;
-  visibility: hidden;
+  display: none;
 }
 
 .albums-search {

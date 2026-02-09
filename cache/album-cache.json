@@ -372,6 +372,379 @@
       ],
       "page": 0,
       "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\711b-Feb_0_20": {
+      "totalPhotos": 4,
+      "images": [
+        {
+          "id": "album0",
+          "path": "711b-Feb",
+          "name": "711b-Feb",
+          "isAlbum": true,
+          "album": "711b-Feb"
+        },
+        {
+          "id": "photo1",
+          "path": "data/711b-Feb/427b69f12e95922fd4de01d21062f67d8cfa82f58fd1246fafd6e8436e22de44.jpg",
+          "name": "427b69f12e95922fd4de01d21062f67d8cfa82f58fd1246fafd6e8436e22de44.jpg",
+          "isAlbum": false,
+          "album": "711b-Feb",
+          "tags": "427b69f12e95922fd4de01d21062f67d8cfa82f58fd1246fafd6e8436e22de44"
+        },
+        {
+          "id": "photo2",
+          "path": "data/711b-Feb/42c0cfebfc989c8249dda26a3cf4ddd0de69786c17ab35bd86c7855f5643a3ed.jpg",
+          "name": "42c0cfebfc989c8249dda26a3cf4ddd0de69786c17ab35bd86c7855f5643a3ed.jpg",
+          "isAlbum": false,
+          "album": "711b-Feb",
+          "tags": "42c0cfebfc989c8249dda26a3cf4ddd0de69786c17ab35bd86c7855f5643a3ed"
+        },
+        {
+          "id": "photo3",
+          "path": "data/711b-Feb/711b2a36c4129b9104b53988c3df7529149eb2335d61b8256c9a705aa9f90ef4.jpg",
+          "name": "711b2a36c4129b9104b53988c3df7529149eb2335d61b8256c9a705aa9f90ef4.jpg",
+          "isAlbum": false,
+          "album": "711b-Feb",
+          "tags": "711b2a36c4129b9104b53988c3df7529149eb2335d61b8256c9a705aa9f90ef4"
+        },
+        {
+          "id": "photo4",
+          "path": "data/711b-Feb/98a92811f408880ad5bb343c909839f72ce7238eb84ca6c0a51deb1d256b9555.jpg",
+          "name": "98a92811f408880ad5bb343c909839f72ce7238eb84ca6c0a51deb1d256b9555.jpg",
+          "isAlbum": false,
+          "album": "711b-Feb",
+          "tags": "98a92811f408880ad5bb343c909839f72ce7238eb84ca6c0a51deb1d256b9555"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\books_0_20": {
+      "totalPhotos": 5,
+      "images": [
+        {
+          "id": "album0",
+          "path": "books",
+          "name": "books",
+          "isAlbum": true,
+          "album": "books"
+        },
+        {
+          "id": "photo1",
+          "path": "data/books/dasopantbiograph025371mbp.pdf",
+          "name": "dasopantbiograph025371mbp.pdf",
+          "isAlbum": false,
+          "album": "books",
+          "tags": "dasopantbiograph025371mbp"
+        },
+        {
+          "id": "photo2",
+          "path": "data/books/Isavasya-Upanishad.pdf",
+          "name": "Isavasya-Upanishad.pdf",
+          "isAlbum": false,
+          "album": "books",
+          "tags": "Isavasya-Upanishad"
+        },
+        {
+          "id": "photo3",
+          "path": "data/books/SamarthsLetterToShivajiMaharaj.pdf",
+          "name": "SamarthsLetterToShivajiMaharaj.pdf",
+          "isAlbum": false,
+          "album": "books",
+          "tags": "SamarthsLetterToShivajiMaharaj"
+        },
+        {
+          "id": "photo4",
+          "path": "data/books/ShriShivbharat.pdf",
+          "name": "ShriShivbharat.pdf",
+          "isAlbum": false,
+          "album": "books",
+          "tags": "ShriShivbharat"
+        },
+        {
+          "id": "photo5",
+          "path": "data/books/Specsavers - Â£35 Optical Care Guide.pdf",
+          "name": "Specsavers - Â£35 Optical Care Guide.pdf",
+          "isAlbum": false,
+          "album": "books",
+          "tags": "Specsavers - Â£35 Optical Care Guide"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\pictures\\2003-Jan_0_20": {
+      "totalPhotos": 2,
+      "images": [
+        {
+          "id": "album0",
+          "path": "pictures/2003-Jan",
+          "name": "2003-Jan",
+          "isAlbum": true,
+          "album": "2003-Jan"
+        },
+        {
+          "id": "photo1",
+          "path": "data/pictures/2003-Jan/000_0026.jpg",
+          "name": "000_0026.jpg",
+          "isAlbum": false,
+          "album": "pictures/2003-Jan",
+          "tags": "000_0026"
+        },
+        {
+          "id": "photo2",
+          "path": "data/pictures/2003-Jan/000_0036.JPG",
+          "name": "000_0036.JPG",
+          "isAlbum": false,
+          "album": "pictures/2003-Jan",
+          "tags": "000_0036"
+        },
+        {
+          "id": "album3",
+          "path": "pictures/2003-Jan/2004-Feb",
+          "name": "2004-Feb",
+          "isAlbum": true,
+          "album": "2004-Feb"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\music_0_20": {
+      "totalPhotos": 91,
+      "images": [
+        {
+          "id": "album0",
+          "path": "music",
+          "name": "music",
+          "isAlbum": true,
+          "album": "music"
+        },
+        {
+          "id": "photo1",
+          "path": "data/music/02Chapter1.mp3",
+          "name": "02Chapter1.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "02Chapter1"
+        },
+        {
+          "id": "photo2",
+          "path": "data/music/Geeta-अर्जुन उवाच.mp3",
+          "name": "Geeta-अर्जुन उवाच.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta-अर्जुन उवाच"
+        },
+        {
+          "id": "photo3",
+          "path": "data/music/Geeta-धून-१.mp3",
+          "name": "Geeta-धून-१.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta-धून-१"
+        },
+        {
+          "id": "photo4",
+          "path": "data/music/Geeta-श्रीभगवानुवाच.mp3",
+          "name": "Geeta-श्रीभगवानुवाच.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta-श्रीभगवानुवाच"
+        },
+        {
+          "id": "photo5",
+          "path": "data/music/Geeta-संजय उवाच.mp3",
+          "name": "Geeta-संजय उवाच.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta-संजय उवाच"
+        },
+        {
+          "id": "photo6",
+          "path": "data/music/Geeta01-01.mp3",
+          "name": "Geeta01-01.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-01"
+        },
+        {
+          "id": "photo7",
+          "path": "data/music/Geeta01-01.wav",
+          "name": "Geeta01-01.wav",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-01"
+        },
+        {
+          "id": "photo8",
+          "path": "data/music/Geeta01-02.mp3",
+          "name": "Geeta01-02.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-02"
+        },
+        {
+          "id": "photo9",
+          "path": "data/music/Geeta01-02.wav",
+          "name": "Geeta01-02.wav",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-02"
+        },
+        {
+          "id": "photo10",
+          "path": "data/music/Geeta01-03.mp3",
+          "name": "Geeta01-03.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-03"
+        },
+        {
+          "id": "photo11",
+          "path": "data/music/Geeta01-03.wav",
+          "name": "Geeta01-03.wav",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-03"
+        },
+        {
+          "id": "photo12",
+          "path": "data/music/Geeta01-04.mp3",
+          "name": "Geeta01-04.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-04"
+        },
+        {
+          "id": "photo13",
+          "path": "data/music/Geeta01-04.wav",
+          "name": "Geeta01-04.wav",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-04"
+        },
+        {
+          "id": "photo14",
+          "path": "data/music/Geeta01-05.mp3",
+          "name": "Geeta01-05.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-05"
+        },
+        {
+          "id": "photo15",
+          "path": "data/music/Geeta01-05.wav",
+          "name": "Geeta01-05.wav",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-05"
+        },
+        {
+          "id": "photo16",
+          "path": "data/music/Geeta01-06.mp3",
+          "name": "Geeta01-06.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-06"
+        },
+        {
+          "id": "photo17",
+          "path": "data/music/Geeta01-06.wav",
+          "name": "Geeta01-06.wav",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-06"
+        },
+        {
+          "id": "photo18",
+          "path": "data/music/Geeta01-07.mp3",
+          "name": "Geeta01-07.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-07"
+        },
+        {
+          "id": "photo19",
+          "path": "data/music/Geeta01-07.wav",
+          "name": "Geeta01-07.wav",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-07"
+        },
+        {
+          "id": "photo20",
+          "path": "data/music/Geeta01-08.mp3",
+          "name": "Geeta01-08.mp3",
+          "isAlbum": false,
+          "album": "music",
+          "tags": "Geeta01-08"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\uploaded_0_20": {
+      "totalPhotos": 6,
+      "images": [
+        {
+          "id": "album0",
+          "path": "uploaded",
+          "name": "uploaded",
+          "isAlbum": true,
+          "album": "uploaded"
+        },
+        {
+          "id": "photo1",
+          "path": "data/uploaded/427b69f12e95922fd4de01d21062f67d8cfa82f58fd1246fafd6e8436e22de44.jpg",
+          "name": "427b69f12e95922fd4de01d21062f67d8cfa82f58fd1246fafd6e8436e22de44.jpg",
+          "isAlbum": false,
+          "album": "uploaded",
+          "tags": "427b69f12e95922fd4de01d21062f67d8cfa82f58fd1246fafd6e8436e22de44"
+        },
+        {
+          "id": "photo2",
+          "path": "data/uploaded/fbb3543260afb7e8a06392287ad7bab0a2284972feb845702c147a58161602a2.jpg",
+          "name": "fbb3543260afb7e8a06392287ad7bab0a2284972feb845702c147a58161602a2.jpg",
+          "isAlbum": false,
+          "album": "uploaded",
+          "tags": "fbb3543260afb7e8a06392287ad7bab0a2284972feb845702c147a58161602a2"
+        },
+        {
+          "id": "photo3",
+          "path": "data/uploaded/image.jpg",
+          "name": "image.jpg",
+          "isAlbum": false,
+          "album": "uploaded",
+          "tags": "image"
+        },
+        {
+          "id": "photo4",
+          "path": "data/uploaded/NewLogo.png",
+          "name": "NewLogo.png",
+          "isAlbum": false,
+          "album": "uploaded",
+          "tags": "NewLogo"
+        },
+        {
+          "id": "photo5",
+          "path": "data/uploaded/ramrakhsa-7.jpg",
+          "name": "ramrakhsa-7.jpg",
+          "isAlbum": false,
+          "album": "uploaded",
+          "tags": "ramrakhsa-7"
+        },
+        {
+          "id": "photo6",
+          "path": "data/uploaded/ramrakhsa-8.jpg",
+          "name": "ramrakhsa-8.jpg",
+          "isAlbum": false,
+          "album": "uploaded",
+          "tags": "ramrakhsa-8"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
     }
   },
   "albumMeta": {
@@ -382,15 +755,15 @@
       "discovered": "2026-02-08T22:29:16.121Z"
     },
     "711b-Feb": {
-      "mtime": null,
-      "indexed": null,
-      "hits": 0,
+      "mtime": 1733740955093,
+      "indexed": "2026-02-09T15:40:20.734Z",
+      "hits": 1,
       "discovered": "2026-02-08T22:29:16.122Z"
     },
     "books": {
-      "mtime": null,
-      "indexed": null,
-      "hits": 0,
+      "mtime": 1749140591774,
+      "indexed": "2026-02-09T15:40:34.609Z",
+      "hits": 2,
       "discovered": "2026-02-08T22:29:16.122Z"
     },
     "empty": {
@@ -402,7 +775,7 @@
     "Home": {
       "mtime": 1769597994089,
       "indexed": "2026-02-08T22:30:03.963Z",
-      "hits": 2,
+      "hits": 26,
       "discovered": "2026-02-08T22:29:16.122Z"
     },
     "movies": {
@@ -412,27 +785,27 @@
       "discovered": "2026-02-08T22:29:16.122Z"
     },
     "music": {
-      "mtime": null,
-      "indexed": null,
-      "hits": 0,
+      "mtime": 1758291272434,
+      "indexed": "2026-02-09T16:16:02.788Z",
+      "hits": 11,
       "discovered": "2026-02-08T22:29:16.123Z"
     },
     "pictures": {
       "mtime": 1770043030480,
       "indexed": "2026-02-08T22:30:18.694Z",
-      "hits": 1,
+      "hits": 11,
       "discovered": "2026-02-08T22:29:16.123Z"
     },
     "pictures/2003-Jan": {
-      "mtime": null,
-      "indexed": null,
-      "hits": 0,
+      "mtime": 1749133213509,
+      "indexed": "2026-02-09T15:54:22.173Z",
+      "hits": 1,
       "discovered": "2026-02-08T22:29:16.123Z"
     },
     "pictures/2015-May": {
       "mtime": 1733740968628,
       "indexed": "2026-02-08T22:30:49.573Z",
-      "hits": 1,
+      "hits": 3,
       "discovered": "2026-02-08T22:29:16.123Z"
     },
     "pictures/2018-Nov": {
@@ -472,16 +845,16 @@
       "discovered": "2026-02-08T22:29:16.123Z"
     },
     "uploaded": {
-      "mtime": null,
-      "indexed": null,
-      "hits": 0,
+      "mtime": 1754410633860,
+      "indexed": "2026-02-09T16:46:48.662Z",
+      "hits": 1,
       "discovered": "2026-02-08T22:29:16.123Z"
     }
   },
-  "savedAt": "2026-02-09T15:09:40.052Z",
+  "savedAt": "2026-02-09T17:27:44.535Z",
   "stats": {
-    "entries": 5,
+    "entries": 10,
     "albums": 17,
-    "sizeBytes": 5768
+    "sizeBytes": 12614
   }
 }

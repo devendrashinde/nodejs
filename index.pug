@@ -135,15 +135,47 @@ html(ng-app="app")
         aside#folderSidebar.col-md-2.mb-3.collapse.d-md-block(ng-if="folders.length > 0")
           div.albums-sidebar
             div.albums-header
-              h6.albums-title
-                i.fas.fa-folder-open.me-2
-                | Albums
-              //- Back button for sub-albums
-              button.btn.btn-sm.btn-outline-secondary.back-button(ng-click="goToParentAlbum()" ng-disabled="!getParentAlbum()" title="Back to parent album")
-                i.fas.fa-arrow-left
+              //- Toggle between Albums and Playlists
+              div.btn-group.w-100(role="group" style="margin-bottom: 0.5rem;")
+                button.btn.btn-sm.btn-outline-primary(
+                  type="button"
+                  ng-click="switchView('albums')"
+                  ng-class="{'active': selectedView === 'albums'}"
+                  style="flex: 1; font-size: 0.75rem; padding: 0.3rem 0.5rem;"
+                  title="View albums"
+                )
+                  i.fas.fa-folder-open.me-1
+                  | Albums
+                button.btn.btn-sm.btn-outline-success(
+                  type="button"
+                  ng-click="switchView('playlists')"
+                  ng-class="{'active': selectedView === 'playlists'}"
+                  style="flex: 1; font-size: 0.75rem; padding: 0.3rem 0.5rem;"
+                  title="View playlists"
+                )
+                  i.fas.fa-list.me-1
+                  | Playlists
+              
+              //- Albums title with back button
+              div.albums-title-row(ng-if="selectedView === 'albums'")
+                h6.albums-title
+                  i.fas.fa-folder-open.me-2
+                  | Albums
+                button.btn.btn-sm.btn-outline-secondary.back-button(
+                  ng-if="selectedView === 'albums'"
+                  ng-click="goToParentAlbum()" 
+                  ng-disabled="!getParentAlbum()"
+                  title="Back to parent album"
+                )
+                  i.fas.fa-arrow-left.me-1
+                  | Back
+                  
+              h6.albums-title(ng-if="selectedView === 'playlists'" style="margin-top: 0.5rem; margin-bottom: 0;")
+                i.fas.fa-list.me-2
+                | Playlists
             
             //- Albums search
-            div.albums-search
+            div.albums-search(ng-if="selectedView === 'albums'")
               input.form-control.form-control-sm(
                 type="text"
                 ng-model="albumsSearchText"
@@ -158,6 +190,32 @@ html(ng-app="app")
                 title="Clear search"
               )
                 i.fas.fa-times
+            
+            //- Playlists search
+            div.albums-search(ng-if="selectedView === 'playlists'" style="margin-bottom: 0.5rem;")
+              input.form-control.form-control-sm(
+                type="text"
+                ng-model="playlistsSearchText"
+                placeholder="Search playlists..."
+                title="Search playlists by name"
+                id="playlistsSearchInput"
+              )
+              button.btn-albums-clear(
+                ng-style="playlistsSearchText ? {opacity: 1, 'pointer-events': 'all'} : {opacity: 0, 'pointer-events': 'none'}"
+                ng-mousedown="playlistsSearchText = ''"
+                type="button"
+                title="Clear search"
+              )
+                i.fas.fa-times
+              
+              //- Create new playlist button
+              button.btn.btn-sm.btn-outline-success.w-100(
+                ng-click="openCreatePlaylistModal()"
+                style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-top: 0.5rem;"
+                title="Create a new playlist"
+              )
+                i.fas.fa-plus.me-1
+                | New Playlist
             
             //- All Albums button
             button.btn.btn-sm.btn-outline-primary.w-100(
@@ -223,7 +281,7 @@ html(ng-app="app")
               | Show Recent ({{recentlyViewed.length}})
             
             //- Albums list (filtered)
-            ul.list-group.list-group-flush.albums-list
+            ul.list-group.list-group-flush.albums-list(ng-if="selectedView === 'albums'")
               li.list-group-item.list-group-item-action.album-item(
                 ng-repeat="folder in folders | filter:{album: albumsSearchText}"
                 ng-class="{'active': folder.album == selectedAlbum.album}"
@@ -250,12 +308,55 @@ html(ng-app="app")
                   )
                     i.fas.fa-tags
             
+            //- Playlists list (filtered)
+            ul.list-group.list-group-flush.playlists-list(ng-if="selectedView === 'playlists'")
+              li.list-group-item.list-group-item-action.playlist-item(
+                ng-repeat="playlist in playlists | filter:{name: playlistsSearchText}"
+                ng-class="{'active': playlist.id == selectedAlbum.id}"
+                title="{{playlist.name}} - {{playlist.item_count}} items"
+                style="position: relative; padding-right: 80px;"
+              )
+                div.d-flex.justify-content-between.align-items-center
+                  div(ng-click="setPlaylist(playlist)" style="flex-grow: 1; cursor: pointer;")
+                    div.playlist-name
+                      i.fas.fa-list.me-2
+                      span {{playlist.name}}
+                      span.badge.bg-secondary.ms-2 {{playlist.item_count || 0}}
+                    //- Display playlist tags if they exist
+                    div.playlist-tags(ng-if="playlist.tags && playlist.tags.trim()" style="margin-top: 0.3rem; margin-left: 1.5rem;")
+                      span.badge.bg-success.me-1(
+                        ng-repeat="tag in playlist.tags.split(',')"
+                        ng-if="tag.trim()"
+                        style="font-size: 0.7rem;"
+                      ) {{tag.trim()}}
+                  button.btn.btn-sm.btn-outline-info(
+                    type="button"
+                    ng-click="editPlaylistTag(playlist)"
+                    title="Edit tags for this playlist"
+                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
+                  )
+                    i.fas.fa-tags
+                  button.btn.btn-sm.btn-outline-danger(
+                    type="button"
+                    ng-click="removePlaylist(playlist)"
+                    title="Delete this playlist"
+                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
+                  )
+                    i.fas.fa-trash
+            
             //- No results message
             div.albums-no-results(
-              ng-if="albumsSearchText.trim() && (folders | filter:{album: albumsSearchText}).length === 0"
+              ng-if="selectedView === 'albums' && albumsSearchText.trim() && (folders | filter:{album: albumsSearchText}).length === 0"
             )
               i.fas.fa-search.me-2
               | No albums found
+            
+            //- No results message for playlists
+            div.albums-no-results(
+              ng-if="selectedView === 'playlists' && playlistsSearchText.trim() && (playlists | filter:{name: playlistsSearchText}).length === 0"
+            )
+              i.fas.fa-search.me-2
+              | No playlists found
 
         // Main Content
         main(ng-class="{'col-md-10': folders.length > 0, 'col-12': folders.length == 0}")
@@ -272,7 +373,7 @@ html(ng-app="app")
                 )
                 //- Now Playing Indicator for audio
                 div.now-playing-badge(
-                  ng-if="image.isAudio && currentIndex >= 0 && (playlist[currentIndex] || {}).path === image.path"
+                  ng-if="image.isAudio && currentIndex >= 0 && isPlaying && (playlist[currentIndex] || {}).path === image.path"
                   style="position: absolute; top: 10px; left: 10px; z-index: 5;"
                 )
                   span.badge.bg-success(
@@ -311,13 +412,13 @@ html(ng-app="app")
                 )
                   figure
                     img.card-img-top.img-fluid(
-                      ng-src="{{image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? 'pdf.png' : '/thumbs?id=' + image.path + '&w=300&h=200')}}"
+                      ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? 'pdf.png' : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
                       alt="{{image.tags}}"
                       loading="lazy"
                       style="object-fit: contain; width: 100%; height: auto;"
                     )
                     i.overlay-icon(
-                      ng-class="{'fas fa-play-circle': image.isVideo,'fas fa-file-pdf': image.isPdf,'fas fa-search-plus': image.isPhoto}"
+                      ng-class="{'fas fa-play-circle': image.isVideo,'fas fa-file-pdf': image.isPdf,'fas fa-music': image.isAudio,'fas fa-search-plus': image.isPhoto}"
                     )
                 div.card-body.p-2
                   h6.card-title.mb-1.text-truncate
@@ -325,7 +426,7 @@ html(ng-app="app")
                       href="javascript:void(0)"
                       ng-click="editImageTag(image)"
                       title="Edit tags"
-                    ) {{image.tags || 'Untitled'}}
+                    ) {{image.tags || (image.name | stripExtension) || 'Untitled'}}
                   
                   //- Action buttons for advanced features
                   //- For photos and videos
@@ -351,6 +452,15 @@ html(ng-app="app")
                       title="Share photo"
                     )
                       i.fas.fa-share-alt.fa-sm
+                    
+                    //- Show "Remove from Playlist" when viewing a playlist
+                    button.btn.btn-sm.btn-outline-warning(
+                      type="button"
+                      ng-click="removePlaylistItem(image.id)"
+                      ng-if="selectedAlbum.isPlaylist"
+                      title="Remove from this playlist"
+                    )
+                      i.fas.fa-times.fa-sm
                   
                   //- For audio files
                   div.d-flex.gap-1.mt-2(ng-if="image.isAudio")
@@ -757,6 +867,98 @@ html(ng-app="app")
               button.btn.btn-primary(
                 type="button"
                 ng-click="submitEditAlbumTagForm()"
+                data-bs-dismiss="modal"
+              ) 
+                i.fas.fa-save.me-1
+                | Update
+      
+      //- Create Playlist Modal
+      div.modal.fade#createPlaylistModal(tabindex="-1" aria-labelledby="createPlaylistModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered
+          div.modal-content
+            div.modal-header
+              h5.modal-title#createPlaylistModalLabel
+                i.fas.fa-list.me-2
+                | Create New Playlist
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              div.mb-3
+                label.form-label Playlist Name
+                input.form-control(
+                  type="text"
+                  ng-model="editingPlaylist.name"
+                  placeholder="Enter playlist name"
+                  required
+                )
+              div.mb-3
+                label.form-label Description
+                textarea.form-control(
+                  ng-model="editingPlaylist.description"
+                  rows="2"
+                  placeholder="Optional description for this playlist"
+                )
+              div.mb-3
+                label.form-label Tags
+                textarea.form-control(
+                  ng-model="editingPlaylist.tags"
+                  rows="3"
+                  placeholder="Enter tags (comma-separated) for this playlist"
+                )
+                small.text-muted
+                  | Add tags to organize and search your playlists easily
+            
+            div.modal-footer
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
+              button.btn.btn-success(
+                type="button"
+                ng-click="createNewPlaylist()"
+              ) 
+                i.fas.fa-plus.me-1
+                | Create Playlist
+      
+      //- Edit Playlist Tags Modal
+      div.modal.fade#editPlaylistTagModal(tabindex="-1" aria-labelledby="editPlaylistTagModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered
+          div.modal-content
+            div.modal-header
+              h5.modal-title#editPlaylistTagModalLabel
+                i.fas.fa-list.me-2
+                | Edit Playlist Tags
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              div.mb-3(ng-if="editingPlaylist.name")
+                h6.text-muted.mb-2
+                  i.fas.fa-list.me-2
+                  | {{editingPlaylist.name}}
+              div.mb-3(ng-if="editingPlaylist.tags")
+                h6.text-muted.mb-2
+                  i.fas.fa-th.me-2
+                  | Current Tags
+                div(ng-repeat="tag in editingPlaylist.tags.split(',')" ng-if="editingPlaylist.tags")
+                  span.badge.bg-secondary.me-1 {{tag.trim()}}
+              div.mb-3
+                label.form-label Tags
+                textarea.form-control(
+                  ng-model="editingPlaylist.tags"
+                  rows="4"
+                  placeholder="Enter tags (comma-separated) for this playlist"
+                )
+                small.text-muted
+                  | Add tags to organize and search your playlists easily
+            
+            div.modal-footer
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
+              button.btn.btn-outline-danger(
+                type="button"
+                ng-click="clearPlaylistTagText()"
+                ng-if="editingPlaylist.tags && editingPlaylist.tags.trim() !== ''"
+                title="Clear all text"
+              )
+                i.fas.fa-eraser.me-1
+                | Clear
+              button.btn.btn-primary(
+                type="button"
+                ng-click="submitEditPlaylistTagForm()"
                 data-bs-dismiss="modal"
               ) 
                 i.fas.fa-save.me-1

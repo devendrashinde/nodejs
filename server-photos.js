@@ -7,6 +7,7 @@ import path from 'path';
 import ImageDetails from "./ImageDetails.js";
 import { fileURLToPath } from 'url';
 import { createPhoto, getPhotos, getTags, getPhoto, updatePhotoTag, removePhoto, getAlbumTags, createPhotoAlbum, getPhotoAlbum, getPhotoAlbums, updateAlbumTag, removeAlbum, getAlbumsByTag } from './app/controllers/photoController.js';
+import { createPlaylist, getPlaylists, getPlaylist, getPlaylistsByTag, updatePlaylist, updatePlaylistTag, addPlaylistItems, getPlaylistItems, removePlaylistItem, removePlaylist, getPlaylistTags } from './app/controllers/playlistController.js';
 import media from './app/services/media.js';
 import advancedFeaturesRoutes from './app/routes/advancedFeaturesRoutes.js';
 import pkg from 'body-parser';
@@ -639,6 +640,37 @@ app.route('/albums/:albumId')
     .get(getPhotoAlbum)
     .put(updateAlbumTag)
     .delete(removeAlbum);
+
+// ============================================================
+// PLAYLIST ROUTES (v4.0)
+// ============================================================
+// Note: More specific routes MUST come before parameterized routes
+
+app.route('/playlists/tags')
+    .get(getPlaylistTags);
+
+app.route('/playlists/tags/search')
+    .get(getPlaylistsByTag);
+
+app.route('/playlists')
+    .get(getPlaylists)
+    .post(createPlaylist);
+
+app.route('/playlists/:playlistId')
+    .get(getPlaylist)
+    .put(updatePlaylist)
+    .delete(removePlaylist);
+
+app.route('/playlists/:playlistId/items')
+    .get(getPlaylistItems)
+    .post(addPlaylistItems);
+
+app.route('/playlists/:playlistId/items/:itemId')
+    .delete(removePlaylistItem);
+
+// Legacy support for updating tags
+app.route('/playlists/:playlistId/tags')
+    .put(updatePlaylistTag);
 
 app.get('*', (req, res) => {
     const file = join(dataDir, req.path.replace(/\/$/, '/index.html'));

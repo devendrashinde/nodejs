@@ -72,8 +72,14 @@ class BulkOperations {
             <button id="btn-bulk-delete" class="btn btn-small btn-danger">🗑️ Delete</button>
           </div>
 
+          <!-- Playlist Section -->
+          <div class="action-group">
+            <button id="btn-bulk-add-to-playlist" class="btn btn-small btn-success">📋 Add to Playlist</button>
+          </div>
+
           <!-- Clear Section -->
           <div class="action-group">
+            <button id="btn-bulk-select-all" class="btn btn-small btn-info">✓ Select All</button>
             <button id="btn-bulk-clear" class="btn btn-small btn-secondary">✕ Clear Selection</button>
           </div>
         </div>
@@ -120,6 +126,8 @@ class BulkOperations {
     document.getElementById('btn-bulk-unfavorite').addEventListener('click', () => this.bulkFavorite(false));
     document.getElementById('btn-bulk-download').addEventListener('click', () => this.bulkDownload());
     document.getElementById('btn-bulk-delete').addEventListener('click', () => this.bulkDelete());
+    document.getElementById('btn-bulk-add-to-playlist').addEventListener('click', () => this.bulkAddToPlaylist());
+    document.getElementById('btn-bulk-select-all').addEventListener('click', () => this.selectAll(true));
     document.getElementById('btn-bulk-clear').addEventListener('click', () => this.clearSelection());
 
     // Rating buttons
@@ -344,6 +352,128 @@ class BulkOperations {
       photoIds: Array.from(this.selectedPhotos),
       createBackup: confirm('Create backup of deleted photos?'),
     });
+  }
+
+  async bulkAddToPlaylist() {
+    if (this.selectedPhotos.size === 0) {
+      alert('Please select at least one photo');
+      return;
+    }
+
+    // Show a dialog to choose between creating new or adding to existing playlist
+    const choice = confirm(
+      'Create a new playlist?\n\nClick OK to create new, or Cancel to add to existing'
+    );
+
+    if (choice) {
+      // Create new playlist
+      const playlistName = prompt('Enter new playlist name:');
+      if (!playlistName) return;
+
+      try {
+        // Create playlist via the controller's service
+        const response = await fetch('/playlists', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: playlistName,
+            description: `Created from bulk operation with ${this.selectedPhotos.size} items`,
+            tags: ''
+          }),
+        });
+
+        if (!response.ok) {
+          alert('Failed to create playlist');
+          return;
+        }
+
+        const playlist = await response.json();
+        
+        // Add items to the newly created playlist
+        await this.addItemsToPlaylist(playlist.id, Array.from(this.selectedPhotos));
+        
+      } catch (error) {
+        console.error('Error creating playlist:', error);
+        alert('Failed to create playlist');
+      }
+    } else {
+      // Add to existing playlist - load playlists from API
+      try {
+        const response = await fetch('/playlists');
+        if (!response.ok) {
+          alert('Failed to load playlists');
+          return;
+        }
+
+        const playlists = await response.json();
+        
+        if (!playlists || playlists.length === 0) {
+          alert('No playlists available. Please create one first.');
+          return;
+        }
+
+        // Show a simple selection dialog
+        const playlistNames = playlists
+          .map((p, i) => `${i + 1}. ${p.name} (${p.item_count || 0} items)`)
+          .join('\n');
+        
+        const choice = prompt(
+          `Select a playlist:\n\n${playlistNames}\n\nEnter the number (1-${playlists.length}):`,
+          '1'
+        );
+
+        if (!choice) return;
+
+        const index = parseInt(choice) - 1;
+        if (isNaN(index) || index < 0 || index >= playlists.length) {
+          alert('Invalid selection');
+          return;
+        }
+
+        const selectedPlaylist = playlists[index];
+        await this.addItemsToPlaylist(selectedPlaylist.id, Array.from(this.selectedPhotos));
+        
+      } catch (error) {
+        console.error('Error loading playlists:', error);
+        alert('Failed to load playlists');
+      }
+    }
+  }
+
+  async addItemsToPlaylist(playlistId, photoIds) {
+    try {
+      const response = await fetch(`/playlists/${playlistId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoIds: photoIds }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(`Failed to add items: ${error.message || 'Unknown error'}`);
+        return;
+      }
+
+      alert(`Successfully added ${photoIds.length} item(s) to playlist`);
+      
+      // Clear selection
+      this.clearSelection();
+      
+      // Reload playlists in the controller
+      const controller = angular.element(document.querySelector('body')).scope();
+      if (controller && controller.$apply) {
+        controller.$apply(() => {
+          // Trigger playlist reload via controller
+          if (controller.loadPlaylists) {
+            controller.loadPlaylists();
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('Error adding items to playlist:', error);
+      alert('Failed to add items to playlist');
+    }
   }
 
   async executeBulkOperation(endpoint, payload) {

@@ -56,6 +56,73 @@ angular.module('PhotoService', [])
 						return response.data;
 					});
 			},
+			// Playlist methods (v4.0)
+			getPlaylists : function() {
+				return $http.get('/playlists')
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			getPlaylistTags : function() {
+				return $http.get('/playlists/tags')
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			getPlaylistsByTag : function(tag) {
+				return $http.get('/playlists/tags/search?tag=' + tag)
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			getPlaylist : function(playlistId) {
+				return $http.get('/playlists/' + playlistId)
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			getPlaylistItems : function(playlistId) {
+				return $http.get('/playlists/' + playlistId + '/items')
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			createPlaylist : function(name, description, tags) {
+				return $http.post('/playlists', { 
+					name: name, 
+					description: description || '',
+					tags: tags || ''
+				})
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			addPlaylistItems : function(playlistId, photoIds) {
+				return $http.post('/playlists/' + playlistId + '/items', { 
+					photoIds: photoIds 
+				})
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			updatePlaylistTag : function(playlistId, tags) {
+				return $http.put('/playlists/' + playlistId + '/tags', { tags: tags })
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			removePlaylist : function(playlistId) {
+				return $http.delete('/playlists/' + playlistId)
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			removePlaylistItem : function(playlistId, itemId) {
+				return $http.delete('/playlists/' + playlistId + '/items/' + itemId)
+					.then(function(response) {
+						return response.data;
+					});
+			},
 			// Photo tagging
 			create : function(photoData) {
 				return $http.post('/', photoData);

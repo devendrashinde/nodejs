@@ -226,13 +226,29 @@ html(ng-app="app")
             ul.list-group.list-group-flush.albums-list
               li.list-group-item.list-group-item-action.album-item(
                 ng-repeat="folder in folders | filter:{album: albumsSearchText}"
-                ng-click="setAlbum(folder)"
                 ng-class="{'active': folder.album == selectedAlbum.album}"
                 title="{{folder.album}}"
+                style="position: relative; padding-right: 45px;"
               )
-                div.album-name
-                  i.fas.fa-folder.me-2
-                  span {{folder.album}}
+                div.d-flex.justify-content-between.align-items-center
+                  div(ng-click="setAlbum(folder)" style="flex-grow: 1; cursor: pointer;")
+                    div.album-name
+                      i.fas.fa-folder.me-2
+                      span {{folder.album}}
+                    //- Display album tags if they exist
+                    div.album-tags(ng-if="folder.tags && folder.tags.trim()" style="margin-top: 0.3rem; margin-left: 1.5rem;")
+                      span.badge.bg-info.me-1(
+                        ng-repeat="tag in folder.tags.split(',')"
+                        ng-if="tag.trim()"
+                        style="font-size: 0.7rem;"
+                      ) {{tag.trim()}}
+                  button.btn.btn-sm.btn-outline-warning(
+                    type="button"
+                    ng-click="editAlbumTag(folder)"
+                    title="Edit tags for this album"
+                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
+                  )
+                    i.fas.fa-tags
             
             //- No results message
             div.albums-no-results(
@@ -697,6 +713,54 @@ html(ng-app="app")
               ) 
                 i.fas.fa-times.me-1
                 | Close
+
+      //- Edit Album Tags Modal
+      div.modal.fade#editAlbumTagModal(tabindex="-1" aria-labelledby="editAlbumTagModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered
+          div.modal-content
+            div.modal-header
+              h5.modal-title#editAlbumTagModalLabel
+                i.fas.fa-folder-open.me-2
+                | Edit Album Tags
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              div.mb-3(ng-if="editingAlbum.name")
+                h6.text-muted.mb-2
+                  i.fas.fa-folder-open.me-2
+                  | {{editingAlbum.name}}
+              div.mb-3(ng-if="editingAlbum.tags")
+                h6.text-muted.mb-2
+                  i.fas.fa-th.me-2
+                  | Current Tags
+                div(ng-repeat="tag in editingAlbum.tags.split(',')" ng-if="editingAlbum.tags")
+                  span.badge.bg-secondary.me-1 {{tag.trim()}}
+              div.mb-3
+                label.form-label Tags
+                textarea.form-control(
+                  ng-model="editingAlbum.tags"
+                  rows="4"
+                  placeholder="Enter tags (comma-separated) for this album"
+                )
+                small.text-muted
+                  | Add tags to organize and search your albums easily
+            
+            div.modal-footer
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
+              button.btn.btn-outline-danger(
+                type="button"
+                ng-click="clearAlbumTagText()"
+                ng-if="editingAlbum.tags && editingAlbum.tags.trim() !== ''"
+                title="Clear all text"
+              )
+                i.fas.fa-eraser.me-1
+                | Clear
+              button.btn.btn-primary(
+                type="button"
+                ng-click="submitEditAlbumTagForm()"
+                data-bs-dismiss="modal"
+              ) 
+                i.fas.fa-save.me-1
+                | Update
       
       //- File upload Modal
       div.modal.fade#uploadModal(tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true")

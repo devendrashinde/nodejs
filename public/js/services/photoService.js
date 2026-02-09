@@ -10,6 +10,9 @@ angular.module('PhotoService', [])
 			getTagsByTag : function(id) {
 				return $http.get('/tags?tag=' + id);
 			},
+			getPhotosByTag : function(tag) {
+				return $http.get('/photos?tag=' + tag);
+			},
 			getPhotos : function(id, page, items) {
 				return $http.get('/photos?id=' + id + '&page=' + page + '&items=' + items)
 					.then(function(response) {
@@ -22,6 +25,38 @@ angular.module('PhotoService', [])
             			return response.data; // { [{"tag": "1"},]}
         			});
 			},
+			// Album tagging methods
+			getAlbumTags : function() {
+				return $http.get('/albums/tags')
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			getAlbumsByTag : function(tag) {
+				return $http.get('/albums/tags/search?tag=' + tag)
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			updateAlbumTag : function(albumId, tags) {
+				return $http.put('/albums/' + albumId, { tags: tags })
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			getAlbum : function(albumId) {
+				return $http.get('/albums/' + albumId)
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			getAlbumByName : function(albumName) {
+				return $http.get('/albums/name/' + encodeURIComponent(albumName))
+					.then(function(response) {
+						return response.data;
+					});
+			},
+			// Photo tagging
 			create : function(photoData) {
 				return $http.post('/', photoData);
 			},

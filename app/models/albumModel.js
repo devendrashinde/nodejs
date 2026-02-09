@@ -1,84 +1,109 @@
-'user strict';
-import sql from './db.js';
+'use strict';
+import pool, { query } from './db.js';
 
-//Album object constructor
+// Album object constructor
 class Album {
     constructor(album) {
+        this.id = album.id;
         this.name = album.name;
         this.tags = album.tags;
+        this.path = album.path;
+        this.description = album.description;
     }
-    static createAlbum(newAlbum, result) {
-        sql.query("INSERT INTO PHOTOS set ?", newAlbum, function (err, res) {
 
-            if (err) {
-                console.log("error: ", err);
-                result(err, null);
-            }
-            else {
-                console.log(res.insertId);
-                result(null, res.insertId);
-            }
-        });
+    // Create album (async version)
+    static async createAlbum(newAlbum, result) {
+        try {
+            const res = await query(
+                "INSERT INTO albums (name, tags, path, description) VALUES (?, ?, ?, ?)",
+                [newAlbum.name, newAlbum.tags || '', newAlbum.path, newAlbum.description || '']
+            );
+            console.log(`Created album with ID: ${res.insertId}`);
+            result(null, res.insertId);
+        } catch (err) {
+            console.error("Error creating album:", err);
+            result(err, null);
+        }
     }
-    static getAlbum(album, result) {
-        sql.query("SELECT name, tags FROM PHOTOS where id = ?", album, function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(err, null);
-            }
-            else {
-                result(null, res);
 
-            }
-        });
+    // Get all albums
+    static async getAlbums(result) {
+        try {
+            const res = await query(
+                "SELECT id, name, tags, path, description, created_at, updated_at FROM albums"
+            );
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching albums:", err);
+            result(err, null);
+        }
     }
-    static getAlbumByName(albumName, result) {
-        sql.query("SELECT id, tags FROM PHOTOS where name = ?", albumName, function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(err, null);
-            }
-            else {
-                result(null, res);
 
-            }
-        });
+    // Get album by ID
+    static async getAlbumById(id, result) {
+        try {
+            const res = await query(
+                "SELECT id, name, tags, path, description, created_at, updated_at FROM albums WHERE id = ?",
+                [id]
+            );
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching album by ID:", err);
+            result(err, null);
+        }
     }
-    static getAlbums(result) {
-        sql.query("SELECT name, tags FROM PHOTOS", function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(err, null);
-            }
-            else {
-                result(null, res);
 
-            }
-        });
+    // Get album by name
+    static async getAlbumByName(albumName, result) {
+        try {
+            const res = await query(
+                "SELECT id, name, tags, path, description, created_at, updated_at FROM albums WHERE name = ?",
+                [albumName]
+            );
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching album by name:", err);
+            result(err, null);
+        }
     }
-    static updateTag(name, tags, result) {
-        sql.query("UPDATE PHOTOS SET tags = ? WHERE name = ?", [tags, name], function (err, res) {
-            if (err) {
-                console.log("error: ", err);
-                result(null, err);
-            }
-            else {
-                result(null, res);
-            }
-        });
+
+    // Get albums by tag
+    static async getAlbumsByTag(tag, result) {
+        try {
+            const res = await query(
+                "SELECT id, name, tags, path, description FROM albums WHERE tags LIKE ?",
+                [`%${tag.trim()}%`]
+            );
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching albums by tag:", err);
+            result(err, null);
+        }
     }
-    static remove(name, result) {
-        sql.query("DELETE FROM PHOTOS WHERE name = ?", [name], function (err, res) {
 
-            if (err) {
-                console.log("error: ", err);
-                result(null, err);
-            }
-            else {
+    // Update album tags
+    static async updateTag(id, tags, result) {
+        try {
+            const res = await query(
+                "UPDATE albums SET tags = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                [tags.trim(), id]
+            );
+            result(null, res.affectedRows);
+        } catch (err) {
+            console.error("Error updating album tags:", err);
+            result(err, null);
+        }
+    }
 
-                result(null, res);
-            }
-        });
+    // Remove album
+    static async remove(id, result) {
+        try {
+            const res = await query("DELETE FROM albums WHERE id = ?", [id]);
+            result(null, res);
+        } catch (err) {
+            console.error("Error removing album:", err);
+            result(err, null);
+        }
     }
 }
 

@@ -6,7 +6,7 @@ import { join, sep, extname } from 'path';
 import path from 'path';
 import ImageDetails from "./ImageDetails.js";
 import { fileURLToPath } from 'url';
-import { createPhoto, getPhotos, getTags } from './app/controllers/photoController.js';
+import { createPhoto, getPhotos, getTags, getPhoto, updatePhotoTag, removePhoto, getAlbumTags, createPhotoAlbum, getPhotoAlbum, getPhotoAlbums, updateAlbumTag, removeAlbum, getAlbumsByTag } from './app/controllers/photoController.js';
 import media from './app/services/media.js';
 import advancedFeaturesRoutes from './app/routes/advancedFeaturesRoutes.js';
 import pkg from 'body-parser';
@@ -603,7 +603,42 @@ app.route('/tags?:tag')
     .get(getPhotos);
 
 app.route('/alltags')
-   .get(getTags);;
+   .get(getTags);
+
+// ============================================================
+// ALBUM TAGGING ROUTES (v3.0)
+// ============================================================
+// Note: More specific routes MUST come before parameterized routes
+
+// Photo tags endpoint
+app.route('/tags')
+    .get(getTags);
+
+// Album tags endpoints (specific routes BEFORE parameterized routes)
+app.route('/albums/tags')
+    .get(getAlbumTags);
+
+app.route('/albums/tags/search')
+    .get(getAlbumsByTag);
+
+// General photo routes
+app.route('/photos')
+    .post(createPhoto)
+    .patch(updatePhotoTag);
+
+app.route('/photos?:id?:name?:tag')
+    .get(getPhoto)
+    .delete(removePhoto);
+
+// General album routes (parameterized routes come last)
+app.route('/albums')
+    .get(getPhotoAlbums)
+    .post(createPhotoAlbum);
+
+app.route('/albums/:albumId')
+    .get(getPhotoAlbum)
+    .put(updateAlbumTag)
+    .delete(removeAlbum);
 
 app.get('*', (req, res) => {
     const file = join(dataDir, req.path.replace(/\/$/, '/index.html'));

@@ -12,6 +12,7 @@ angular.module('photoController', [])
         $scope.photos = []; // current album photos
         $scope.allPhotosByAlbum = {}; // Map of album -> photos for counting
         $scope.selectedPhoto = {};
+        $scope.editingAlbum = {}; // For album tagging modal
         $scope.filteredPhotos = [];// search-filtered photos
         $scope.albums = [];
 		$scope.folders = [];
@@ -627,6 +628,44 @@ angular.module('photoController', [])
             if($scope.playlist.length > 0) {
                 $scope.currentIndex = 0;
             }
+            
+            // Load and merge album tags from database
+            loadAndMergeAlbumTags();
+        }
+        
+        /**
+         * Load album tags from database and merge them with folder objects
+         */
+        function loadAndMergeAlbumTags() {
+            PhotoService.getAlbumTags()
+                .then(function(tags) {
+                    console.log('Loaded album tags:', tags);
+                    // Create a map of album name -> tags for easy lookup
+                    var tagMap = {};
+                    if (tags && Array.isArray(tags)) {
+                        tags.forEach(function(item) {
+                            if (item.name) {
+                                tagMap[item.name] = item.tags || '';
+                            }
+                        });
+                    }
+                    
+                    // Merge tags with folders array
+                    $scope.folders.forEach(function(folder) {
+                        if (tagMap[folder.album]) {
+                            folder.tags = tagMap[folder.album];
+                        } else if (!folder.tags) {
+                            folder.tags = '';
+                        }
+                    });
+                    
+                    console.log('Folders with tags:', $scope.folders);
+                    // Don't call $apply() here - we're already in Angular's digest cycle
+                })
+                .catch(function(error) {
+                    console.error('Error loading album tags:', error);
+                    // Continue anyway, tags just won't be displayed
+                });
         }       
         
         function getImageType(photo) {
@@ -736,6 +775,150 @@ angular.module('photoController', [])
                 $scope.selectedPhoto.tags = '';
                 $scope.selectedOption = null; // Reset dropdown selection
             }
+        };
+
+        // =========== ALBUM TAGGING METHODS ===========
+
+        // Edit album tags
+        $scope.editAlbumTag = function(album) {
+            if (!album.album) {
+                alert('Album name not found');
+                return;
+            }
+            
+            // Store the folder object with all its data
+            $scope.editingAlbum = {
+                name: album.album,
+                path: album.path,
+                album: album.album,
+                tags: album.tags || '',
+                id: album.id // Keep ID if available
+            };
+            
+            var modalEl = document.getElementById('editAlbumTagModal');
+            if (modalEl) {
+                var modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            } else {
+                alert('Album tag modal not found. Please add the modal to the template.');
+            }
+        };
+
+        // Update album tags
+        $scope.updateAlbumTagText = function() {
+            if (!$scope.editingAlbum || !$scope.editingAlbum.album) {
+                alert('Album name not found');
+                return;
+            }
+
+            var cleanTags = ($scope.editingAlbum.tags || '').trim();
+            var albumName = $scope.editingAlbum.album;
+            
+            $scope.loading = true;
+            
+            // Check if we have a valid numeric ID (must be a positive integer)
+            var hasValidId = $scope.editingAlbum.id && 
+                             typeof $scope.editingAlbum.id === 'number' && 
+                             $scope.editingAlbum.id > 0;
+            
+            var updatePromise;
+            
+            if (hasValidId) {
+                // Update existing album in database
+                console.log('Updating existing album ID:', $scope.editingAlbum.id);
+                updatePromise = PhotoService.updateAlbumTag($scope.editingAlbum.id, cleanTags);
+            } else {
+                // Create new album entry in database first
+                console.log('Creating new album entry:', albumName);
+                updatePromise = $http.post('/albums', {
+                    name: albumName,
+                    path: $scope.editingAlbum.path || '',
+                    tags: cleanTags,
+                    description: ''
+                }).then(function(response) {
+                    console.log('Album created with response:', response);
+                    if (response.data && response.data.id) {
+                        $scope.editingAlbum.id = response.data.id;
+                        return response.data;
+                    } else {
+                        throw new Error('Invalid response: no ID returned');
+                    }
+                }).catch(function(error) {
+                    console.error('Error creating album:', error);
+                    throw error;
+                });
+            }
+            
+            updatePromise
+                .then(function(response) {
+                    console.log('Album tags updated successfully:', response);
+                    $scope.loading = false;
+                    $('#editAlbumTagModal').modal('hide');
+                    alert('Album tags updated successfully');
+                    
+                    // Update the folder in the list with the ID from database
+                    for (var i = 0; i < $scope.folders.length; i++) {
+                        if ($scope.folders[i].album === albumName) {
+                            $scope.folders[i].tags = cleanTags;
+                            $scope.folders[i].id = $scope.editingAlbum.id;
+                            break;
+                        }
+                    }
+                    
+                    // Reload all album tags to ensure sync with database
+                    loadAndMergeAlbumTags();
+                })
+                .catch(function(error) {
+                    console.error('Error updating album tags:', error);
+                    $scope.loading = false;
+                    
+                    // Provide helpful error message
+                    var errorMsg = 'Failed to update album tags. ';
+                    if (error.data && error.data.message) {
+                        errorMsg += error.data.message;
+                    } else if (error.message) {
+                        errorMsg += error.message;
+                    } else {
+                        errorMsg += 'Check console for details.';
+                    }
+                    alert(errorMsg);
+                });
+        };
+
+        // Clear album tag text
+        $scope.clearAlbumTagText = function() {
+            if (confirm('Clear all album tag text?')) {
+                $scope.editingAlbum.tags = '';
+                $scope.selectedAlbumOption = null;
+            }
+        };
+
+        // Submit album tag form
+        $scope.submitEditAlbumTagForm = function() {
+            $scope.updateAlbumTagText();
+        };
+
+        // Search albums by tag
+        $scope.searchAlbumsByTag = function(tag) {
+            $scope.loading = true;
+            PhotoService.getAlbumsByTag(tag)
+                .then(function(albums) {
+                    console.log('Albums with tag:', albums);
+                    // Filter the folders list to show only albums with this tag
+                    $scope.folders = albums.map(album => ({
+                        album: album.name,
+                        path: album.path,
+                        id: album.id,
+                        tags: album.tags,
+                        isAlbum: true
+                    }));
+                    $scope.loading = false;
+                })
+                .catch(function(error) {
+                    console.error('Error searching albums by tag:', error);
+                    $scope.loading = false;
+                    alert('Failed to search albums by tag');
+                });
         };
 
         $scope.editImageTag2= function (photo) {

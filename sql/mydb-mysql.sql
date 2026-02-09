@@ -42,6 +42,25 @@ INSERT INTO `photos` (`id`, `name`, `tags`, `album`, `path`) VALUES
 (3, '100_0004.jpg', 'sample, demo', 'pictures', 'data');
 
 -- ============================================
+-- Albums Table - Album metadata and tags
+-- ============================================
+DROP TABLE IF EXISTS `albums`;
+CREATE TABLE `albums` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Album name',
+  `tags` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Comma-separated album tags',
+  `path` varchar(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Album directory path',
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Album description',
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Record creation time',
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_album_name` (`name`(255)) COMMENT 'Unique album name',
+  KEY `idx_album_path` (`path`(255)) COMMENT 'Index for path queries',
+  FULLTEXT KEY `idx_album_tags_fulltext` (`tags`) COMMENT 'Full-text search on album tags'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci 
+  COMMENT='Album metadata and tagging';
+
+-- ============================================
 -- Tags Table - Tag management for autocomplete
 -- ============================================
 DROP TABLE IF EXISTS `tags`;

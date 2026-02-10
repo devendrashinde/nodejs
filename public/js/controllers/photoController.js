@@ -30,7 +30,7 @@ angular.module('photoController', [])
     })
 
     // inject the Photo service factory into our controller
-    .controller('photoController', ['$scope','$http', '$location','$timeout','PhotoService','ModalService','RecentlyViewedService','APP_CONSTANTS','SearchService', function($scope, $http, $location, $timeout, PhotoService, ModalService, RecentlyViewedService, APP_CONSTANTS, SearchService) {
+    .controller('photoController', ['$scope','$http', '$location','$timeout','PhotoService','ModalService','RecentlyViewedService','APP_CONSTANTS','SearchService','AudioPlayerService','TaggingService','UtilityService','ErrorHandlingService', function($scope, $http, $location, $timeout, PhotoService, ModalService, RecentlyViewedService, APP_CONSTANTS, SearchService, AudioPlayerService, TaggingService, UtilityService, ErrorHandlingService) {
 
         $scope.formData = {};
         $scope.tags = [];
@@ -69,18 +69,52 @@ angular.module('photoController', [])
         $scope.totalPhotos = 0;
         $scope.totalPages = 0;
 		$scope.numberOfItemsOnPage = APP_CONSTANTS.ITEMS_PER_PAGE;
-        // music player
-        var audio = new Audio();
-        $scope.playlist = [];
-        $scope.currentIndex = -1;
-        $scope.isPlaying = false;
-        $scope.currentTime = "0:00";
-        $scope.duration = "0:00";
-        $scope.progress = 0;
-        $scope.volume = APP_CONSTANTS.DEFAULT_VOLUME;
-        $scope.isShuffle = false;
-        $scope.isRepeat = false;
-        $scope.showPlaylist = false;   
+        
+        // Initialize audio player state from service
+        var playerState = AudioPlayerService.getState();
+        $scope.playlist = playerState.playlist;
+        $scope.currentIndex = playerState.currentIndex;
+        $scope.isPlaying = playerState.isPlaying;
+        $scope.currentTime = playerState.currentTime;
+        $scope.duration = playerState.duration;
+        $scope.progress = playerState.progress;
+        $scope.volume = playerState.volume;
+        $scope.isShuffle = playerState.isShuffle;
+        $scope.isRepeat = playerState.isRepeat;
+        $scope.showPlaylist = false;
+        
+        // Watch AudioPlayerService state for changes and sync to $scope
+        $scope.$watch(function() {
+            return AudioPlayerService.getState();
+        }, function(newState) {
+            if (newState) {
+                $scope.playlist = newState.playlist;
+                $scope.currentIndex = newState.currentIndex;
+                $scope.isPlaying = newState.isPlaying;
+                $scope.currentTime = newState.currentTime;
+                $scope.duration = newState.duration;
+                $scope.progress = newState.progress;
+                $scope.volume = newState.volume;
+                $scope.isShuffle = newState.isShuffle;
+                $scope.isRepeat = newState.isRepeat;
+            }
+        }, true);
+        
+        // Listen for playlist updates from service
+        $scope.$on('playlistUpdated', function(event, newState) {
+            if (newState) {
+                $scope.playlist = newState.playlist;
+                $scope.currentIndex = newState.currentIndex;
+                $scope.isPlaying = newState.isPlaying;
+                $scope.currentTime = newState.currentTime;
+                $scope.duration = newState.duration;
+                $scope.progress = newState.progress;
+                $scope.volume = newState.volume;
+                $scope.isShuffle = newState.isShuffle;
+                $scope.isRepeat = newState.isRepeat;
+            }
+        });
+        
         // file upload
         $scope.uploadFile = null;
         $scope.filePreviewUrl = '';
@@ -134,9 +168,8 @@ angular.module('photoController', [])
                     .then(function successCallback(response) {                          
 							updatePhotoTagsFromDb(response.data);
                             $scope.loading = false;
-                    }, function errorCallback(response) {
-                        // called asynchronously if an error occurs
-                        // or server returns response with an error status.
+                    }, function(error) {
+                        ErrorHandlingService.handleError(error, 'Error searching by tag');
                     });
             }
         };
@@ -177,9 +210,8 @@ angular.module('photoController', [])
                             initFancybox();
                           }
                         }, 100);
-                }, function errorCallback(response) {
-                    // called asynchronously if an error occurs
-                    // or server returns response with an error status.
+                }, function(error) {
+                    ErrorHandlingService.handleError(error, 'Error loading photos');
                 });         
         };
 
@@ -215,9 +247,8 @@ angular.module('photoController', [])
                             photo.isFavorite = true;
                         }
                     });
-                }, function errorCallback(response) {
-                    console.error('Error loading favorites:', response);
-                    // Silently fail - continue without favorites
+                }, function(error) {
+                    ErrorHandlingService.handleError(error, 'Error loading user favorites');
                 });
         };
         
@@ -386,8 +417,8 @@ angular.module('photoController', [])
                         initFancybox();
                       }
                     }, 100);
-                }, function errorCallback(response) {
-                    console.error('Error loading favorites:', response);
+                }, function(error) {
+                    ErrorHandlingService.handleError(error, 'Error loading favorites view');
                     $scope.photos = [];
                     $scope.favoritesCount = 0;
                     $scope.loading = false;
@@ -410,9 +441,8 @@ angular.module('photoController', [])
                 $scope.tags = response.data;
                 $scope.getPhotos(id);
                 $scope.loading = false;
-            }, function errorCallback(response) {
-                // called asynchronously if an error occurs
-                // or server returns response with an error status.
+            }, function(error) {
+                ErrorHandlingService.handleError(error, 'Error loading tag information');
             });         
         }
 
@@ -538,9 +568,8 @@ angular.module('photoController', [])
                     if (response.data.topAlbums) {
                         $scope.topAlbums = response.data.topAlbums;
                     }
-                }, function errorCallback(error) {
-                    console.error('Error loading cache stats:', error);
-                    alert('Failed to load cache statistics');
+                }, function(error) {
+                    ErrorHandlingService.handleError(error, 'Error loading cache statistics');
                 });
         };
         
@@ -558,8 +587,7 @@ angular.module('photoController', [])
                     }
                 })
                 .catch(function(error) {
-                    console.error('Error scanning for albums:', error);
-                    alert('Failed to scan for new albums. See console for details.');
+                    ErrorHandlingService.handleError(error, 'Error scanning for new albums');
                 });
         };
 
@@ -581,9 +609,8 @@ angular.module('photoController', [])
                             // Reload cache stats
                             $scope.loadCacheStats();
                         }
-                    }, function errorCallback(error) {
-                        console.error('Error clearing cache:', error);
-                        alert('Failed to clear cache');
+                    }, function(error) {
+                        ErrorHandlingService.handleError(error, 'Error clearing all cache');
                     });
             }
         };
@@ -600,9 +627,8 @@ angular.module('photoController', [])
                             // Reload cache stats
                             $scope.loadCacheStats();
                         }
-                    }, function errorCallback(error) {
-                        console.error('Error clearing cache:', error);
-                        alert('Failed to clear cache');
+                    }, function(error) {
+                        ErrorHandlingService.handleError(error, 'Error clearing all cache');
                     });
             }
         };
@@ -624,10 +650,9 @@ angular.module('photoController', [])
                 $scope.allTags = response;
                 $scope.filteredTags = response;
                 $scope.loading = false;
-            }, function errorCallback(response) {
+            }, function(error) {
+                ErrorHandlingService.handleError(error, 'Error loading all tags');
                 $scope.loading = false;
-                // called asynchronously if an error occurs
-                // or server returns response with an error status.
             });         
         }
 
@@ -734,8 +759,7 @@ angular.module('photoController', [])
                     // Don't call $apply() here - we're already in Angular's digest cycle
                 })
                 .catch(function(error) {
-                    console.error('Error loading album tags:', error);
-                    // Continue anyway, tags just won't be displayed
+                    ErrorHandlingService.handleError(error, 'Error loading and merging album tags');
                 });
         }       
         
@@ -804,7 +828,13 @@ angular.module('photoController', [])
         };
 
         $scope.updatePhotoTag = function(id, name, tags){
-            // Trim whitespace from tags
+            // Use TaggingService for tag validation
+            var validation = TaggingService.validateTags(tags);
+            if (!validation.valid) {
+                alert('Tag validation failed: ' + validation.message);
+                return;
+            }
+            
             var cleanTags = (tags || '').trim();
             if (!cleanTags) {
                 alert('Please enter at least one tag or description');
@@ -824,9 +854,8 @@ angular.module('photoController', [])
                             $scope.loading = false;
                             $('#editTagModal').modal('hide');
                             $scope.selectedOption = null;
-                    }, function errorCallback(response) {
-                        // called asynchronously if an error occurs
-                        // or server returns response with an error status.
+                    }, function(error) {
+                        ErrorHandlingService.handleError(error, 'Error updating image tag');
                         alert('Update tag failed!');
                         $scope.loading = false;
                     });
@@ -883,6 +912,13 @@ angular.module('photoController', [])
             }
 
             var cleanTags = ($scope.editingAlbum.tags || '').trim();
+            
+            // Validate tags using TaggingService
+            var validation = TaggingService.validateTags(cleanTags);
+            if (!validation.valid) {
+                alert('Tag validation failed: ' + validation.message);
+                return;
+            }
             var albumName = $scope.editingAlbum.album;
             
             $scope.loading = true;
@@ -912,7 +948,7 @@ angular.module('photoController', [])
                         throw new Error('Invalid response: no ID returned');
                     }
                 }).catch(function(error) {
-                    console.error('Error creating album:', error);
+                    ErrorHandlingService.handleError(error, 'Error creating album');
                     throw error;
                 });
             }
@@ -936,7 +972,7 @@ angular.module('photoController', [])
                     loadAndMergeAlbumTags();
                 })
                 .catch(function(error) {
-                    console.error('Error updating album tags:', error);
+                    ErrorHandlingService.handleError(error, 'Error updating album tags');
                     $scope.loading = false;
                     
                     // Provide helpful error message
@@ -981,9 +1017,8 @@ angular.module('photoController', [])
                     $scope.loading = false;
                 })
                 .catch(function(error) {
-                    console.error('Error searching albums by tag:', error);
+                    ErrorHandlingService.handleError(error, 'Error searching albums by tag');
                     $scope.loading = false;
-                    alert('Failed to search albums by tag');
                 });
         };
 
@@ -998,7 +1033,7 @@ angular.module('photoController', [])
                     $scope.playlists = playlists || [];
                 })
                 .catch(function(error) {
-                    console.error('Error loading playlists:', error);
+                    ErrorHandlingService.handleError(error, 'Error loading playlists');
                     $scope.playlists = [];
                 });
         }
@@ -1033,9 +1068,8 @@ angular.module('photoController', [])
                     $scope.totalPages = 1;
                 })
                 .catch(function(error) {
-                    console.error('Error loading playlist items:', error);
+                    ErrorHandlingService.handleError(error, 'Error loading playlist items');
                     $scope.loading = false;
-                    alert('Failed to load playlist items');
                 });
         };
 
@@ -1083,7 +1117,7 @@ angular.module('photoController', [])
                     loadPlaylists();
                 })
                 .catch(function(error) {
-                    console.error('Error creating playlist:', error);
+                    ErrorHandlingService.handleError(error, 'Error creating playlist');
                     $scope.loading = false;
                     
                     var errorMsg = 'Failed to create playlist. ';
@@ -1130,6 +1164,13 @@ angular.module('photoController', [])
 
             var cleanTags = ($scope.editingPlaylist.tags || '').trim();
             
+            // Validate tags using TaggingService
+            var validation = TaggingService.validateTags(cleanTags);
+            if (!validation.valid) {
+                alert('Tag validation failed: ' + validation.message);
+                return;
+            }
+            
             $scope.loading = true;
             
             PhotoService.updatePlaylistTag($scope.editingPlaylist.id, cleanTags)
@@ -1150,7 +1191,7 @@ angular.module('photoController', [])
                     loadPlaylists();
                 })
                 .catch(function(error) {
-                    console.error('Error updating playlist tags:', error);
+                    ErrorHandlingService.handleError(error, 'Error updating playlist tags');
                     $scope.loading = false;
                     
                     var errorMsg = 'Failed to update playlist tags. ';
@@ -1194,7 +1235,7 @@ angular.module('photoController', [])
                     loadPlaylists();
                 })
                 .catch(function(error) {
-                    console.error('Error deleting playlist:', error);
+                    ErrorHandlingService.handleError(error, 'Error deleting playlist');
                     $scope.loading = false;
                     alert('Failed to delete playlist');
                 });
@@ -1221,7 +1262,7 @@ angular.module('photoController', [])
                     $scope.setPlaylist($scope.selectedAlbum);
                 })
                 .catch(function(error) {
-                    console.error('Error removing item from playlist:', error);
+                    ErrorHandlingService.handleError(error, 'Error removing playlist item');
                     $scope.loading = false;
                     alert('Failed to remove item from playlist');
                 });
@@ -1236,7 +1277,7 @@ angular.module('photoController', [])
                     $scope.loading = false;
                 })
                 .catch(function(error) {
-                    console.error('Error searching playlists by tag:', error);
+                    ErrorHandlingService.handleError(error, 'Error searching playlists by tag');
                     $scope.loading = false;
                     alert('Failed to search playlists by tag');
                 });
@@ -1325,150 +1366,64 @@ angular.module('photoController', [])
                 btn.classList.add("hide");
                 btn.classList.remove("show");
             }
-        };        
+        };
 
-        function formatTime(seconds) {
-            var minutes = Math.floor(seconds / 60) || 0;
-            var secs = Math.floor(seconds % 60) || 0;
-            return minutes + ":" + (secs < 10 ? "0" : "") + secs;
-        }
+        // =========== AUDIO PLAYER FUNCTIONS - DELEGATING TO AudioPlayerService ===========
 
         // Add to playlist and play
         $scope.playAudio = function(image) {
-            if (!image.isAudio) return;
-
-            // If not already in playlist, add it
-            var existingIndex = $scope.playlist.findIndex(track => track.path === image.path);
-            if (existingIndex === -1) {
-                $scope.playlist.push(image);
-                $scope.currentIndex = $scope.playlist.length - 1;
-            } else {
-                $scope.currentIndex = existingIndex;
-            }
-
-            startPlayback();
+            if (!image || !image.isAudio) return;
+            
+            // Delegate to service - it handles deduplication and auto-play
+            AudioPlayerService.addToPlaylist(image);
         };
 
-        function startPlayback() {
-            var track = $scope.playlist[$scope.currentIndex];
-            if (!track) return;
-
-            audio.src = track.path;
-            audio.play();
-            $scope.isPlaying = true;
-        }
-
         $scope.togglePlay = function() {
-            if ($scope.isPlaying) {
-            audio.pause();
-            $scope.isPlaying = false;
-            } else {
-                if(!audio.src) {
-                    startPlayback();
-                } else {
-                    audio.play();
-                    $scope.isPlaying = true;
-                }
-            }
+            AudioPlayerService.togglePlay();
         };
 
         $scope.next = function() {
-            if ($scope.playlist.length === 0) return;
-            
-            if ($scope.isShuffle) {
-                // Random next track (but not the current one if playlist has more than 1 track)
-                var nextIndex;
-                do {
-                    nextIndex = Math.floor(Math.random() * $scope.playlist.length);
-                } while (nextIndex === $scope.currentIndex && $scope.playlist.length > 1);
-                $scope.currentIndex = nextIndex;
-            } else {
-                // Sequential next track
-                $scope.currentIndex = ($scope.currentIndex + 1) % $scope.playlist.length;
-            }
-            
-            startPlayback();
+            AudioPlayerService.next();
         };
 
         $scope.prev = function() {
-            if ($scope.playlist.length === 0) return;
-            $scope.currentIndex = ($scope.currentIndex - 1 + $scope.playlist.length) % $scope.playlist.length;
-            startPlayback();
+            AudioPlayerService.previous();
         };
 
         $scope.seek = function(event) {
             var bar = event.target;
             var clickX = event.offsetX;
             var width = bar.offsetWidth;
-            var newTime = (clickX / width) * audio.duration;
-            audio.currentTime = newTime;
+            var percent = (clickX / width) * 100;
+            AudioPlayerService.seek(percent);
         };
-
-        // update progress bar
-        audio.addEventListener("timeupdate", function() {
-            $scope.$apply(function() {
-            $scope.currentTime = formatTime(audio.currentTime);
-            $scope.duration = formatTime(audio.duration);
-            $scope.progress = (audio.currentTime / audio.duration) * 100 || 0;
-            });
-        });
-
-        // auto-play next when finished
-        audio.addEventListener("ended", function() {
-            $scope.$apply(function() {
-                if ($scope.isRepeat) {
-                    // Repeat current track
-                    audio.currentTime = 0;
-                    audio.play();
-                } else {
-                    $scope.next();
-                }
-            });
-        });
-
-        // Set initial volume
-        audio.volume = $scope.volume / 100;
 
         // Volume control
         $scope.setVolume = function() {
-            audio.volume = $scope.volume / 100;
+            AudioPlayerService.setVolume($scope.volume);
         };
 
         // Toggle shuffle
         $scope.toggleShuffle = function() {
-            $scope.isShuffle = !$scope.isShuffle;
+            AudioPlayerService.toggleShuffle();
         };
 
         // Toggle repeat
         $scope.toggleRepeat = function() {
-            $scope.isRepeat = !$scope.isRepeat;
+            AudioPlayerService.toggleRepeat();
         };
 
         // Play track by index
         $scope.playTrackByIndex = function(index) {
             if (index >= 0 && index < $scope.playlist.length) {
-                $scope.currentIndex = index;
-                $scope.playAudio($scope.playlist[index]);
+                AudioPlayerService.playTrackByIndex(index);
             }
         };
 
         // Remove track from playlist
         $scope.removeFromPlaylist = function(index) {
             if (index >= 0 && index < $scope.playlist.length) {
-                // If removing currently playing track
-                if (index === $scope.currentIndex) {
-                    $scope.next(); // Play next track
-                } else if (index < $scope.currentIndex) {
-                    $scope.currentIndex--; // Adjust current index
-                }
-                $scope.playlist.splice(index, 1);
-                
-                // If playlist is empty, stop playback
-                if ($scope.playlist.length === 0) {
-                    audio.pause();
-                    $scope.isPlaying = false;
-                    $scope.currentIndex = -1;
-                }
+                AudioPlayerService.removeFromPlaylist(index);
             }
         };
 
@@ -1480,7 +1435,7 @@ angular.module('photoController', [])
             });
             
             if (!alreadyExists) {
-                $scope.playlist.push(image);
+                AudioPlayerService.addToPlaylist(image);
                 ModalService.showModal('Added to Playlist', image.tags || 'Track added to playlist');
             } else {
                 ModalService.showModal('Already in Playlist', 'This track is already in the playlist');
@@ -1521,9 +1476,8 @@ angular.module('photoController', [])
                             $scope.loadAlbum();
                             $scope.loading = false;
                             $('#uploadModal').modal('hide');
-                    }, function errorCallback(response) {
-                        // called asynchronously if an error occurs
-                        // or server returns response with an error status.
+                    }, function(error) {
+                        ErrorHandlingService.handleError(error, 'Error uploading file');
                         alert('Upload failed!');
                     });
         };
@@ -1549,8 +1503,8 @@ angular.module('photoController', [])
                     } else {
                         $scope.favoritesCount = Math.max(0, $scope.favoritesCount - 1);
                     }
-                }, function errorCallback(response) {
-                    console.error('Error toggling favorite:', response);
+                }, function(error) {
+                    ErrorHandlingService.handleError(error, 'Error toggling favorite');
                     alert('Failed to toggle favorite');
                 });
         };
@@ -1584,8 +1538,8 @@ angular.module('photoController', [])
                 .then(function successCallback(response) {
                     // Display EXIF data (can be enhanced with a modal)
                     alert('EXIF data retrieved. Check console for details.');
-                }, function errorCallback(response) {
-                    console.error('Error fetching EXIF:', response);
+                }, function(error) {
+                    ErrorHandlingService.handleError(error, 'Error fetching EXIF data');
                     alert('Failed to load EXIF data');
                 });
         };

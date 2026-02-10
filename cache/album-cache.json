@@ -745,6 +745,81 @@
       ],
       "page": 0,
       "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\pictures\\2003-Jan\\2004-Feb_0_20": {
+      "totalPhotos": 4,
+      "images": [
+        {
+          "id": "album0",
+          "path": "pictures/2003-Jan/2004-Feb",
+          "name": "2004-Feb",
+          "isAlbum": true,
+          "album": "2004-Feb"
+        },
+        {
+          "id": "photo1",
+          "path": "data/pictures/2003-Jan/2004-Feb/000_0004.jpg",
+          "name": "000_0004.jpg",
+          "isAlbum": false,
+          "album": "pictures/2003-Jan/2004-Feb",
+          "tags": "000_0004"
+        },
+        {
+          "id": "photo2",
+          "path": "data/pictures/2003-Jan/2004-Feb/000_0009.jpg",
+          "name": "000_0009.jpg",
+          "isAlbum": false,
+          "album": "pictures/2003-Jan/2004-Feb",
+          "tags": "000_0009"
+        },
+        {
+          "id": "photo3",
+          "path": "data/pictures/2003-Jan/2004-Feb/000_0011.jpg",
+          "name": "000_0011.jpg",
+          "isAlbum": false,
+          "album": "pictures/2003-Jan/2004-Feb",
+          "tags": "000_0011"
+        },
+        {
+          "id": "photo4",
+          "path": "data/pictures/2003-Jan/2004-Feb/000_0012.jpg",
+          "name": "000_0012.jpg",
+          "isAlbum": false,
+          "album": "pictures/2003-Jan/2004-Feb",
+          "tags": "000_0012"
+        },
+        {
+          "id": "album5",
+          "path": "pictures/2003-Jan/2004-Feb/2018-Nov",
+          "name": "2018-Nov",
+          "isAlbum": true,
+          "album": "2018-Nov"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
+    },
+    "C:\\MyData\\photos\\data\\movies_0_20": {
+      "totalPhotos": 1,
+      "images": [
+        {
+          "id": "album0",
+          "path": "movies",
+          "name": "movies",
+          "isAlbum": true,
+          "album": "movies"
+        },
+        {
+          "id": "photo1",
+          "path": "data/movies/Bilateral knees to chest.mp4",
+          "name": "Bilateral knees to chest.mp4",
+          "isAlbum": false,
+          "album": "movies",
+          "tags": "Bilateral knees to chest"
+        }
+      ],
+      "page": 0,
+      "itemsPerPage": 20
     }
   },
   "albumMeta": {
@@ -763,7 +838,7 @@
     "books": {
       "mtime": 1749140591774,
       "indexed": "2026-02-09T15:40:34.609Z",
-      "hits": 2,
+      "hits": 3,
       "discovered": "2026-02-08T22:29:16.122Z"
     },
     "empty": {
@@ -775,37 +850,37 @@
     "Home": {
       "mtime": 1769597994089,
       "indexed": "2026-02-08T22:30:03.963Z",
-      "hits": 40,
+      "hits": 51,
       "discovered": "2026-02-08T22:29:16.122Z"
     },
     "movies": {
-      "mtime": null,
-      "indexed": null,
-      "hits": 0,
+      "mtime": 1769523662984,
+      "indexed": "2026-02-10T17:50:03.385Z",
+      "hits": 1,
       "discovered": "2026-02-08T22:29:16.122Z"
     },
     "music": {
       "mtime": 1758291272434,
       "indexed": "2026-02-09T16:16:02.788Z",
-      "hits": 11,
+      "hits": 12,
       "discovered": "2026-02-08T22:29:16.123Z"
     },
     "pictures": {
       "mtime": 1770043030480,
       "indexed": "2026-02-08T22:30:18.694Z",
-      "hits": 11,
+      "hits": 15,
       "discovered": "2026-02-08T22:29:16.123Z"
     },
     "pictures/2003-Jan": {
       "mtime": 1749133213509,
       "indexed": "2026-02-09T15:54:22.173Z",
-      "hits": 1,
+      "hits": 3,
       "discovered": "2026-02-08T22:29:16.123Z"
     },
     "pictures/2015-May": {
       "mtime": 1733740968628,
       "indexed": "2026-02-08T22:30:49.573Z",
-      "hits": 3,
+      "hits": 4,
       "discovered": "2026-02-08T22:29:16.123Z"
     },
     "pictures/2018-Nov": {
@@ -849,12 +924,18 @@
       "indexed": "2026-02-09T16:46:48.662Z",
       "hits": 1,
       "discovered": "2026-02-08T22:29:16.123Z"
+    },
+    "pictures/2003-Jan/2004-Feb": {
+      "mtime": 1733740966850,
+      "indexed": "2026-02-10T17:29:55.772Z",
+      "hits": 1,
+      "discovered": null
     }
   },
-  "savedAt": "2026-02-10T17:10:32.924Z",
+  "savedAt": "2026-02-10T18:01:42.603Z",
   "stats": {
-    "entries": 10,
-    "albums": 17,
-    "sizeBytes": 12614
+    "entries": 12,
+    "albums": 18,
+    "sizeBytes": 13844
   }
 }

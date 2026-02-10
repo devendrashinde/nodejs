@@ -10,6 +10,28 @@ angular.module('photoController', [])
         };
     })
 
+    // Custom case-insensitive search filter for albums and playlists
+    .filter('caseInsensitiveContains', function() {
+        return function(items, searchField, searchText) {
+            if (!items) return items;
+            if (!searchText || searchText.trim() === '') return items;
+            
+            const searchLower = searchText.toLowerCase().trim();
+            console.log('Filter called:', { searchField, searchText, searchLower, itemCount: items.length });
+            
+            const filtered = items.filter(function(item) {
+                if (!item || !item[searchField]) return false;
+                const fieldValue = String(item[searchField]).toLowerCase();
+                const matches = fieldValue.indexOf(searchLower) !== -1;
+                console.log('  Checking:', item[searchField], '→', matches);
+                return matches;
+            });
+            
+            console.log('Filter result:', filtered.length, 'items');
+            return filtered;
+        };
+    })
+
     // inject the Photo service factory into our controller
     .controller('photoController', ['$scope','$http', '$location','$timeout','PhotoService','ModalService','RecentlyViewedService', function($scope, $http, $location, $timeout, PhotoService, ModalService, RecentlyViewedService) {
 
@@ -74,6 +96,35 @@ angular.module('photoController', [])
         // Extended video formats support (includes WebM, Ogg Theora, and more)
         videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v', 'divx', 'xvid', 'webm', 'ogg', 'ogv', 'flv', 'wmv', 'asf', 'rm', 'rmvb', 'ts', 'vob', 'f4v'];
         
+        // Filter functions for sidebar search
+        $scope.getFilteredFolders = function() {
+            if (!$scope.folders) {
+                return [];
+            }
+            if (!$scope.albumsSearchText || $scope.albumsSearchText.trim() === '') {
+                return $scope.folders;
+            }
+            var searchLower = $scope.albumsSearchText.toLowerCase().trim();
+            var filtered = $scope.folders.filter(function(folder) {
+                return folder && folder.album && folder.album.toLowerCase().indexOf(searchLower) !== -1;
+            });
+            return filtered;
+        };
+        
+        $scope.getFilteredPlaylists = function() {
+            if (!$scope.playlists) {
+                return [];
+            }
+            if (!$scope.playlistsSearchText || $scope.playlistsSearchText.trim() === '') {
+                return $scope.playlists;
+            }
+            var searchLower = $scope.playlistsSearchText.toLowerCase().trim();
+            var filtered = $scope.playlists.filter(function(playlist) {
+                return playlist && playlist.name && playlist.name.toLowerCase().indexOf(searchLower) !== -1;
+            });
+            return filtered;
+        };
+        
         // GET =====================================================================
         // when landing on the page, get all photos and tags and show them
         // use the service to get all the photo tags
@@ -121,6 +172,21 @@ angular.module('photoController', [])
         // Clear albums search and show all albums
         $scope.clearAlbumsSearch = function() {
             $scope.albumsSearchText = "";
+            var input = document.getElementById('albumsSearchInput');
+            if (input) {
+                input.value = "";
+            }
+            $scope.$applyAsync();
+        };
+
+        // Clear playlists search and show all playlists
+        $scope.clearPlaylistsSearch = function() {
+            $scope.playlistsSearchText = "";
+            var input = document.getElementById('playlistsSearchInput');
+            if (input) {
+                input.value = "";
+            }
+            $scope.$applyAsync();
         };
 
         // GET  ==================================================================
@@ -187,29 +253,6 @@ angular.module('photoController', [])
                     // Silently fail - continue without favorites
                 });
         };
-		
-        // load photos from next page
-        $scope.nextPage = function() {
-			if(!$scope.noMorePhotos) {
-				$scope.pageId = $scope.pageId  + 1;
-				$scope.getPhotos(getSelectedAlbumsId());
-			}
-        };
-		
-        // load photos from prev page
-        $scope.prevPage = function() {
-			$scope.pageId = $scope.pageId  - 1;
-			if($scope.pageId >= 0) {
-				$scope.getPhotos(getSelectedAlbumsId());
-			} else {
-				$scope.pageId = 0;
-			}
-        };
-		
-		function getSelectedAlbumsId(){
-			var id = $scope.selectedAlbum.path;
-			return (id == "Home"? "" : id);
-		}
         
         function getNameAndAlbum(name){
             var prop = {};
@@ -415,6 +458,39 @@ angular.module('photoController', [])
             $scope.filteredTags = $scope.allTags.filter(tag => tag.tag.includes(lower));
         }
         });
+
+        // Watch albums search input to trigger folder filtering
+        $scope.$watch('albumsSearchText', function(newVal, oldVal) {
+            // No-op watch, just ensures digest cycles include filter evaluation
+        });
+
+        // Watch playlists search input to trigger playlist filtering
+        $scope.$watch('playlistsSearchText', function(newVal, oldVal) {
+            // No-op watch, just ensures digest cycles include filter evaluation
+        });
+
+        // Handler for search input changes
+        $scope.onSearchChange = function(searchType, event) {
+            if (event && event.target) {
+                var inputValue = event.target.value;
+                
+                if (searchType === 'albums') {
+                    $scope.albumsSearchText = inputValue;
+                } else if (searchType === 'playlists') {
+                    $scope.playlistsSearchText = inputValue;
+                }
+            }
+        };
+
+        // Watch folders array for changes (when albums are loaded/updated)
+        $scope.$watch('folders', function(newVal) {
+            // Trigger re-evaluation of filtered folders
+        }, true); // true means deep watch to monitor changes within the array
+
+        // Watch playlists array for changes (when playlists are loaded/updated)
+        $scope.$watch('playlists', function(newVal) {
+            // Trigger re-evaluation of filtered playlists
+        }, true); // true means deep watch to monitor changes within the array
 
         
         $scope.searchByTag = function(tag) {

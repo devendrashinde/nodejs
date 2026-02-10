@@ -132,7 +132,7 @@ html(ng-app="app")
       // Sidebar + Content
       div.row
         // Sidebar for Folders
-        aside#folderSidebar.col-md-2.mb-3.collapse.d-md-block(ng-if="folders.length > 0")
+        aside#folderSidebar.col-md-2.mb-3.collapse.d-md-block
           div.albums-sidebar
             div.albums-header
               //- Toggle between Albums and Playlists
@@ -179,30 +179,34 @@ html(ng-app="app")
               input.form-control.form-control-sm(
                 type="text"
                 ng-model="albumsSearchText"
+                ng-keyup="onSearchChange('albums', $event)"
                 placeholder="Search albums..."
                 title="Search albums by name"
                 id="albumsSearchInput"
+                style="padding-right: 30px;"
               )
               button.btn-albums-clear(
-                ng-style="albumsSearchText ? {opacity: 1, 'pointer-events': 'all'} : {opacity: 0, 'pointer-events': 'none'}"
-                ng-mousedown="albumsSearchText = ''"
+                ng-show="albumsSearchText"
+                ng-click="clearAlbumsSearch()"
                 type="button"
                 title="Clear search"
               )
                 i.fas.fa-times
             
             //- Playlists search
-            div.albums-search(ng-if="selectedView === 'playlists'" style="margin-bottom: 0.5rem;")
+            div.albums-search(ng-if="selectedView === 'playlists'")
               input.form-control.form-control-sm(
                 type="text"
                 ng-model="playlistsSearchText"
+                ng-keyup="onSearchChange('playlists', $event)"
                 placeholder="Search playlists..."
                 title="Search playlists by name"
                 id="playlistsSearchInput"
+                style="padding-right: 30px;"
               )
               button.btn-albums-clear(
-                ng-style="playlistsSearchText ? {opacity: 1, 'pointer-events': 'all'} : {opacity: 0, 'pointer-events': 'none'}"
-                ng-mousedown="playlistsSearchText = ''"
+                ng-show="playlistsSearchText"
+                ng-click="clearPlaylistsSearch()"
                 type="button"
                 title="Clear search"
               )
@@ -217,15 +221,27 @@ html(ng-app="app")
                 i.fas.fa-plus.me-1
                 | New Playlist
             
-            //- All Albums button
+            //- All Albums button (Albums view)
             button.btn.btn-sm.btn-outline-primary.w-100(
+              ng-if="selectedView === 'albums'"
               ng-click="setAlbum({album: '', path: ''})"
               ng-class="{'active': selectedAlbum.album == '' || !selectedAlbum.album}"
               style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-bottom: 4px;"
             )
               i.fas.fa-th.me-1
               | All Albums
-              span.badge.bg-primary.float-end {{(folders | filter:{album: albumsSearchText}).length}}
+              span.badge.bg-primary.float-end {{getFilteredFolders().length}}
+            
+            //- All Playlists button (Playlists view)
+            button.btn.btn-sm.btn-outline-primary.w-100(
+              ng-if="selectedView === 'playlists'"
+              ng-click="setAlbum({album: '', path: ''})"
+              ng-class="{'active': selectedAlbum.album == '' || !selectedAlbum.album}"
+              style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-bottom: 4px;"
+            )
+              i.fas.fa-list.me-1
+              | All Playlists
+              span.badge.bg-primary.float-end {{getFilteredPlaylists().length}}
             
             //- Favorites button
             button.btn.btn-sm.btn-outline-danger.w-100(
@@ -283,7 +299,7 @@ html(ng-app="app")
             //- Albums list (filtered)
             ul.list-group.list-group-flush.albums-list(ng-if="selectedView === 'albums'")
               li.list-group-item.list-group-item-action.album-item(
-                ng-repeat="folder in folders | filter:{album: albumsSearchText}"
+                ng-repeat="folder in getFilteredFolders()"
                 ng-class="{'active': folder.album == selectedAlbum.album}"
                 title="{{folder.album}}"
                 style="position: relative; padding-right: 45px;"
@@ -311,7 +327,7 @@ html(ng-app="app")
             //- Playlists list (filtered)
             ul.list-group.list-group-flush.playlists-list(ng-if="selectedView === 'playlists'")
               li.list-group-item.list-group-item-action.playlist-item(
-                ng-repeat="playlist in playlists | filter:{name: playlistsSearchText}"
+                ng-repeat="playlist in getFilteredPlaylists()"
                 ng-class="{'active': playlist.id == selectedAlbum.id}"
                 title="{{playlist.name}} - {{playlist.item_count}} items"
                 style="position: relative; padding-right: 80px;"
@@ -346,14 +362,14 @@ html(ng-app="app")
             
             //- No results message
             div.albums-no-results(
-              ng-if="selectedView === 'albums' && albumsSearchText.trim() && (folders | filter:{album: albumsSearchText}).length === 0"
+              ng-if="selectedView === 'albums' && albumsSearchText.trim() && getFilteredFolders().length === 0"
             )
               i.fas.fa-search.me-2
               | No albums found
             
             //- No results message for playlists
             div.albums-no-results(
-              ng-if="selectedView === 'playlists' && playlistsSearchText.trim() && (playlists | filter:{name: playlistsSearchText}).length === 0"
+              ng-if="selectedView === 'playlists' && playlistsSearchText.trim() && getFilteredPlaylists().length === 0"
             )
               i.fas.fa-search.me-2
               | No playlists found
@@ -999,7 +1015,7 @@ html(ng-app="app")
     script(src="jquery.fancybox.min.js")
     script(src="js/ng-app.js")    
     script(src="main.js")
-    script(src="js/controllers/photoController.js")
+    script(src="js/controllers/photoController.js?v=7")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")

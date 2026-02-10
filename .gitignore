@@ -13,7 +13,6 @@ temp-pic/
 thumbnails/
 thumbs/
 db/
-cache/
 cache/album-cache.json
 
 # Database files

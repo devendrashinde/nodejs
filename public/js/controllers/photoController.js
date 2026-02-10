@@ -17,23 +17,20 @@ angular.module('photoController', [])
             if (!searchText || searchText.trim() === '') return items;
             
             const searchLower = searchText.toLowerCase().trim();
-            console.log('Filter called:', { searchField, searchText, searchLower, itemCount: items.length });
             
             const filtered = items.filter(function(item) {
                 if (!item || !item[searchField]) return false;
                 const fieldValue = String(item[searchField]).toLowerCase();
                 const matches = fieldValue.indexOf(searchLower) !== -1;
-                console.log('  Checking:', item[searchField], '→', matches);
                 return matches;
             });
             
-            console.log('Filter result:', filtered.length, 'items');
             return filtered;
         };
     })
 
     // inject the Photo service factory into our controller
-    .controller('photoController', ['$scope','$http', '$location','$timeout','PhotoService','ModalService','RecentlyViewedService', function($scope, $http, $location, $timeout, PhotoService, ModalService, RecentlyViewedService) {
+    .controller('photoController', ['$scope','$http', '$location','$timeout','PhotoService','ModalService','RecentlyViewedService','APP_CONSTANTS','SearchService', function($scope, $http, $location, $timeout, PhotoService, ModalService, RecentlyViewedService, APP_CONSTANTS, SearchService) {
 
         $scope.formData = {};
         $scope.tags = [];
@@ -62,13 +59,16 @@ angular.module('photoController', [])
         $scope.editingPlaylist = {}; // For playlist creation/edit modal
         $scope.selectedPlaylistItems = []; // Photos in selected playlist
         $scope.showPlaylistModal = false; // Toggle playlist creation modal
-        imageTypes = ['jpg', 'png', 'jpeg', 'bmp', 'gif'];
-        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v', 'divx', 'xvid'];
-        audioTypes = ['mp3', 'amr', 'wav'];
+        
+        // Media type constants
+        const imageTypes = APP_CONSTANTS.IMAGE_TYPES;
+        const videoTypes = APP_CONSTANTS.VIDEO_TYPES;
+        const audioTypes = APP_CONSTANTS.AUDIO_TYPES;
+        
 		$scope.pageId = 0;
         $scope.totalPhotos = 0;
         $scope.totalPages = 0;
-		$scope.numberOfItemsOnPage = 20;
+		$scope.numberOfItemsOnPage = APP_CONSTANTS.ITEMS_PER_PAGE;
         // music player
         var audio = new Audio();
         $scope.playlist = [];
@@ -77,7 +77,7 @@ angular.module('photoController', [])
         $scope.currentTime = "0:00";
         $scope.duration = "0:00";
         $scope.progress = 0;
-        $scope.volume = 80; // Default volume 80%
+        $scope.volume = APP_CONSTANTS.DEFAULT_VOLUME;
         $scope.isShuffle = false;
         $scope.isRepeat = false;
         $scope.showPlaylist = false;   
@@ -93,36 +93,13 @@ angular.module('photoController', [])
         $scope.recentlyViewed = [];
         $scope.showRecentlyViewed = false;
         
-        // Extended video formats support (includes WebM, Ogg Theora, and more)
-        videoTypes = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg','mpeg', 'mts', 'm4v', 'divx', 'xvid', 'webm', 'ogg', 'ogv', 'flv', 'wmv', 'asf', 'rm', 'rmvb', 'ts', 'vob', 'f4v'];
-        
         // Filter functions for sidebar search
         $scope.getFilteredFolders = function() {
-            if (!$scope.folders) {
-                return [];
-            }
-            if (!$scope.albumsSearchText || $scope.albumsSearchText.trim() === '') {
-                return $scope.folders;
-            }
-            var searchLower = $scope.albumsSearchText.toLowerCase().trim();
-            var filtered = $scope.folders.filter(function(folder) {
-                return folder && folder.album && folder.album.toLowerCase().indexOf(searchLower) !== -1;
-            });
-            return filtered;
+            return SearchService.filterByText($scope.folders, 'album', $scope.albumsSearchText);
         };
         
         $scope.getFilteredPlaylists = function() {
-            if (!$scope.playlists) {
-                return [];
-            }
-            if (!$scope.playlistsSearchText || $scope.playlistsSearchText.trim() === '') {
-                return $scope.playlists;
-            }
-            var searchLower = $scope.playlistsSearchText.toLowerCase().trim();
-            var filtered = $scope.playlists.filter(function(playlist) {
-                return playlist && playlist.name && playlist.name.toLowerCase().indexOf(searchLower) !== -1;
-            });
-            return filtered;
+            return SearchService.filterByText($scope.playlists, 'name', $scope.playlistsSearchText);
         };
         
         // GET =====================================================================
@@ -171,22 +148,12 @@ angular.module('photoController', [])
 
         // Clear albums search and show all albums
         $scope.clearAlbumsSearch = function() {
-            $scope.albumsSearchText = "";
-            var input = document.getElementById('albumsSearchInput');
-            if (input) {
-                input.value = "";
-            }
-            $scope.$applyAsync();
+            SearchService.clearSearch('albumsSearchInput', 'albumsSearchText', $scope);
         };
 
         // Clear playlists search and show all playlists
         $scope.clearPlaylistsSearch = function() {
-            $scope.playlistsSearchText = "";
-            var input = document.getElementById('playlistsSearchInput');
-            if (input) {
-                input.value = "";
-            }
-            $scope.$applyAsync();
+            SearchService.clearSearch('playlistsSearchInput', 'playlistsSearchText', $scope);
         };
 
         // GET  ==================================================================
@@ -430,7 +397,7 @@ angular.module('photoController', [])
 		function showNoMorePhotos() {			
 			setTimeout(function() {
 				$scope.noMorePhotos = false;
-			}, 5000); // <-- time in milliseconds
+			}, APP_CONSTANTS.NO_MORE_PHOTOS_TIMEOUT);
 		}
 		
         // load photos and respective tags
@@ -471,15 +438,11 @@ angular.module('photoController', [])
 
         // Handler for search input changes
         $scope.onSearchChange = function(searchType, event) {
-            if (event && event.target) {
-                var inputValue = event.target.value;
-                
-                if (searchType === 'albums') {
-                    $scope.albumsSearchText = inputValue;
-                } else if (searchType === 'playlists') {
-                    $scope.playlistsSearchText = inputValue;
-                }
-            }
+            var scopeMap = {
+                'albums': 'albumsSearchText',
+                'playlists': 'playlistsSearchText'
+            };
+            SearchService.handleSearchChange(searchType, event, scopeMap, $scope);
         };
 
         // Watch folders array for changes (when albums are loaded/updated)
@@ -575,7 +538,6 @@ angular.module('photoController', [])
                     if (response.data.topAlbums) {
                         $scope.topAlbums = response.data.topAlbums;
                     }
-                    console.log('Cache stats loaded:', $scope.cacheStats);
                 }, function errorCallback(error) {
                     console.error('Error loading cache stats:', error);
                     alert('Failed to load cache statistics');
@@ -750,7 +712,6 @@ angular.module('photoController', [])
         function loadAndMergeAlbumTags() {
             PhotoService.getAlbumTags()
                 .then(function(tags) {
-                    console.log('Loaded album tags:', tags);
                     // Create a map of album name -> tags for easy lookup
                     var tagMap = {};
                     if (tags && Array.isArray(tags)) {
@@ -770,7 +731,6 @@ angular.module('photoController', [])
                         }
                     });
                     
-                    console.log('Folders with tags:', $scope.folders);
                     // Don't call $apply() here - we're already in Angular's digest cycle
                 })
                 .catch(function(error) {
@@ -936,18 +896,15 @@ angular.module('photoController', [])
             
             if (hasValidId) {
                 // Update existing album in database
-                console.log('Updating existing album ID:', $scope.editingAlbum.id);
                 updatePromise = PhotoService.updateAlbumTag($scope.editingAlbum.id, cleanTags);
             } else {
                 // Create new album entry in database first
-                console.log('Creating new album entry:', albumName);
                 updatePromise = $http.post('/albums', {
                     name: albumName,
                     path: $scope.editingAlbum.path || '',
                     tags: cleanTags,
                     description: ''
                 }).then(function(response) {
-                    console.log('Album created with response:', response);
                     if (response.data && response.data.id) {
                         $scope.editingAlbum.id = response.data.id;
                         return response.data;
@@ -962,7 +919,6 @@ angular.module('photoController', [])
             
             updatePromise
                 .then(function(response) {
-                    console.log('Album tags updated successfully:', response);
                     $scope.loading = false;
                     $('#editAlbumTagModal').modal('hide');
                     alert('Album tags updated successfully');
@@ -1014,7 +970,6 @@ angular.module('photoController', [])
             $scope.loading = true;
             PhotoService.getAlbumsByTag(tag)
                 .then(function(albums) {
-                    console.log('Albums with tag:', albums);
                     // Filter the folders list to show only albums with this tag
                     $scope.folders = albums.map(album => ({
                         album: album.name,
@@ -1040,7 +995,6 @@ angular.module('photoController', [])
         function loadPlaylists() {
             PhotoService.getPlaylists()
                 .then(function(playlists) {
-                    console.log('Loaded playlists:', playlists);
                     $scope.playlists = playlists || [];
                 })
                 .catch(function(error) {
@@ -1063,7 +1017,6 @@ angular.module('photoController', [])
             
             PhotoService.getPlaylistItems(playlist.id)
                 .then(function(items) {
-                    console.log('Loaded playlist items:', items);
                     $scope.selectedPlaylistItems = items || [];
                     $scope.selectedAlbum = {
                         id: playlist.id,
@@ -1120,7 +1073,6 @@ angular.module('photoController', [])
                 $scope.editingPlaylist.tags || ''
             )
                 .then(function(response) {
-                    console.log('Playlist created:', response);
                     $scope.loading = false;
                     alert('Playlist created successfully');
                     
@@ -1182,7 +1134,6 @@ angular.module('photoController', [])
             
             PhotoService.updatePlaylistTag($scope.editingPlaylist.id, cleanTags)
                 .then(function(response) {
-                    console.log('Playlist tags updated successfully:', response);
                     $scope.loading = false;
                     $('#editPlaylistTagModal').modal('hide');
                     alert('Playlist tags updated successfully');
@@ -1236,7 +1187,6 @@ angular.module('photoController', [])
             
             PhotoService.removePlaylist(playlist.id)
                 .then(function(response) {
-                    console.log('Playlist deleted:', response);
                     $scope.loading = false;
                     alert('Playlist deleted successfully');
                     
@@ -1265,7 +1215,6 @@ angular.module('photoController', [])
             
             PhotoService.removePlaylistItem($scope.selectedAlbum.id, itemId)
                 .then(function(response) {
-                    console.log('Item removed from playlist:', response);
                     $scope.loading = false;
                     
                     // Reload playlist items
@@ -1283,7 +1232,6 @@ angular.module('photoController', [])
             $scope.loading = true;
             PhotoService.getPlaylistsByTag(tag)
                 .then(function(playlists) {
-                    console.log('Playlists with tag:', playlists);
                     $scope.playlists = playlists || [];
                     $scope.loading = false;
                 })
@@ -1601,7 +1549,6 @@ angular.module('photoController', [])
                     } else {
                         $scope.favoritesCount = Math.max(0, $scope.favoritesCount - 1);
                     }
-                    console.log('Favorite toggled:', image.path, isFavorite);
                 }, function errorCallback(response) {
                     console.error('Error toggling favorite:', response);
                     alert('Failed to toggle favorite');
@@ -1619,7 +1566,7 @@ angular.module('photoController', [])
                 navigator.share({
                     title: image.tags || 'Photo',
                     url: shareUrl
-                }).catch(err => console.log('Error sharing:', err));
+                }).catch(err => alert('Error creating share link'));
             } else {
                 // Fallback: copy to clipboard
                 navigator.clipboard.writeText(shareUrl);
@@ -1635,7 +1582,6 @@ angular.module('photoController', [])
             
             $http.get(`/api/photos/${encodedPath}/exif`)
                 .then(function successCallback(response) {
-                    console.log('EXIF data:', response.data);
                     // Display EXIF data (can be enhanced with a modal)
                     alert('EXIF data retrieved. Check console for details.');
                 }, function errorCallback(response) {

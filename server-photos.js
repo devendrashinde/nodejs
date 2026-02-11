@@ -78,9 +78,22 @@ app.use('/data', express.static(join(__dirname, "data")));
 // ============================================================
 
 // In-memory cache with mtime tracking and size limits
-const imageCache = new Map(); // { cacheKey: cacheData }
+const imageCache = new Map(); // { cacheKey: cacheData } for albums
 const albumMetaCache = new Map(); // { albumPath: { mtime, indexed, hits } }
-const cacheStats = { hits: 0, misses: 0, diskLoads: 0, cacheSizeBytes: 0 };
+const playlistCache = new Map(); // { playlistId: playlistData }
+const playlistMetaCache = new Map(); // { playlistId: { name, hits, lastAccessed } }
+const cacheStats = { 
+  hits: 0, 
+  misses: 0, 
+  diskLoads: 0, 
+  cacheSizeBytes: 0,
+  albumCacheSize: 0,
+  playlistCacheSize: 0,
+  albumHits: 0,
+  albumMisses: 0,
+  playlistHits: 0,
+  playlistMisses: 0
+};
 
 /**
  * Calculate size of cache entry in bytes (approximate)
@@ -140,6 +153,45 @@ const extractAlbumFromKey = (cacheKey) => {
   const parts = cacheKey.split('_');
   // Last two parts are page and items
   return cacheKey.substring(0, cacheKey.length - parts[parts.length - 1].length - parts[parts.length - 2].length - 2);
+};
+
+/**
+ * Add playlist to cache with size-based eviction
+ */
+const addPlaylistToCache = (playlistId, playlistData) => {
+  const size = calculateCacheSize(playlistData);
+  
+  // Size limit check - evict oldest entries if needed
+  if (cacheStats.playlistCacheSize + size > MAX_CACHE_BYTES / 2) {
+    evictPlaylistCacheEntries(Math.ceil((playlistCache.size * 0.2))); // Remove 20% oldest
+  }
+  
+  playlistCache.set(playlistId, playlistData);
+  cacheStats.playlistCacheSize += size;
+  cacheStats.cacheSizeBytes = cacheStats.albumCacheSize + cacheStats.playlistCacheSize;
+};
+
+/**
+ * Evict oldest playlist cache entries by hit count
+ */
+const evictPlaylistCacheEntries = (count) => {
+  const entries = Array.from(playlistCache.entries());
+  
+  // Sort by hit count (frequently accessed playlists are kept)
+  entries.sort((a, b) => {
+    const hitsA = playlistMetaCache.get(a[0])?.hits || 0;
+    const hitsB = playlistMetaCache.get(b[0])?.hits || 0;
+    return hitsA - hitsB;
+  });
+  
+  // Remove oldest
+  for (let i = 0; i < Math.min(count, entries.length); i++) {
+    const size = calculateCacheSize(entries[i][1]);
+    playlistCache.delete(entries[i][0]);
+    cacheStats.playlistCacheSize -= size;
+  }
+  
+  console.log(`🗑️  Evicted ${Math.min(count, entries.length)} playlist cache entries. Playlist cache size: ${(cacheStats.playlistCacheSize / 1024 / 1024).toFixed(2)}MB`);
 };
 
 /**
@@ -505,11 +557,12 @@ app.get('/photos', asyncHandler(async (req, res) => {
 
 /**
  * Manual cache invalidation endpoint
- * POST /api/cache/invalidate?album=optional_album_name
+ * POST /api/cache/invalidate?album=optional_album_name&playlist=optional_playlist_id
  */
 app.post('/api/cache/invalidate', (req, res) => {
-    const { album } = req.body || req.query;
-    let count = 0;
+    const { album, playlist } = req.body || req.query;
+    let albumCount = 0;
+    let playlistCount = 0;
     
     try {
         if (album) {
@@ -518,26 +571,46 @@ app.post('/api/cache/invalidate', (req, res) => {
                 if (key.includes(album)) {
                     const size = calculateCacheSize(_);
                     imageCache.delete(key);
-                    cacheStats.cacheSizeBytes -= size;
-                    count++;
+                    cacheStats.albumCacheSize -= size;
+                    albumCount++;
                 }
             }
             albumMetaCache.delete(album);
-            console.log(`✓ Cleared cache for album: ${album} (${count} entries)`);
-        } else {
+            console.log(`✓ Cleared cache for album: ${album} (${albumCount} entries)`);
+        }
+        
+        if (playlist) {
+            // Clear specific playlist from cache
+            const size = calculateCacheSize(playlistCache.get(playlist));
+            playlistCache.delete(playlist);
+            playlistMetaCache.delete(playlist);
+            cacheStats.playlistCacheSize -= size || 0;
+            playlistCount = 1;
+            console.log(`✓ Cleared cache for playlist: ${playlist}`);
+        }
+        
+        if (!album && !playlist) {
             // Clear all cache
-            count = imageCache.size;
+            albumCount = imageCache.size;
+            playlistCount = playlistCache.size;
             const totalSize = cacheStats.cacheSizeBytes;
             imageCache.clear();
             albumMetaCache.clear();
+            playlistCache.clear();
+            playlistMetaCache.clear();
+            cacheStats.albumCacheSize = 0;
+            cacheStats.playlistCacheSize = 0;
             cacheStats.cacheSizeBytes = 0;
-            console.log(`✓ Cleared entire cache (${count} entries, ${(totalSize / 1024 / 1024).toFixed(2)}MB)`);
+            console.log(`✓ Cleared entire cache (${albumCount + playlistCount} entries, ${(totalSize / 1024 / 1024).toFixed(2)}MB)`);
         }
+        
+        cacheStats.cacheSizeBytes = cacheStats.albumCacheSize + cacheStats.playlistCacheSize;
         
         res.json({ 
             success: true, 
-            cleared: album || 'all', 
-            entriesRemoved: count,
+            cleared: album ? `album: ${album}` : (playlist ? `playlist: ${playlist}` : 'all'), 
+            albumEntriesRemoved: albumCount,
+            playlistEntriesRemoved: playlistCount,
             cacheSize: `${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB`
         });
     } catch (err) {
@@ -551,7 +624,10 @@ app.post('/api/cache/invalidate', (req, res) => {
  * GET /api/cache/stats
  */
 app.get('/api/cache/stats', (req, res) => {
-    const hitRate = ((cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100) || 0).toFixed(1);
+    const albumHitRate = ((cacheStats.albumHits / (cacheStats.albumHits + cacheStats.albumMisses) * 100) || 0).toFixed(1);
+    const playlistHitRate = ((cacheStats.playlistHits / (cacheStats.playlistHits + cacheStats.playlistMisses) * 100) || 0).toFixed(1);
+    const totalHitRate = ((cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100) || 0).toFixed(1);
+    
     const topAlbums = Array.from(albumMetaCache.entries())
         .sort((a, b) => b[1].hits - a[1].hits)
         .slice(0, 10)
@@ -562,20 +638,42 @@ app.get('/api/cache/stats', (req, res) => {
             mtime: new Date(meta.mtime)
         }));
     
+    const topPlaylists = Array.from(playlistMetaCache.entries())
+        .sort((a, b) => b[1].hits - a[1].hits)
+        .slice(0, 10)
+        .map(([playlistId, meta]) => ({
+            playlistId,
+            name: meta.name,
+            hits: meta.hits,
+            lastAccessed: meta.lastAccessed
+        }));
+    
     res.json({
         stats: {
-            cacheEntries: imageCache.size,
-            cacheSizeBytes: cacheStats.cacheSizeBytes,
-            cacheSizeMB: (cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2),
+            // Total cache stats
+            totalCacheSizeBytes: cacheStats.cacheSizeBytes,
+            totalCacheSizeMB: (cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2),
             maxCacheBytes: (MAX_CACHE_BYTES / 1024 / 1024).toFixed(2),
-            maxCacheEntries: MAX_CACHE_SIZE,
-            hits: cacheStats.hits,
-            misses: cacheStats.misses,
-            hitRate: `${hitRate}%`,
-            diskLoads: cacheStats.diskLoads,
-            totalAlbumsTracked: albumMetaCache.size
+            totalHitRate: `${totalHitRate}%`,
+            
+            // Album cache stats
+            albumCacheEntries: imageCache.size,
+            albumCacheSizeMB: (cacheStats.albumCacheSize / 1024 / 1024).toFixed(2),
+            albumHits: cacheStats.albumHits,
+            albumMisses: cacheStats.albumMisses,
+            albumHitRate: `${albumHitRate}%`,
+            totalAlbumsTracked: albumMetaCache.size,
+            
+            // Playlist cache stats
+            playlistCacheEntries: playlistCache.size,
+            playlistCacheSizeMB: (cacheStats.playlistCacheSize / 1024 / 1024).toFixed(2),
+            playlistHits: cacheStats.playlistHits,
+            playlistMisses: cacheStats.playlistMisses,
+            playlistHitRate: `${playlistHitRate}%`,
+            totalPlaylistsTracked: playlistMetaCache.size
         },
-        topAlbums
+        topAlbums,
+        topPlaylists
     });
 });
 

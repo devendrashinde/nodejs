@@ -14,9 +14,14 @@ html(ng-app="app")
   
   body#top
     div(class="container-fluid py-3" id="controller" ng-controller="photoController")
-      div.text-center.my-3(ng-if="loading")
-        div.spinner-border.text-primary(role="status")
-          span.visually-hidden Loading...  
+      // Loading overlay banner
+      div.album-loading-overlay(ng-if="loading" ng-class="{'fade-out': !loading}")
+        div.loading-banner
+          div.spinner-border.text-primary(role="status")
+            span.visually-hidden Loading...
+          div.loading-banner-text {{selectedAlbum.isPlaylist ? 'Loading Playlist' : 'Loading Album'}}
+          div.loading-banner-subtext Please wait while we load your items...
+      
       // Header
       header.collapsible-header.d-flex.flex-column.sticky-top.bg-white.border-bottom.shadow-sm.px-2.py-2(combo-header)
         // First row: Logo, Album, Controls
@@ -607,7 +612,7 @@ html(ng-app="app")
 
       //- Cache Stats Modal
       div.modal.fade#cacheStatsModal(tabindex="-1" aria-labelledby="cacheStatsLabel" aria-hidden="true")
-        div.modal-dialog.modal-dialog-centered.modal-lg
+        div.modal-dialog.modal-dialog-centered.modal-xl
           div.modal-content
             div.modal-header.bg-light
               h5.modal-title#cacheStatsLabel
@@ -615,94 +620,210 @@ html(ng-app="app")
                 | Cache Statistics
               button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
             div.modal-body
-              //- Stats Summary
+              //- Total Cache Stats
               div.row.mb-4
-                div.col-md-4
+                div.col-md-6
                   div.card.border-primary
                     div.card-body
                       h6.card-title.text-primary
                         i.fas.fa-database.me-2
-                        | Performance
+                        | Overall Cache Usage
                       p.mb-1
-                        small.text-muted Cache Hit Rate:
+                        small.text-muted Total Cache Size:
                         br
-                        strong {{cacheStats.hitRate}}
+                        strong {{cacheStats.totalCacheSizeMB}} MB / {{cacheStats.maxCacheBytes}} MB
                       p.mb-1
-                        small.text-muted Total Hits:
+                        small.text-muted Overall Hit Rate:
                         br
-                        strong {{cacheStats.hits}}
-                      p.mb-0
-                        small.text-muted Total Misses:
-                        br
-                        strong {{cacheStats.misses}}
-                div.col-md-4
-                  div.card.border-success
-                    div.card-body
-                      h6.card-title.text-success
-                        i.fas.fa-memory.me-2
-                        | Memory Usage
-                      p.mb-1
-                        small.text-muted Cache Size:
-                        br
-                        strong {{cacheStats.cacheSizeMB}} MB
-                      p.mb-1
-                        small.text-muted Max Size:
-                        br
-                        strong {{cacheStats.maxCacheBytes}} MB
-                      p.mb-0
-                        small.text-muted Entries:
-                        br
-                        strong {{cacheStats.cacheEntries}} / {{cacheStats.maxCacheEntries}}
-                div.col-md-4
+                        strong {{cacheStats.totalHitRate}}
+                div.col-md-6
                   div.card.border-info
                     div.card-body
                       h6.card-title.text-info
-                        i.fas.fa-folder-open.me-2
-                        | Album Discovery
+                        i.fas.fa-list.me-2
+                        | Cache Summary
                       p.mb-1
                         small.text-muted Albums Tracked:
                         br
                         strong {{cacheStats.totalAlbumsTracked || 0}}
                       p.mb-1
-                        small.text-muted Scan Frequency:
+                        small.text-muted Playlists Tracked:
                         br
-                        strong Every 15 min
-                      p.mb-0
-                        small.text-muted
-                          a(href="#" ng-click="scanForNewAlbums()" style="text-decoration: none;")
-                            i.fas.fa-sync.me-1
-                            | Scan Now
+                        strong {{cacheStats.totalPlaylistsTracked || 0}}
               
-              //- Top Albums Table
-              div(ng-if="topAlbums.length > 0")
-                h6.text-muted.mb-3
-                  i.fas.fa-star.me-2
-                  | Most Accessed Albums
-                div.table-responsive
-                  table.table.table-sm.table-hover
-                    thead.table-light
-                      tr
-                        th Album
-                        th Hits
-                        th Last Indexed
-                    tbody
-                      tr(ng-repeat="album in topAlbums")
-                        td
-                          span.text-truncate(title="{{album.album}}")
-                            i.fas.fa-folder.me-1
-                            | {{album.album | limitTo:40}}
-                        td
-                          span.badge.bg-info {{album.hits}}
-                        td
-                          small.text-muted {{album.lastIndexed | date:'short'}}
+              //- Album Cache Tab
+              ul.nav.nav-tabs(role="tablist")
+                li.nav-item(role="presentation")
+                  button.nav-link.active#albumCacheTab(
+                    type="button"
+                    data-bs-toggle="tab"
+                    data-bs-target="#albumCacheContent"
+                    role="tab"
+                  )
+                    i.fas.fa-folder.me-2
+                    | Album Cache
+                li.nav-item(role="presentation")
+                  button.nav-link#playlistCacheTab(
+                    type="button"
+                    data-bs-toggle="tab"
+                    data-bs-target="#playlistCacheContent"
+                    role="tab"
+                  )
+                    i.fas.fa-play-circle.me-2
+                    | Playlist Cache
+              
+              div.tab-content.mt-3
+                //- Album Cache Content
+                div.tab-pane.fade.show.active#albumCacheContent(role="tabpanel")
+                  div.row.mb-3
+                    div.col-md-4
+                      div.card.border-success.h-100
+                        div.card-body
+                          h6.card-title.text-success
+                            i.fas.fa-memory.me-2
+                            | Memory
+                          p.mb-1
+                            small.text-muted Size:
+                            br
+                            strong {{cacheStats.albumCacheSizeMB}} MB
+                          p.mb-0
+                            small.text-muted Entries:
+                            br
+                            strong {{cacheStats.albumCacheEntries}}
+                    div.col-md-4
+                      div.card.border-warning.h-100
+                        div.card-body
+                          h6.card-title.text-warning
+                            i.fas.fa-tachometer-alt.me-2
+                            | Performance
+                          p.mb-1
+                            small.text-muted Hit Rate:
+                            br
+                            strong {{cacheStats.albumHitRate}}
+                          p.mb-0
+                            small.text-muted Hits / Misses:
+                            br
+                            strong {{cacheStats.albumHits}} / {{cacheStats.albumMisses}}
+                    div.col-md-4
+                      div.card.border-danger.h-100
+                        div.card-body
+                          h6.card-title.text-danger
+                            i.fas.fa-trash.me-2
+                            | Actions
+                          button.btn.btn-sm.btn-outline-danger.w-100(
+                            type="button"
+                            ng-click="clearCurrentAlbumCache()"
+                            ng-disabled="!selectedAlbum.name || selectedAlbum.path === ''"
+                          )
+                            i.fas.fa-trash.me-1
+                            | Clear Album
+                  
+                  //- Top Albums Table
+                  div(ng-if="topAlbums.length > 0")
+                    h6.text-muted.mb-3
+                      i.fas.fa-star.me-2
+                      | Most Accessed Albums
+                    div.table-responsive
+                      table.table.table-sm.table-hover
+                        thead.table-light
+                          tr
+                            th Album
+                            th Hits
+                            th Last Indexed
+                        tbody
+                          tr(ng-repeat="album in topAlbums")
+                            td
+                              span.text-truncate(title="{{album.album}}")
+                                i.fas.fa-folder.me-1
+                                | {{album.album | limitTo:40}}
+                            td
+                              span.badge.bg-info {{album.hits}}
+                            td
+                              small.text-muted {{album.lastIndexed | date:'short'}}
+                
+                //- Playlist Cache Content
+                div.tab-pane.fade#playlistCacheContent(role="tabpanel")
+                  div.row.mb-3
+                    div.col-md-4
+                      div.card.border-success.h-100
+                        div.card-body
+                          h6.card-title.text-success
+                            i.fas.fa-memory.me-2
+                            | Memory
+                          p.mb-1
+                            small.text-muted Size:
+                            br
+                            strong {{cacheStats.playlistCacheSizeMB}} MB
+                          p.mb-0
+                            small.text-muted Entries:
+                            br
+                            strong {{cacheStats.playlistCacheEntries}}
+                    div.col-md-4
+                      div.card.border-warning.h-100
+                        div.card-body
+                          h6.card-title.text-warning
+                            i.fas.fa-tachometer-alt.me-2
+                            | Performance
+                          p.mb-1
+                            small.text-muted Hit Rate:
+                            br
+                            strong {{cacheStats.playlistHitRate}}
+                          p.mb-0
+                            small.text-muted Hits / Misses:
+                            br
+                            strong {{cacheStats.playlistHits}} / {{cacheStats.playlistMisses}}
+                    div.col-md-4
+                      div.card.border-danger.h-100
+                        div.card-body
+                          h6.card-title.text-danger
+                            i.fas.fa-trash.me-2
+                            | Actions
+                          button.btn.btn-sm.btn-outline-danger.w-100(
+                            type="button"
+                            ng-click="clearCurrentPlaylistCache()"
+                            ng-disabled="!selectedAlbum.isPlaylist"
+                          )
+                            i.fas.fa-trash.me-1
+                            | Clear Playlist
+                  
+                  //- Top Playlists Table
+                  div(ng-if="topPlaylists.length > 0")
+                    h6.text-muted.mb-3
+                      i.fas.fa-star.me-2
+                      | Most Accessed Playlists
+                    div.table-responsive
+                      table.table.table-sm.table-hover
+                        thead.table-light
+                          tr
+                            th Playlist
+                            th Hits
+                            th Last Accessed
+                        tbody
+                          tr(ng-repeat="playlist in topPlaylists")
+                            td
+                              span.text-truncate(title="{{playlist.name}}")
+                                i.fas.fa-play-circle.me-1
+                                | {{playlist.name | limitTo:40}}
+                            td
+                              span.badge.bg-info {{playlist.hits}}
+                            td
+                              small.text-muted {{playlist.lastAccessed | date:'short'}}
+                  div(ng-if="topPlaylists.length === 0").alert.alert-info.mt-3
+                    small No playlists cached yet
+            
             div.modal-footer
+              button.btn.btn-outline-warning(
+                type="button"
+                ng-click="scanForNewAlbums()"
+              )
+                i.fas.fa-sync.me-1
+                | Scan Albums
               button.btn.btn-outline-danger(
                 type="button"
                 ng-click="clearAllCache()"
-                ng-disabled="!cacheStats.cacheEntries"
               )
                 i.fas.fa-trash.me-1
-                | Clear All
+                | Clear All Cache
               button.btn.btn-secondary(type="button" data-bs-dismiss="modal")
                 i.fas.fa-times.me-1
                 | Close
@@ -931,6 +1052,46 @@ html(ng-app="app")
               ) 
                 i.fas.fa-plus.me-1
                 | Create Playlist
+      
+      //- Add to Playlist Modal (for Fancybox quick add and bulk operations)
+      div.modal.fade#addToPlaylistModal(tabindex="-1" aria-labelledby="addToPlaylistModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered
+          div.modal-content
+            div.modal-header
+              h5.modal-title#addToPlaylistModalLabel
+                i.fas.fa-plus-circle.me-2
+                | Add to Playlist
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              div.mb-3
+                p.text-muted.mb-3(ng-if="!isBulkPlaylistOperation") Select a playlist to add this item to:
+                p.text-muted.mb-3(ng-if="isBulkPlaylistOperation") 
+                  | Select a playlist to add 
+                  strong {{selectedPhotosForBulkPlaylist.length}} selected items
+                  |  to:
+                div.list-group(style="max-height: 300px; overflow-y: auto;")
+                  button.list-group-item.list-group-item-action(
+                    ng-repeat="playlist in playlists"
+                    ng-click="addPhotoToPlaylist(playlist.name, isBulkPlaylistOperation ? null : selectedPhotoForPlaylist)"
+                    type="button"
+                  )
+                    div.d-flex.w-100.justify-content-between
+                      h6.mb-1
+                        i.fas.fa-play-circle.me-2
+                        | {{playlist.name}}
+                      small.text-muted {{playlist.item_count || 0}} items
+                    p.mb-1.small.text-muted(ng-if="playlist.description") {{playlist.description}}
+                div.alert.alert-info.mt-3(ng-if="playlists.length === 0")
+                  small No playlists found. Create one first.
+            div.modal-footer
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
+              button.btn.btn-primary(
+                type="button"
+                ng-click="openCreatePlaylistModal()"
+                data-bs-dismiss="modal"
+              ) 
+                i.fas.fa-plus.me-1
+                | New Playlist
       
       //- Edit Playlist Tags Modal
       div.modal.fade#editPlaylistTagModal(tabindex="-1" aria-labelledby="editPlaylistTagModalLabel" aria-hidden="true")

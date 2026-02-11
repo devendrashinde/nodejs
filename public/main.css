@@ -990,3 +990,486 @@ main {
 #cacheStatsModal .badge {
   font-size: 0.75rem;
 }
+
+/* =========== LOADING BANNER STYLES =========== */
+.album-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.album-loading-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loading-banner {
+  background: white;
+  padding: 3rem 4rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  min-width: 300px;
+  max-width: 400px;
+}
+
+.loading-banner .spinner-border {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 1.5rem;
+  border-width: 0.3em;
+}
+
+.loading-banner-text {
+  font-size: 1.1rem;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.loading-banner-subtext {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.5rem;
+}
+
+/* Pulse animation for loading text */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.loading-banner-text {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* =========== FANCYBOX ROTATE BUTTONS STYLES =========== */
+/* Auto-hide Fancybox toolbar */
+.fancybox-toolbar {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.fancybox-container.fancybox-hide-toolbar .fancybox-toolbar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fancybox-container.fancybox-hide-toolbar:hover .fancybox-toolbar,
+.fancybox-container.fancybox-hide-toolbar .fancybox-toolbar:hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.fancybox-button--rotate-left,
+.fancybox-button--rotate-right,
+.fancybox-button--download,
+.fancybox-button--favorite,
+.fancybox-button--playlist,
+.fancybox-button--info,
+.fancybox-button--fullscreen,
+.fancybox-button--keyboard,
+.fancybox-button--thumbs {
+  background: rgba(30, 30, 30, 0.6);
+  border-radius: 4px;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.fancybox-button--rotate-left:hover,
+.fancybox-button--rotate-right:hover,
+.fancybox-button--download:hover,
+.fancybox-button--favorite:hover,
+.fancybox-button--playlist:hover,
+.fancybox-button--info:hover,
+.fancybox-button--fullscreen:hover,
+.fancybox-button--keyboard:hover,
+.fancybox-button--thumbs:hover {
+  background: rgba(30, 30, 30, 0.9);
+}
+
+.fancybox-button--rotate-left svg,
+.fancybox-button--rotate-right svg,
+.fancybox-button--download svg,
+.fancybox-button--favorite svg,
+.fancybox-button--playlist svg,
+.fancybox-button--info svg,
+.fancybox-button--fullscreen svg,
+.fancybox-button--keyboard svg,
+.fancybox-button--thumbs svg {
+  width: 24px;
+  height: 24px;
+  fill: #fff;
+  stroke: none;
+}
+
+/* Favorite button active state */
+.fancybox-button--favorite.is-favorite svg {
+  fill: #ff4444;
+}
+
+/* Ensure rotated images stay centered */
+.fancybox-content img {
+  transform-origin: center center;
+}
+
+/* =========== FANCYBOX NAVIGATION COUNTER =========== */
+.fancybox-counter {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0 15px;
+  line-height: 44px;
+  user-select: none;
+  background: rgba(30, 30, 30, 0.6);
+  border-radius: 4px;
+  margin-right: 10px;
+}
+
+/* =========== FANCYBOX INFO PANEL =========== */
+.fancybox-info-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  z-index: 99999;
+  max-height: 40%;
+  overflow-y: auto;
+}
+
+.info-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.info-header i {
+  margin-right: 8px;
+  color: #4CAF50;
+}
+
+.info-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.info-close:hover {
+  opacity: 1;
+}
+
+.info-content {
+  padding: 15px 20px;
+}
+
+.info-row {
+  padding: 8px 0;
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 600;
+  min-width: 120px;
+  color: #aaa;
+}
+
+.info-value {
+  flex: 1;
+  word-break: break-word;
+}
+
+.info-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.tag-badge {
+  background: #2196F3;
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  display: inline-block;
+}
+
+/* =========== KEYBOARD SHORTCUTS HELP =========== */
+.fancybox-keyboard-help {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keyboard-help-content {
+  background: #fff;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.keyboard-help-content h4 {
+  margin: 0 0 20px 0;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.keyboard-help-content h4 i {
+  color: #2196F3;
+}
+
+.keyboard-help-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #999;
+  width: 30px;
+  height: 30px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.keyboard-help-close:hover {
+  color: #333;
+}
+
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.shortcut {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shortcut kbd {
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-family: monospace;
+  font-size: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  min-width: 30px;
+  text-align: center;
+}
+
+.shortcut span {
+  color: #666;
+  font-size: 14px;
+}
+
+/* =========== THUMBNAIL STRIP =========== */
+.fancybox-thumbs-strip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.9);
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  z-index: 99998;
+  max-height: 120px;
+}
+
+.fancybox-thumb {
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s, transform 0.2s;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.fancybox-thumb:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+.fancybox-thumb.active {
+  opacity: 1;
+  border-color: #2196F3;
+}
+
+.fancybox-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Custom scrollbar for thumbnail strip */
+.fancybox-thumbs-strip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.fancybox-thumbs-strip::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.fancybox-thumbs-strip::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.fancybox-thumbs-strip::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* =========== VIDEO CONTROLS =========== */
+.fancybox-video-controls {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  padding: 15px 25px;
+  border-radius: 8px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  z-index: 99997;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+/* Show video controls on hover */
+.fancybox-content:hover .fancybox-video-controls,
+.fancybox-video-controls:hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.video-control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.video-control-group label {
+  color: #fff;
+  font-size: 14px;
+  margin: 0;
+  font-weight: 500;
+}
+
+.video-speed {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.video-speed:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.video-speed.active {
+  background: #2196F3;
+  border-color: #2196F3;
+}
+
+.video-loop {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+
+/* =========== RESPONSIVE ADJUSTMENTS =========== */
+@media (max-width: 768px) {
+  .fancybox-counter {
+    font-size: 12px;
+    padding: 0 10px;
+  }
+  
+  .shortcuts-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .keyboard-help-content {
+    padding: 20px;
+  }
+  
+  .fancybox-thumb {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .fancybox-video-controls {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 15px;
+  }
+  
+  .info-label {
+    min-width: 90px;
+    font-size: 13px;
+  }
+  
+  .info-value {
+    font-size: 13px;
+  }
+}

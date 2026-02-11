@@ -360,83 +360,29 @@ class BulkOperations {
       return;
     }
 
-    // Show a dialog to choose between creating new or adding to existing playlist
-    const choice = confirm(
-      'Create a new playlist?\n\nClick OK to create new, or Cancel to add to existing'
-    );
+    // Get Angular scope and trigger the modal
+    const scope = angular.element(document.querySelector('#controller')).scope();
+    if (!scope) {
+      console.error('Angular scope not found');
+      alert('Failed to open playlist selector');
+      return;
+    }
 
-    if (choice) {
-      // Create new playlist
-      const playlistName = prompt('Enter new playlist name:');
-      if (!playlistName) return;
+    // Store selected photos for bulk operation
+    const selectedPhotos = this.selectedPhotos;
+    scope.$apply(function() {
+      scope.selectedPhotosForBulkPlaylist = Array.from(selectedPhotos);
+      scope.isBulkPlaylistOperation = true;
+    });
 
-      try {
-        // Create playlist via the controller's service
-        const response = await fetch('/playlists', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: playlistName,
-            description: `Created from bulk operation with ${this.selectedPhotos.size} items`,
-            tags: ''
-          }),
-        });
-
-        if (!response.ok) {
-          alert('Failed to create playlist');
-          return;
-        }
-
-        const playlist = await response.json();
-        
-        // Add items to the newly created playlist
-        await this.addItemsToPlaylist(playlist.id, Array.from(this.selectedPhotos));
-        
-      } catch (error) {
-        console.error('Error creating playlist:', error);
-        alert('Failed to create playlist');
-      }
+    // Open the add to playlist modal
+    const modalEl = document.getElementById('addToPlaylistModal');
+    if (modalEl) {
+      const modal = new bootstrap.Modal(modalEl);
+      modal.show();
     } else {
-      // Add to existing playlist - load playlists from API
-      try {
-        const response = await fetch('/playlists');
-        if (!response.ok) {
-          alert('Failed to load playlists');
-          return;
-        }
-
-        const playlists = await response.json();
-        
-        if (!playlists || playlists.length === 0) {
-          alert('No playlists available. Please create one first.');
-          return;
-        }
-
-        // Show a simple selection dialog
-        const playlistNames = playlists
-          .map((p, i) => `${i + 1}. ${p.name} (${p.item_count || 0} items)`)
-          .join('\n');
-        
-        const choice = prompt(
-          `Select a playlist:\n\n${playlistNames}\n\nEnter the number (1-${playlists.length}):`,
-          '1'
-        );
-
-        if (!choice) return;
-
-        const index = parseInt(choice) - 1;
-        if (isNaN(index) || index < 0 || index >= playlists.length) {
-          alert('Invalid selection');
-          return;
-        }
-
-        const selectedPlaylist = playlists[index];
-        await this.addItemsToPlaylist(selectedPlaylist.id, Array.from(this.selectedPhotos));
-        
-      } catch (error) {
-        console.error('Error loading playlists:', error);
-        alert('Failed to load playlists');
-      }
+      console.error('Add to Playlist modal not found');
+      alert('Playlist modal not available');
     }
   }
 

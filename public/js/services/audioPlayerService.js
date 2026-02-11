@@ -180,11 +180,17 @@ angular.module('AudioPlayerService', [])
             /**
              * Add track to playlist
              * @param {object} track - Track to add
+             * @param {boolean} autoPlay - Whether to immediately play this track (default: true)
              * @returns {number} Index of track in playlist
              */
-            addToPlaylist: function(track) {
+            addToPlaylist: function(track, autoPlay) {
                 if (!track) {
                     return -1;
+                }
+                
+                // Default autoPlay to true if not specified
+                if (autoPlay === undefined) {
+                    autoPlay = true;
                 }
                 
                 // Check if track already in playlist
@@ -197,12 +203,26 @@ angular.module('AudioPlayerService', [])
                     existingIndex = playerState.playlist.length - 1;
                 }
                 
-                // Auto-play: play this track immediately
-                playerState.currentIndex = existingIndex;
-                this.playTrack(track);
+                // Auto-play: play this track immediately (if requested)
+                if (autoPlay) {
+                    playerState.currentIndex = existingIndex;
+                    this.playTrack(track);
+                }
                 
                 $rootScope.$broadcast('playlistUpdated', playerState);
                 return existingIndex;
+            },
+            
+            /**
+             * Clear entire playlist
+             */
+            clearPlaylist: function() {
+                playerState.playlist = [];
+                playerState.currentIndex = -1;
+                audio.pause();
+                audio.src = '';
+                playerState.isPlaying = false;
+                $rootScope.$broadcast('playlistUpdated', playerState);
             },
             
             /**

@@ -60,6 +60,10 @@ angular.module('photoController', [])
         $scope.selectedPlaylistItems = []; // Photos in selected playlist
         $scope.showPlaylistModal = false; // Toggle playlist creation modal
         
+        // Bulk playlist operation flags
+        $scope.isBulkPlaylistOperation = false;
+        $scope.selectedPhotosForBulkPlaylist = null;
+        
         // Media type constants
         const imageTypes = APP_CONSTANTS.IMAGE_TYPES;
         const videoTypes = APP_CONSTANTS.VIDEO_TYPES;
@@ -211,6 +215,7 @@ angular.module('photoController', [])
                           }
                         }, 100);
                 }, function(error) {
+                    $scope.loading = false;  // Ensure loading is hidden on error
                     ErrorHandlingService.handleError(error, 'Error loading photos');
                 });         
         };
@@ -440,8 +445,8 @@ angular.module('photoController', [])
             .then(function successCallback(response) {
                 $scope.tags = response.data;
                 $scope.getPhotos(id);
-                $scope.loading = false;
             }, function(error) {
+                $scope.loading = false;  // Ensure loading is hidden on error
                 ErrorHandlingService.handleError(error, 'Error loading tag information');
             });         
         }
@@ -545,16 +550,29 @@ angular.module('photoController', [])
         
         // Initialize cache stats scope variables
         $scope.cacheStats = {
-            hits: 0,
-            misses: 0,
-            hitRate: '0%',
-            cacheEntries: 0,
-            cacheSizeBytes: 0,
-            cacheSizeMB: '0',
+            // Total stats
+            totalCacheSizeMB: '0',
+            totalHitRate: '0%',
             maxCacheBytes: '0',
-            maxCacheEntries: 0
+            
+            // Album cache stats
+            albumCacheEntries: 0,
+            albumCacheSizeMB: '0',
+            albumHits: 0,
+            albumMisses: 0,
+            albumHitRate: '0%',
+            totalAlbumsTracked: 0,
+            
+            // Playlist cache stats
+            playlistCacheEntries: 0,
+            playlistCacheSizeMB: '0',
+            playlistHits: 0,
+            playlistMisses: 0,
+            playlistHitRate: '0%',
+            totalPlaylistsTracked: 0
         };
         $scope.topAlbums = [];
+        $scope.topPlaylists = [];
         
         /**
          * Load cache statistics from server
@@ -567,6 +585,9 @@ angular.module('photoController', [])
                     }
                     if (response.data.topAlbums) {
                         $scope.topAlbums = response.data.topAlbums;
+                    }
+                    if (response.data.topPlaylists) {
+                        $scope.topPlaylists = response.data.topPlaylists;
                     }
                 }, function(error) {
                     ErrorHandlingService.handleError(error, 'Error loading cache statistics');
@@ -605,12 +626,36 @@ angular.module('photoController', [])
                 $http.post('/api/cache/invalidate', { album: album })
                     .then(function successCallback(response) {
                         if (response.data.success) {
-                            alert(`✓ Cleared ${response.data.entriesRemoved} cache entries for: ${$scope.selectedAlbum.name}`);
+                            alert(`✓ Cleared ${response.data.albumEntriesRemoved} cache entries for: ${$scope.selectedAlbum.name}`);
                             // Reload cache stats
                             $scope.loadCacheStats();
                         }
                     }, function(error) {
                         ErrorHandlingService.handleError(error, 'Error clearing all cache');
+                    });
+            }
+        };
+        
+        /**
+         * Clear cache for current playlist
+         */
+        $scope.clearCurrentPlaylistCache = function() {
+            const playlistId = $scope.selectedAlbum.id;
+            if (!playlistId || !$scope.selectedAlbum.isPlaylist) {
+                alert('No playlist selected');
+                return;
+            }
+            
+            if (confirm(`Clear cache for playlist: ${$scope.selectedAlbum.name}?`)) {
+                $http.post('/api/cache/invalidate', { playlist: playlistId })
+                    .then(function successCallback(response) {
+                        if (response.data.success) {
+                            alert(`✓ Cleared cache for playlist: ${$scope.selectedAlbum.name}`);
+                            // Reload cache stats
+                            $scope.loadCacheStats();
+                        }
+                    }, function(error) {
+                        ErrorHandlingService.handleError(error, 'Error clearing playlist cache');
                     });
             }
         };
@@ -623,7 +668,8 @@ angular.module('photoController', [])
                 $http.post('/api/cache/invalidate', {})
                     .then(function successCallback(response) {
                         if (response.data.success) {
-                            alert(`✓ Cleared entire cache (${response.data.entriesRemoved} entries)`);
+                            const totalRemoved = response.data.albumEntriesRemoved + response.data.playlistEntriesRemoved;
+                            alert(`✓ Cleared entire cache (${totalRemoved} entries)`);
                             // Reload cache stats
                             $scope.loadCacheStats();
                         }
@@ -637,6 +683,14 @@ angular.module('photoController', [])
         $('#cacheStatsModal').on('show.bs.modal', function() {
             $scope.$apply(function() {
                 $scope.loadCacheStats();
+            });
+        });
+        
+        // Clear bulk operation flags when Add to Playlist modal is closed
+        $('#addToPlaylistModal').on('hidden.bs.modal', function() {
+            $scope.$apply(function() {
+                $scope.isBulkPlaylistOperation = false;
+                $scope.selectedPhotosForBulkPlaylist = null;
             });
         });
 
@@ -1091,6 +1145,84 @@ angular.module('photoController', [])
                 }
             }, 100);
         };
+        
+        // Open add to playlist modal from Fancybox
+        $scope.openAddToPlaylistModal = function(photo) {
+            if (!photo) return;
+            
+            // Set the selected photo for adding to playlist
+            $scope.selectedPhotoForPlaylist = photo;
+            
+            // Show modal
+            $timeout(function() {
+                var modalEl = document.getElementById('addToPlaylistModal');
+                if (modalEl) {
+                    var modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                } else {
+                    // Fallback: prompt for quick add
+                    var playlistName = prompt('Enter playlist name to add this item:');
+                    if (playlistName && playlistName.trim()) {
+                        $scope.addPhotoToPlaylist(playlistName.trim(), photo);
+                    }
+                }
+            }, 100);
+        };
+        
+        // Add photo to specific playlist (supports both single and bulk operations)
+        $scope.addPhotoToPlaylist = function(playlistName, photo) {
+            // Find playlist by name
+            var playlist = $scope.playlists.find(function(p) { return p.name === playlistName; });
+            
+            if (!playlist) {
+                alert('Playlist "' + playlistName + '" not found');
+                return;
+            }
+            
+            $scope.loading = true;
+            
+            // Check if this is a bulk operation
+            var photoPaths;
+            var itemCount;
+            
+            if ($scope.isBulkPlaylistOperation && $scope.selectedPhotosForBulkPlaylist) {
+                // Bulk operation
+                photoPaths = $scope.selectedPhotosForBulkPlaylist;
+                itemCount = photoPaths.length;
+            } else if (photo) {
+                // Single photo operation
+                photoPaths = [photo.path];
+                itemCount = 1;
+            } else {
+                $scope.loading = false;
+                alert('No photos to add');
+                return;
+            }
+            
+            PhotoService.addPlaylistItems(playlist.id, photoPaths)
+                .then(function(response) {
+                    $scope.loading = false;
+                    alert('Added ' + itemCount + ' item(s) to playlist: ' + playlistName);
+                    $('#addToPlaylistModal').modal('hide');
+                    
+                    // Clear bulk operation flags
+                    $scope.isBulkPlaylistOperation = false;
+                    $scope.selectedPhotosForBulkPlaylist = null;
+                    
+                    // Clear bulk selections if it was a bulk operation
+                    if (itemCount > 1 && window.bulkOps) {
+                        window.bulkOps.clearSelection();
+                    }
+                })
+                .catch(function(error) {
+                    $scope.loading = false;
+                    ErrorHandlingService.handleError(error, 'Error adding to playlist');
+                    
+                    // Clear bulk operation flags even on error
+                    $scope.isBulkPlaylistOperation = false;
+                    $scope.selectedPhotosForBulkPlaylist = null;
+                });
+        };
 
         // Create new playlist
         $scope.createNewPlaylist = function() {
@@ -1374,8 +1506,22 @@ angular.module('photoController', [])
         $scope.playAudio = function(image) {
             if (!image || !image.isAudio) return;
             
-            // Delegate to service - it handles deduplication and auto-play
-            AudioPlayerService.addToPlaylist(image);
+            // Get all audio files from current photos
+            var audioFiles = $scope.photos.filter(function(photo) {
+                return photo.isAudio;
+            });
+            
+            // Build complete playlist if we have multiple audio files
+            if (audioFiles.length > 1) {
+                // Clear existing playlist and rebuild with all audio files
+                AudioPlayerService.clearPlaylist();
+                audioFiles.forEach(function(audioFile) {
+                    AudioPlayerService.addToPlaylist(audioFile, false); // false = don't auto-play
+                });
+            }
+            
+            // Now play the clicked track (this will auto-play)
+            AudioPlayerService.addToPlaylist(image, true);
         };
 
         $scope.togglePlay = function() {

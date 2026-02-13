@@ -12,6 +12,7 @@ import media from './app/services/media.js';
 import advancedFeaturesRoutes from './app/routes/advancedFeaturesRoutes.js';
 import pkg from 'body-parser';
 import dotenv from 'dotenv';
+import logger from './app/config/logger.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -917,45 +918,76 @@ app.use((err, req, res, next) => {
 // 404 handler should be defined after error handler in this case it's handled by app.get('*')
 
 const PORT = process.env.PORT || 8082;
+
+// Validate required environment variables on startup
+const validateEnvironment = () => {
+    const required = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
+    const missing = required.filter(key => !process.env[key]);
+    
+    if (missing.length > 0) {
+        console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
+        console.error('   Please check your .env file');
+        process.exit(1);
+    }
+    
+    console.log('✓ All required environment variables validated');
+};
+
 const server = app.listen(PORT, async () => {
+    // Validate environment
+    validateEnvironment();
+    
     // Load persistent cache from disk on startup
     await loadPersistentCache();
     
     // Initial album scan to populate metadata
     const newAlbums = await scanForNewAlbums();
     if (newAlbums.length > 0) {
-        console.log(`✓ Initial scan discovered ${newAlbums.length} albums`);
+        logger.info(`Initial scan discovered ${newAlbums.length} albums`);
     }
     
-    console.log(`✓ Application is running at: http://localhost:${PORT}`);
-    console.log(`✓ Max cache size: ${MAX_CACHE_SIZE} entries / ${(MAX_CACHE_BYTES / 1024 / 1024).toFixed(0)}MB`);
-    console.log(`✓ Cache persistence: ${CACHE_FILE}`);
-    console.log(`✓ Data directory: ${dataDir}`);
-    console.log(`✓ Album discovery: Scanning every 15 minutes`);
-    console.log(`✓ Advanced features enabled (EXIF, Search, Bulk Ops, Social, Editing, Video)`);
+    logger.info(`Application is running at: http://localhost:${PORT}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`Max cache size: ${MAX_CACHE_SIZE} entries / ${(MAX_CACHE_BYTES / 1024 / 1024).toFixed(0)}MB`);
+    logger.info(`Cache persistence: ${CACHE_FILE}`);
+    logger.info(`Data directory: ${dataDir}`);
+    logger.info(`Album discovery: Scanning every 15 minutes`);
+    logger.info(`Advanced features enabled (EXIF, Search, Bulk Ops, Social, Editing, Video)`);
 });
 
 // Graceful shutdown - save cache before exit
 const gracefulShutdown = async () => {
-    console.log('\n⚠ Received shutdown signal, closing server gracefully...');
+    logger.info('Received shutdown signal, closing server gracefully...');
     
     // Save cache to disk
     await savePersistentCache();
     
     server.close(() => {
         const hitRate = ((cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100) || 0).toFixed(1);
-        console.log('✓ Server closed');
-        console.log(`📊 Final cache stats - Hits: ${cacheStats.hits}, Misses: ${cacheStats.misses}, Hit Rate: ${hitRate}%`);
-        console.log(`💾 Cache saved: ${imageCache.size} page entries, ${albumMetaCache.size} album metadata (${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB)`);
+        logger.info('Server closed');
+        logger.info(`Final cache stats - Hits: ${cacheStats.hits}, Misses: ${cacheStats.misses}, Hit Rate: ${hitRate}%`);
+        logger.info(`Cache saved: ${imageCache.size} page entries, ${albumMetaCache.size} album metadata (${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB)`);
         process.exit(0);
     });
     
     // Force shutdown after 10 seconds
     setTimeout(() => {
-        console.error('⚠ Forcing shutdown...');
+        logger.error('Forcing shutdown...');
         process.exit(1);
     }, 10000);
 };
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection', { reason, promise: String(promise) });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
+    // Exit process after logging to prevent undefined behavior
+    process.exit(1);
+});
 
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);

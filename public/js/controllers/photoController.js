@@ -1240,13 +1240,64 @@ angular.module('photoController', [])
             )
                 .then(function(response) {
                     $scope.loading = false;
-                    alert('Playlist created successfully');
                     
-                    // Hide modal
+                    // Get the newly created playlist ID
+                    var newPlaylistId = response.id;
+                    var newPlaylistName = $scope.editingPlaylist.name.trim();
+                    
+                    if (!newPlaylistId) {
+                        alert('Playlist created but ID not returned');
+                        $('#createPlaylistModal').modal('hide');
+                        loadPlaylists();
+                        return;
+                    }
+                    
+                    // Check if there are pending items to add
+                    var itemsToAdd = null;
+                    if ($scope.isBulkPlaylistOperation && $scope.selectedPhotosForBulkPlaylist && $scope.selectedPhotosForBulkPlaylist.length > 0) {
+                        itemsToAdd = $scope.selectedPhotosForBulkPlaylist;
+                    } else if ($scope.selectedPhotoForPlaylist) {
+                        itemsToAdd = [$scope.selectedPhotoForPlaylist.path];
+                    }
+                    
+                    // Hide the create modal
                     $('#createPlaylistModal').modal('hide');
                     
-                    // Reload playlists
-                    loadPlaylists();
+                    // If there are items pending, add them to the new playlist
+                    if (itemsToAdd && itemsToAdd.length > 0) {
+                        $scope.loading = true;
+                        PhotoService.addPlaylistItems(newPlaylistId, itemsToAdd)
+                            .then(function(response) {
+                                $scope.loading = false;
+                                alert('Playlist created and ' + itemsToAdd.length + ' item(s) added successfully!');
+                                
+                                // Hide the add to playlist modal since we're done
+                                $('#addToPlaylistModal').modal('hide');
+                                
+                                // Clear bulk operation flags
+                                $scope.isBulkPlaylistOperation = false;
+                                $scope.selectedPhotosForBulkPlaylist = null;
+                                $scope.selectedPhotoForPlaylist = null;
+                                
+                                // Clear bulk selections if it was a bulk operation
+                                if (itemsToAdd.length > 1 && window.bulkOps) {
+                                    window.bulkOps.clearSelection();
+                                }
+                                
+                                // Reload playlists
+                                loadPlaylists();
+                            })
+                            .catch(function(error) {
+                                $scope.loading = false;
+                                alert('Playlist created but failed to add items: ' + (error.data?.message || 'Unknown error'));
+                                ErrorHandlingService.handleError(error, 'Error adding items to new playlist');
+                                loadPlaylists();
+                            });
+                    } else {
+                        alert('Playlist created successfully');
+                        // Reload playlists
+                        loadPlaylists();
+                    }
                 })
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error creating playlist');

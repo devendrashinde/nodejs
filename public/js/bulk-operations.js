@@ -402,8 +402,10 @@ class BulkOperations {
 
       alert(`Successfully added ${photoIds.length} item(s) to playlist`);
       
-      // Clear selection
-      this.clearSelection();
+      // Ask to clear selection
+      if (confirm('Clear selection?')) {
+        this.clearSelection();
+      }
       
       // Reload playlists in the controller
       const controller = angular.element(document.querySelector('body')).scope();

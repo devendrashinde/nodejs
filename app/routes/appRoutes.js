@@ -1,6 +1,8 @@
 'use strict';
+import photoController from '../controllers/photoController.js';
+
 export default function(app) {
-  var photos = require('../controllers/photoController');
+  var photos = photoController;
 
   // photo-album Routes
   app.route('/photos')

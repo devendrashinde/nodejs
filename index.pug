@@ -1167,6 +1167,89 @@ html(ng-app="app")
             div.modal-footer
               button.btn.btn-primary(type="button" ng-click="submitUploadForm()" data-bs-dismiss="modal") Upload
               button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Cancel
+
+      //- Image Editor Modal
+      div.modal.fade#imageEditorModal(tabindex="-1" aria-labelledby="imageEditorModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-xl.modal-fullscreen-lg-down
+          div.modal-content
+            div.modal-header
+              h5.modal-title#imageEditorModalLabel Image Editor
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              div.row
+                div.col-lg-8
+                  div.editor-preview-container.position-relative.bg-light.rounded.mb-3
+                    img.img-fluid.w-100#editorPreview(style="max-height: 500px; object-fit: contain;")
+                  div.btn-group.d-grid.gap-2.mb-3
+                    button.btn.btn-outline-primary(type="button" onclick="window.imageEditor?.enableCropMode()") ✂️ Crop
+                    button.btn.btn-outline-primary(type="button" onclick="window.imageEditor?.enableRotateMode()") 🔄 Rotate
+                    button.btn.btn-outline-primary(type="button" onclick="window.imageEditor?.enableResizeMode()") 📏 Resize
+                    button.btn.btn-outline-primary(type="button" onclick="window.imageEditor?.enableFlipMode()") 🔁 Flip
+
+                  //- Crop Tools
+                  div#cropTools.editor-tools(style="display: none;")
+                    h6 Crop Image
+                    div.row.g-2.mb-3
+                      div.col-6
+                        label.form-label X Position
+                        input.form-control#cropX(type="number" min="0" value="0")
+                      div.col-6
+                        label.form-label Y Position
+                        input.form-control#cropY(type="number" min="0" value="0")
+                      div.col-6
+                        label.form-label Width
+                        input.form-control#cropWidth(type="number" min="1" placeholder="pixels")
+                      div.col-6
+                        label.form-label Height
+                        input.form-control#cropHeight(type="number" min="1" placeholder="pixels")
+                    button.btn.btn-success.w-100(type="button" onclick="window.imageEditor?.applyCrop()") 
+                      | ✅ Apply Crop
+
+                  //- Rotate Tools
+                  div#rotateTools.editor-tools(style="display: none;")
+                    h6 Rotate Image
+                    div.btn-group.w-100.mb-3
+                      button.btn.btn-outline-secondary(type="button" onclick="window.imageEditor?.applyRotate(90)") ↻ 90°
+                      button.btn.btn-outline-secondary(type="button" onclick="window.imageEditor?.applyRotate(180)") ↻ 180°
+                      button.btn.btn-outline-secondary(type="button" onclick="window.imageEditor?.applyRotate(270)") ↻ 270°
+
+                  //- Resize Tools
+                  div#resizeTools.editor-tools(style="display: none;")
+                    h6 Resize Image
+                    div.row.g-2.mb-3
+                      div.col-6
+                        label.form-label Width
+                        input.form-control#resizeWidth(type="number" min="1")
+                      div.col-6
+                        label.form-label Height
+                        input.form-control#resizeHeight(type="number" min="1")
+                      div.col-12
+                        label.form-label Fit Method
+                        select.form-select#resizeFit
+                          option(value="inside") Inside (preserve aspect ratio)
+                          option(value="contain") Contain
+                          option(value="cover") Cover
+                          option(value="fill") Fill (stretch)
+                    div#metadataDisplay.mb-2
+                    button.btn.btn-success.w-100(type="button" onclick="window.imageEditor?.applyResize()") 
+                      | ✅ Apply Resize
+
+                  //- Flip Tools
+                  div#flipTools.editor-tools(style="display: none;")
+                    h6 Flip Image
+                    div.btn-group.w-100.mb-3
+                      button.btn.btn-outline-secondary(type="button" onclick="window.imageEditor?.applyFlip('horizontal')") ↔️ Horizontal
+                      button.btn.btn-outline-secondary(type="button" onclick="window.imageEditor?.applyFlip('vertical')") ↕️ Vertical
+
+                div.col-lg-4
+                  h6 Version History
+                  div#versionsList.editor-versions(style="max-height: 600px; overflow-y: auto;")
+                    p.text-muted Loading versions...
+
+            div.modal-footer.border-top
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
+              button.btn.btn-primary(type="button" onclick="window.imageEditor?.updatePreview()") 🔄 Refresh Preview
+
     // Scripts
     script(src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.1/angular.min.js")
     script(src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-router/0.2.18/angular-ui-router.min.js")
@@ -1175,6 +1258,7 @@ html(ng-app="app")
     script(src="jquery.fancybox.min.js")
     script(src="js/constants.js")
     script(src="js/html-sanitizer.js")
+    script(src="js/image-editor.js")
     script(src="js/ng-app.js")    
     script(src="main.js")
     script(src="js/controllers/photoController.js?v=9")

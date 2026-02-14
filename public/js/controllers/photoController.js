@@ -316,6 +316,18 @@ angular.module('photoController', [])
             loadPhotosAndTags($scope.selectedAlbum.path);
         }
         
+        $scope.nextPage = function () {
+            if (!$scope.noMorePhotos && !$scope.loading) {
+                $scope.loadAlbumWithPageId($scope.pageId + 1);
+            }
+        }
+        
+        $scope.prevPage = function () {
+            if ($scope.pageId > 0 && !$scope.loading) {
+                $scope.loadAlbumWithPageId($scope.pageId - 1);
+            }
+        }
+        
         $scope.loadAlbum = function () {
             $scope.loadAlbumWithPageId(0);
         }

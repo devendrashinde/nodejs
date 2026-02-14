@@ -253,3 +253,18 @@ export function removeAlbum(req, res) {
     res.json({ message: 'Album successfully deleted' });
   });
 }
+
+export default {
+  createPhoto,
+  getPhoto,
+  removePhoto,
+  updatePhotoTag,
+  getTags,
+  getAlbumsByTag,
+  getPhotoAlbums,
+  createPhotoAlbum,
+  getPhotoAlbum,
+  updateAlbumTag,
+  getAlbumTags,
+  removeAlbum
+};

@@ -10,6 +10,7 @@ import { createPhoto, getPhotos, getTags, getPhoto, updatePhotoTag, removePhoto,
 import { createPlaylist, getPlaylists, getPlaylist, getPlaylistsByTag, updatePlaylist, updatePlaylistTag, addPlaylistItems, getPlaylistItems, removePlaylistItem, removePlaylist, getPlaylistTags } from './app/controllers/playlistController.js';
 import media from './app/services/media.js';
 import advancedFeaturesRoutes from './app/routes/advancedFeaturesRoutes.js';
+import imageEditingRoutes from './app/routes/imageEditingRoutes.js';
 import pkg from 'body-parser';
 import dotenv from 'dotenv';
 import logger from './app/config/logger.js';
@@ -70,6 +71,7 @@ app.get('/favicon.ico', (req, res) => {
 
 // Mount API routes BEFORE static file serving to prevent conflicts
 app.use('/api', advancedFeaturesRoutes);
+app.use('/api', imageEditingRoutes);
 
 app.use(express.static(join(__dirname, 'public')));
 app.use('/data', express.static(join(__dirname, "data")));

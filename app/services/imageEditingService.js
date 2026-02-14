@@ -1,17 +1,21 @@
 /**
- * Image Editing Service
+ * Image Editing Service - Enhanced v2.1
  * 
- * Provides image manipulation capabilities:
- * - Rotate/flip operations
- * - Crop functionality
- * - Filters (sepia, grayscale, etc.)
- * - Brightness/contrast adjustment
+ * Non-destructive image editing with version history:
+ * - Rotate/flip/crop/resize operations
+ * - Version tracking in database
+ * - Revert to previous versions
+ * - Preserves original files
  */
 
+import sharp from 'sharp';
+import { promises as fs } from 'fs';
+import { join, extname, dirname, basename } from 'path';
+import { query } from '../models/db.js';
+import logger from '../config/logger.js';
+
+// Legacy GM import for backward compatibility
 import gm from 'gm';
-import { writeFile, unlink } from 'fs/promises';
-import path from 'path';
-import crypto from 'crypto';
 
 class ImageEditingService {
     /**
@@ -308,6 +312,343 @@ class ImageEditingService {
                     return false;
             }
         });
+    }
+
+    // ============================================================
+    // VERSION-AWARE EDITING METHODS (v2.1+)
+    // ============================================================
+
+    /**
+     * Get all versions of a photo
+     */
+    static async getPhotoVersions(photoId) {
+        try {
+            const result = await query(
+                'SELECT * FROM photo_editions WHERE photo_id = ? ORDER BY version_number ASC',
+                [photoId]
+            );
+            return result;
+        } catch (error) {
+            logger.error('Error fetching photo versions', { photoId, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Get current active version
+     */
+    static async getCurrentVersion(photoId) {
+        try {
+            const result = await query(
+                'SELECT * FROM photo_editions WHERE photo_id = ? AND is_current = 1 LIMIT 1',
+                [photoId]
+            );
+            return result.length > 0 ? result[0] : null;
+        } catch (error) {
+            logger.error('Error fetching current version', { photoId, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Create initial version record for original photo
+     */
+    static async createOriginalVersion(photoId, originalPath, originalFilename) {
+        try {
+            // Get image metadata using Sharp
+            const metadata = await sharp(originalPath).metadata();
+
+            const result = await query(
+                `INSERT INTO photo_editions 
+                 (photo_id, version_number, filename, path, file_size, width, height, is_original, is_current, edits_applied)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [photoId, 1, originalFilename, dirname(originalPath), null, metadata.width, metadata.height, 1, 1, '[]']
+            );
+
+            logger.info('Created original version record', { photoId, versionId: result.insertId });
+            return result.insertId;
+        } catch (error) {
+            logger.error('Error creating original version', { photoId, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Crop and save as new version
+     */
+    static async cropAndSave(photoId, originalPath, coordinates) {
+        try {
+            const { x, y, width, height } = coordinates;
+
+            if (!x || !y || !width || !height) {
+                throw new Error('Invalid crop coordinates: x, y, width, height required');
+            }
+
+            if (width <= 0 || height <= 0) {
+                throw new Error('Crop dimensions must be > 0');
+            }
+
+            const newPath = await this._processAndSaveVersion(
+                photoId,
+                originalPath,
+                (img) => img.extract({ left: x, top: y, width, height }),
+                'crop'
+            );
+
+            return { success: true, path: newPath, edit: { type: 'crop', coordinates } };
+        } catch (error) {
+            logger.error('Crop error', { photoId, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Rotate and save as new version
+     */
+    static async rotateAndSave(photoId, originalPath, degrees) {
+        try {
+            const validDegrees = [90, 180, 270];
+            if (!validDegrees.includes(degrees)) {
+                throw new Error('Rotation must be 90, 180, or 270 degrees');
+            }
+
+            const newPath = await this._processAndSaveVersion(
+                photoId,
+                originalPath,
+                (img) => img.rotate(degrees),
+                'rotate'
+            );
+
+            return { success: true, path: newPath, edit: { type: 'rotate', degrees } };
+        } catch (error) {
+            logger.error('Rotate error', { photoId, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Resize and save as new version
+     */
+    static async resizeAndSave(photoId, originalPath, options) {
+        try {
+            const { width, height, fit = 'inside' } = options;
+
+            if (!width || !height) {
+                throw new Error('Width and height required for resize');
+            }
+
+            if (width <= 0 || height <= 0) {
+                throw new Error('Dimensions must be > 0');
+            }
+
+            const validFits = ['cover', 'contain', 'fill', 'inside'];
+            if (!validFits.includes(fit)) {
+                throw new Error(`Fit must be one of: ${validFits.join(', ')}`);
+            }
+
+            const newPath = await this._processAndSaveVersion(
+                photoId,
+                originalPath,
+                (img) => img.resize(width, height, { fit, withoutEnlargement: true }),
+                'resize'
+            );
+
+            return { success: true, path: newPath, edit: { type: 'resize', width, height, fit } };
+        } catch (error) {
+            logger.error('Resize error', { photoId, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Flip and save as new version
+     */
+    static async flipAndSave(photoId, originalPath, direction) {
+        try {
+            const validDirections = ['horizontal', 'vertical'];
+            if (!validDirections.includes(direction)) {
+                throw new Error(`Direction must be 'horizontal' or 'vertical'`);
+            }
+
+            const flipFn = direction === 'horizontal' ? 'flop' : 'flip';
+
+            const newPath = await this._processAndSaveVersion(
+                photoId,
+                originalPath,
+                (img) => img[flipFn](),
+                'flip'
+            );
+
+            return { success: true, path: newPath, edit: { type: 'flip', direction } };
+        } catch (error) {
+            logger.error('Flip error', { photoId, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Core processing pipeline - process image and save as new version
+     */
+    static async _processAndSaveVersion(photoId, originalPath, transformFn, editType) {
+        try {
+            // Get next version number
+            const versions = await query('SELECT MAX(version_number) as maxVersion FROM photo_editions WHERE photo_id = ?', [photoId]);
+            const nextVersion = (versions[0]?.maxVersion || 0) + 1;
+
+            // Generate new filename with version
+            const originalName = basename(originalPath);
+            const nameWithoutExt = originalName.replace(/\.[^/.]+$/, '');
+            const ext = extname(originalPath);
+            const newFilename = `${nameWithoutExt}_v${nextVersion}${ext}`;
+            const newPath = join(dirname(originalPath), newFilename);
+
+            // Process image
+            let pipeline = sharp(originalPath);
+            pipeline = transformFn(pipeline);
+
+            const info = await pipeline.toFile(newPath);
+
+            logger.info('Image processed', {
+                photoId,
+                version: nextVersion,
+                editType,
+                newPath,
+                dimensions: `${info.width}x${info.height}`
+            });
+
+            // Get previous edits
+            const currentVersion = await this.getCurrentVersion(photoId);
+            const previousEdits = currentVersion?.edits_applied ? JSON.parse(currentVersion.edits_applied) : [];
+            const newEdits = [...previousEdits, { type: editType, timestamp: new Date().toISOString() }];
+
+            // Save to database
+            await query(
+                `INSERT INTO photo_editions 
+                 (photo_id, version_number, filename, path, file_size, width, height, is_original, is_current, edits_applied)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [photoId, nextVersion, newFilename, dirname(newPath), info.size, info.width, info.height, 0, 1, JSON.stringify(newEdits)]
+            );
+
+            // Update current version flag for previous version
+            await query(
+                'UPDATE photo_editions SET is_current = 0 WHERE photo_id = ? AND version_number = ?',
+                [photoId, nextVersion - 1]
+            );
+
+            logger.info('Version saved to database', { photoId, version: nextVersion });
+
+            return newPath;
+        } catch (error) {
+            logger.error('Image processing error', { photoId, editType, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Restore previous version (make it current)
+     */
+    static async restoreVersion(photoId, versionNumber) {
+        try {
+            // Verify version exists
+            const version = await query(
+                'SELECT * FROM photo_editions WHERE photo_id = ? AND version_number = ?',
+                [photoId, versionNumber]
+            );
+
+            if (version.length === 0) {
+                throw new Error(`Version ${versionNumber} not found for photo ${photoId}`);
+            }
+
+            // Mark all as non-current
+            await query('UPDATE photo_editions SET is_current = 0 WHERE photo_id = ?', [photoId]);
+
+            // Mark target version as current
+            await query(
+                'UPDATE photo_editions SET is_current = 1 WHERE photo_id = ? AND version_number = ?',
+                [photoId, versionNumber]
+            );
+
+            logger.info('Version restored', { photoId, version: versionNumber });
+
+            return {
+                success: true,
+                message: `Restored to version ${versionNumber}`,
+                version: version[0]
+            };
+        } catch (error) {
+            logger.error('Restore version error', { photoId, versionNumber, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Delete a specific version (keep at least original)
+     */
+    static async deleteVersion(photoId, versionNumber) {
+        try {
+            // Don't delete original version
+            const version = await query(
+                'SELECT * FROM photo_editions WHERE photo_id = ? AND version_number = ?',
+                [photoId, versionNumber]
+            );
+
+            if (version.length === 0) {
+                throw new Error(`Version ${versionNumber} not found`);
+            }
+
+            if (version[0].is_original) {
+                throw new Error('Cannot delete original version');
+            }
+
+            if (version[0].is_current) {
+                throw new Error('Cannot delete current active version. Restore another version first.');
+            }
+
+            // Delete file
+            const filePath = join(version[0].path, version[0].filename);
+            try {
+                await fs.unlink(filePath);
+                logger.info('Deleted version file', { photoId, versionNumber, filePath });
+            } catch (error) {
+                logger.warn('Could not delete version file', { filePath, error: error.message });
+            }
+
+            // Delete database record
+            await query(
+                'DELETE FROM photo_editions WHERE photo_id = ? AND version_number = ?',
+                [photoId, versionNumber]
+            );
+
+            logger.info('Version deleted from database', { photoId, versionNumber });
+
+            return {
+                success: true,
+                message: `Version ${versionNumber} deleted`
+            };
+        } catch (error) {
+            logger.error('Delete version error', { photoId, versionNumber, error: error.message });
+            throw error;
+        }
+    }
+
+    /**
+     * Get image metadata without editing
+     */
+    static async getImageMetadata(imagePath) {
+        try {
+            const metadata = await sharp(imagePath).metadata();
+            return {
+                width: metadata.width,
+                height: metadata.height,
+                format: metadata.format,
+                space: metadata.space,
+                hasAlpha: metadata.hasAlpha,
+                orientation: metadata.orientation
+            };
+        } catch (error) {
+            logger.error('Error getting image metadata', { imagePath, error: error.message });
+            throw error;
+        }
     }
 }
 

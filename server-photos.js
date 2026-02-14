@@ -10,7 +10,6 @@ import { createPhoto, getPhotos, getTags, getPhoto, updatePhotoTag, removePhoto,
 import { createPlaylist, getPlaylists, getPlaylist, getPlaylistsByTag, updatePlaylist, updatePlaylistTag, addPlaylistItems, getPlaylistItems, removePlaylistItem, removePlaylist, getPlaylistTags } from './app/controllers/playlistController.js';
 import media from './app/services/media.js';
 import advancedFeaturesRoutes from './app/routes/advancedFeaturesRoutes.js';
-import imageEditingRoutes from './app/routes/imageEditingRoutes.js';
 import pkg from 'body-parser';
 import dotenv from 'dotenv';
 import logger from './app/config/logger.js';
@@ -71,7 +70,18 @@ app.get('/favicon.ico', (req, res) => {
 
 // Mount API routes BEFORE static file serving to prevent conflicts
 app.use('/api', advancedFeaturesRoutes);
-app.use('/api', imageEditingRoutes);
+
+// Mount image editing routes if available (optional for backward compatibility)
+(async () => {
+  try {
+    const imageEditingModule = await import('./app/routes/imageEditingRoutes.js');
+    const imageEditingRoutes = imageEditingModule.default;
+    app.use('/api', imageEditingRoutes);
+    console.log('✓ Image editing routes loaded');
+  } catch (err) {
+    console.warn('⚠️ Image editing routes not available:', err.message);
+  }
+})();
 
 app.use(express.static(join(__dirname, 'public')));
 app.use('/data', express.static(join(__dirname, "data")));

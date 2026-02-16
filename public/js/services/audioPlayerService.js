@@ -184,7 +184,7 @@ angular.module('AudioPlayerService', [])
              * @returns {number} Index of track in playlist
              */
             addToPlaylist: function(track, autoPlay) {
-                if (!track) {
+                if (!track || !track.path) {
                     return -1;
                 }
                 
@@ -193,11 +193,12 @@ angular.module('AudioPlayerService', [])
                     autoPlay = true;
                 }
                 
-                // Check if track already in playlist
+                // Check if track already in playlist by comparing paths
                 var existingIndex = playerState.playlist.findIndex(function(t) {
-                    return t.path === track.path;
+                    return t && t.path && (t.path === track.path);
                 });
                 
+                // Only add if not already in playlist
                 if (existingIndex === -1) {
                     playerState.playlist.push(track);
                     existingIndex = playerState.playlist.length - 1;

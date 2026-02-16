@@ -1809,11 +1809,43 @@ details[open] {
 
 /* Backdrop - slightly lower than modal but much higher than Fancybox */
 .modal-backdrop {
-  z-index: 99998 !important;
+  z-index: 1050 !important;
+}
+
+/* Second modal backdrop (for stacked modals) */
+.modal-backdrop:nth-of-type(2) {
+  z-index: 1070 !important;
+}
+
+/* Bootstrap modals need higher z-index than backdrop */
+.modal {
+  z-index: 1060 !important;
+}
+
+.modal-dialog {
+  z-index: inherit;
+}
+
+/* Create playlist modal - needs to be above other modals when stacked */
+#createPlaylistModal {
+  z-index: 1080 !important;
+}
+
+/* Image editor modal - special high z-index for Fancybox integration */
+#imageEditorModal {
+  z-index: 99999 !important;
+}
+
+#imageEditorModal.modal.show {
+  z-index: 99999 !important;
 }
 
 #imageEditorModal + .modal-backdrop {
   z-index: 99998 !important;
+}
+
+#imageEditorModal .modal-dialog {
+  z-index: 99999 !important;
 }
 
 #imageEditorModal .modal-content {

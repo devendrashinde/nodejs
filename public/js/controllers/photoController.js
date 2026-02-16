@@ -1116,6 +1116,12 @@ angular.module('photoController', [])
         $scope.setPlaylist = function(playlist) {
             $scope.loading = true;
             
+            // Clear audio player when switching to a different playlist
+            // This prevents audio files from the previous playlist from remaining in the player
+            if (!$scope.selectedAlbum || $scope.selectedAlbum.id !== playlist.id) {
+                AudioPlayerService.clearPlaylist();
+            }
+            
             PhotoService.getPlaylistItems(playlist.id)
                 .then(function(items) {
                     $scope.selectedPlaylistItems = items || [];
@@ -1132,6 +1138,13 @@ angular.module('photoController', [])
                     $scope.photos = photos;
                     $scope.totalPhotos = photos.length;
                     $scope.totalPages = 1;
+                    
+                    // Reinitialize Fancybox after Angular renders playlist items
+                    $timeout(function() {
+                        if (typeof initFancybox === 'function') {
+                            initFancybox();
+                        }
+                    }, 100);
                 })
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error loading playlist items');
@@ -1152,8 +1165,23 @@ angular.module('photoController', [])
             $timeout(function() {
                 var modalEl = document.getElementById('createPlaylistModal');
                 if (modalEl) {
-                    var modal = new bootstrap.Modal(modalEl);
+                    // Ensure body can handle multiple modals
+                    document.body.classList.add('modal-open');
+                    
+                    var modal = new bootstrap.Modal(modalEl, {
+                        backdrop: true,
+                        keyboard: true,
+                        focus: true
+                    });
                     modal.show();
+                    
+                    // Handle modal hidden event to restore previous modal
+                    modalEl.addEventListener('hidden.bs.modal', function(e) {
+                        // Ensure modal-open class stays if other modals are open
+                        if (document.querySelectorAll('.modal.show').length > 0) {
+                            document.body.classList.add('modal-open');
+                        }
+                    }, { once: true });
                 }
             }, 100);
         };
@@ -1571,20 +1599,52 @@ angular.module('photoController', [])
             
             // Get all audio files from current photos
             var audioFiles = $scope.photos.filter(function(photo) {
-                return photo.isAudio;
+                return photo && photo.isAudio;
             });
             
-            // Build complete playlist if we have multiple audio files
-            if (audioFiles.length > 1) {
-                // Clear existing playlist and rebuild with all audio files
-                AudioPlayerService.clearPlaylist();
-                audioFiles.forEach(function(audioFile) {
-                    AudioPlayerService.addToPlaylist(audioFile, false); // false = don't auto-play
+            if (audioFiles.length === 0) return;
+            
+            // Get current player state
+            var playerState = AudioPlayerService.getState();
+            
+            // Check if this exact playlist is already loaded (compare all audio files)
+            var isCurrentPlaylist = playerState.playlist.length === audioFiles.length &&
+                playerState.playlist.every(function(track, index) {
+                    return audioFiles[index] && track.path === audioFiles[index].path;
                 });
+            
+            // If it's the same playlist, just set the current track and play
+            if (isCurrentPlaylist) {
+                // Find the clicked file's index in the current playlist
+                var clickedIndex = playerState.playlist.findIndex(function(t) {
+                    return t.path === image.path;
+                });
+                if (clickedIndex >= 0) {
+                    playerState.currentIndex = clickedIndex;
+                    AudioPlayerService.playTrack(image);
+                }
+                return;
             }
             
-            // Now play the clicked track (this will auto-play)
-            AudioPlayerService.addToPlaylist(image, true);
+            // If it's a different playlist, clear and rebuild
+            AudioPlayerService.clearPlaylist();
+            
+            // Build complete playlist with all audio files from current view
+            var clickedIndex = -1;
+            audioFiles.forEach(function(audioFile, index) {
+                AudioPlayerService.addToPlaylist(audioFile, false); // false = don't auto-play yet
+                // Track which index is the clicked file
+                if (audioFile.path === image.path) {
+                    clickedIndex = index;
+                }
+            });
+            
+            // Now play the clicked track by index
+            if (clickedIndex >= 0) {
+                playerState = AudioPlayerService.getState();
+                playerState.currentIndex = clickedIndex;
+                AudioPlayerService.playTrack(audioFiles[clickedIndex]);
+            }
         };
 
         $scope.togglePlay = function() {

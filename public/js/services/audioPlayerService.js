@@ -76,6 +76,19 @@ angular.module('AudioPlayerService', [])
             },
             
             /**
+             * Load audio file without playing
+             * @param {object} track - Track object with path property
+             */
+            loadTrack: function(track) {
+                if (!track || !track.path) {
+                    return;
+                }
+                
+                audio.src = track.path;
+                audio.load();
+            },
+            
+            /**
              * Toggle play/pause
              */
             togglePlay: function() {

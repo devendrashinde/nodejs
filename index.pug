@@ -520,7 +520,7 @@ html(ng-app="app")
               div.d-flex.align-items-center.flex-grow-1
                 i.fas.fa-music.me-2.text-primary
                 div.flex-grow-1
-                  strong.d-block.text-truncate(style="max-width: 250px;") {{ playlist[currentIndex].tags || 'Untitled' }}
+                  strong.d-block.text-truncate(style="max-width: 250px;") {{ playlist[currentIndex].tags || (playlist[currentIndex].name | stripExtension) || 'Untitled' }}
                   small.text-muted Track {{currentIndex + 1}} of {{playlist.length}}
               
               //- Playlist toggle button
@@ -597,7 +597,7 @@ html(ng-app="app")
                     ng-class="{'fa-volume-up': $index === currentIndex && isPlaying, 'fa-music': $index !== currentIndex || !isPlaying}"
                     style="margin-right: 8px;"
                   )
-                  span.text-truncate(style="max-width: 300px;") {{ track.tags || 'Untitled' }}
+                  span.text-truncate(style="max-width: 300px;") {{ track.tags || (track.name | stripExtension) || 'Untitled' }}
                 button.btn.btn-sm.btn-link.text-danger(
                   ng-click="removeFromPlaylist($index); $event.stopPropagation();"
                   title="Remove from playlist"

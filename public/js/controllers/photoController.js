@@ -206,6 +206,8 @@ angular.module('photoController', [])
                         updatePhotoTagsFromDb(response.data);
                         // Load favorites for these photos
                         $scope.loadUserFavorites();
+                        // Populate audio player with audio files from this album
+                        populateAudioPlayerPlaylist();
                         $scope.loading = false;
                         
                         // Reinitialize Fancybox after Angular renders new images
@@ -414,18 +416,24 @@ angular.module('photoController', [])
                     $scope.favoritesCount = favorites.length;
                     $scope.allFavorites = favorites;
                     
-                    // Convert favorites to photo objects
-                    $scope.photos = favorites.map(fav => ({
-                        name: fav.photo_name,
-                        path: fav.photo_path,
-                        album: fav.album,
-                        isFavorite: true,
-                        tags: ''
-                    }));
+                    // Convert favorites to photo objects and apply media type classification
+                    $scope.photos = favorites.map(fav => {
+                        var photoObj = getImageType({
+                            name: fav.photo_name,
+                            path: fav.photo_path,
+                            album: fav.album,
+                            isFavorite: true,
+                            tags: ''
+                        });
+                        return photoObj;
+                    });
                     
                     $scope.totalPhotos = favorites.length;
                     $scope.totalPages = 1;
                     $scope.tags = [];
+                    
+                    // Populate audio player with audio files from favorites
+                    populateAudioPlayerPlaylist();
                     $scope.loading = false;
                     
                     // Reinitialize Fancybox after Angular renders favorites
@@ -727,8 +735,6 @@ angular.module('photoController', [])
 			// Preserve folders array if we're doing a search (not album navigation)
             var preservedFolders = $scope.folders;
 			$scope.folders = [];
-            $scope.playlist = [];
-            $scope.currentIndex = -1;
             for (photo of photos) {
                 var albumDetails = getNameAndAlbum(photo.path);
                 for (tag of $scope.tags) {
@@ -789,10 +795,6 @@ angular.module('photoController', [])
                 $scope.folders = preservedFolders;
             }
             
-            if($scope.playlist.length > 0) {
-                $scope.currentIndex = 0;
-            }
-            
             // Load and merge album tags from database
             loadAndMergeAlbumTags();
         }
@@ -837,7 +839,6 @@ angular.module('photoController', [])
                 photo.isVideo = true;
             } else if(audioTypes.indexOf(ext) != -1) {
                 photo.isAudio = true;
-                $scope.playlist.push(photo);
             } else {
                 photo.isPdf = true;
             }
@@ -1104,6 +1105,40 @@ angular.module('photoController', [])
                 });
         }
 
+        /**
+         * Populate AudioPlayerService with audio files from current photos
+         */
+        function populateAudioPlayerPlaylist() {
+            if (!$scope.photos || $scope.photos.length === 0) {
+                return;
+            }
+
+            // Filter audio files from current photos
+            var audioFiles = $scope.photos.filter(function(photo) {
+                return photo && photo.isAudio;
+            });
+
+            if (audioFiles.length === 0) {
+                return;
+            }
+
+            // Clear the audio player playlist
+            AudioPlayerService.clearPlaylist();
+
+            // Add all audio files to the audio player
+            audioFiles.forEach(function(audioFile) {
+                AudioPlayerService.addToPlaylist(audioFile, false); // false = don't auto-play
+            });
+
+            // Set currentIndex to 0 and load the first track (but don't play)
+            var playerState = AudioPlayerService.getState();
+            if (playerState.currentIndex < 0 && audioFiles.length > 0) {
+                playerState.currentIndex = 0;
+                // Load the first track into the audio element without playing
+                AudioPlayerService.loadTrack(audioFiles[0]);
+            }
+        }
+
         // Switch between Albums and Playlists view
         $scope.switchView = function(view) {
             $scope.selectedView = view;
@@ -1138,6 +1173,9 @@ angular.module('photoController', [])
                     $scope.photos = photos;
                     $scope.totalPhotos = photos.length;
                     $scope.totalPages = 1;
+                    
+                    // Populate audio player with audio files from this playlist
+                    populateAudioPlayerPlaylist();
                     
                     // Reinitialize Fancybox after Angular renders playlist items
                     $timeout(function() {

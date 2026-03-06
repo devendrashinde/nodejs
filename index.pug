@@ -424,12 +424,14 @@ html(ng-app="app")
                 //- Non-audio files - fancybox
                 a(
                   ng-if="!image.isAudio"
-                  ng-href="{{image.path}}"
+                  ng-href="{{image.isVideo ? '/video?id=' + image.path : image.path}}"
+                  ng-attr-data-src="{{image.isVideo ? '/video?id=' + image.path : undefined}}"
                   data-fancybox="gallery"
                   data-caption="{{image.tags}}"
                   ng-attr-data-type="{{image.isVideo ? 'video' : (image.isPdf ? 'iframe' : 'image')}}"
                   ng-attr-data-width="{{image.isVideo ? '640' : undefined}}"
                   ng-attr-data-height="{{image.isVideo ? '360' : undefined}}"
+                  ng-attr-data-format="{{image.isVideo ? 'video/mp4' : undefined}}"
                 )
                   figure
                     img.card-img-top.img-fluid(

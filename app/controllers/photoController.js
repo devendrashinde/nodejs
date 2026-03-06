@@ -2,6 +2,8 @@
 
 import Photo from '../models/photoModel.js';
 import Album from '../models/albumModel.js';
+import VideoConversionService from '../services/videoConversionService.js';
+import path from 'path';
 
 export function createPhoto(req, res) {
   console.log(req.body);
@@ -13,9 +15,35 @@ export function createPhoto(req, res) {
 
     }
 	else{
+		// Store original full path for video conversion
+		const originalFullPath = new_photo.name;
+		
 		Photo.createPhoto(getNameAndAlbum(new_photo), function(err, photoId) {
 			if (err)
 				res.send(err);
+			
+			// Trigger async video conversion if it's a video
+			if (originalFullPath) {
+				const ext = path.extname(originalFullPath).toLowerCase();
+				const isVideo = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.mpeg', '.mpg', '.ogv', '.3gp'].includes(ext);
+				
+				if (isVideo && !VideoConversionService.isBrowserSupportedFormat(originalFullPath)) {
+					// Start conversion in background without waiting
+					// Convert to absolute path
+					const fullPath = path.resolve(__dirname, '../../', originalFullPath);
+					console.log(`[CreatePhoto] Starting video conversion for: ${originalFullPath}`);
+					console.log(`[CreatePhoto] Absolute path: ${fullPath}`);
+					
+					VideoConversionService.convertToMp4(fullPath)
+						.then(result => {
+							console.log('✓ Video conversion started:', result.message);
+						})
+						.catch(err => {
+							console.error('✗ Video conversion error:', err);
+						});
+				}
+			}
+			
 			res.json(photoId);
 		});
 	}

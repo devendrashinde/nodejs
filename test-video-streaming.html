@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Streaming Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .video-player {
+            margin: 20px 0;
+            max-width: 800px;
+            background: #000;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .info {
+            background: #e8f4f8;
+            padding: 10px;
+            border-left: 4px solid #2196F3;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .error {
+            background: #ffebee;
+            padding: 10px;
+            border-left: 4px solid #f44336;
+            margin: 10px 0;
+            border-radius: 3px;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e9;
+            padding: 10px;
+            border-left: 4px solid #4caf50;
+            margin: 10px 0;
+            border-radius: 3px;
+            color: #2e7d32;
+        }
+        input, button {
+            padding: 8px 12px;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        .debug-output {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .log-line {
+            padding: 2px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .log-line.error {
+            color: #d32f2f;
+        }
+        .log-line.success {
+            color: #388e3c;
+        }
+    </style>
+</head>
+<body>
+    <h1>📹 Video Streaming Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Video Endpoint Test</h2>
+        <p>Enter a video file path from the data directory:</p>
+        <div>
+            <input type="text" id="videoPath" placeholder="e.g., Home/videos/sample.mkv" style="width: 400px;">
+            <button onclick="testVideoEndpoint()">Test /video Endpoint</button>
+        </div>
+        <div id="testResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Direct Video Playback</h2>
+        <div>
+            <input type="text" id="videoPath2" placeholder="e.g., data/Home/videos/sample.mkv" style="width: 400px;">
+            <button onclick="playVideo()">Load Video</button>
+        </div>
+        <div class="video-player">
+            <video id="testVideo" controls>
+                <source id="videoSource" src="" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        <div id="playbackInfo"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Debug Output</h2>
+        <button onclick="clearDebug()">Clear Logs</button>
+        <div class="debug-output" id="debugOutput"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const output = document.getElementById('debugOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const line = document.createElement('div');
+            line.className = `log-line ${type}`;
+            line.textContent = `[${timestamp}] ${message}`;
+            output.appendChild(line);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function clearDebug() {
+            document.getElementById('debugOutput').innerHTML = '';
+        }
+
+        async function testVideoEndpoint() {
+            const videoPath = document.getElementById('videoPath').value.trim();
+            if (!videoPath) {
+                log('Please enter a video path', 'error');
+                return;
+            }
+
+            const resultDiv = document.getElementById('testResult');
+            resultDiv.innerHTML = '<div class="info">Testing endpoint...</div>';
+            log(`Testing /video endpoint with path: ${videoPath}`, 'info');
+
+            try {
+                const url = `/video?id=${encodeURIComponent(videoPath)}`;
+                log(`Request URL: ${url}`, 'info');
+
+                const response = await fetch(url, {
+                    method: 'HEAD',
+                    headers: {
+                        'Accept': 'video/mp4'
+                    }
+                });
+
+                log(`Response status: ${response.status}`, 'info');
+                log(`Content-Type: ${response.headers.get('Content-Type') || 'not specified'}`, 'info');
+                log(`Content-Length: ${response.headers.get('Content-Length') || 'not specified'}`, 'info');
+                log(`Accept-Ranges: ${response.headers.get('Accept-Ranges') || 'not supported'}`, 'info');
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">✓ Endpoint working!</div>
+                        <div class="info">
+                            <strong>Response Headers:</strong><br>
+                            Status: ${response.status}<br>
+                            Content-Type: ${response.headers.get('Content-Type') || 'video/mp4'}<br>
+                            Content-Length: ${response.headers.get('Content-Length') || 'streaming'}<br>
+                            Accept-Ranges: ${response.headers.get('Accept-Ranges') || 'none'}
+                        </div>
+                    `;
+                    log('✓ Video endpoint test PASSED', 'success');
+                } else {
+                    resultDiv.innerHTML = `<div class="error">✗ Error: ${response.status} ${response.statusText}</div>`;
+                    log(`✗ Video endpoint test FAILED: ${response.status}`, 'error');
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error">✗ Error: ${err.message}</div>`;
+                log(`✗ Error: ${err.message}`, 'error');
+            }
+        }
+
+        function playVideo() {
+            const videoPath = document.getElementById('videoPath2').value.trim();
+            if (!videoPath) {
+                log('Please enter a video path', 'error');
+                return;
+            }
+
+            const videoUrl = `/video?id=${encodeURIComponent(videoPath)}`;
+            log(`Loading video from: ${videoUrl}`, 'info');
+
+            const video = document.getElementById('testVideo');
+            const source = document.getElementById('videoSource');
+
+            source.src = videoUrl;
+            source.type = 'video/mp4';
+
+            video.load();
+
+            const infoDiv = document.getElementById('playbackInfo');
+            infoDiv.innerHTML = `
+                <div class="info">
+                    <strong>Video URL:</strong><br>
+                    ${videoUrl}<br>
+                    <strong>Status:</strong> Loading...
+                </div>
+            `;
+
+            // Listen for video events
+            const oncanplay = () => {
+                log('✓ Video can play', 'success');
+                infoDiv.innerHTML += '<div class="success">✓ Video loaded successfully</div>';
+            };
+
+            const onerror = (e) => {
+                log(`✗ Video error: ${video.error.code} - ${video.error.message}`, 'error');
+                infoDiv.innerHTML += '<div class="error">✗ Video playback error. Check console for details.</div>';
+            };
+
+            const onloadstart = () => {
+                log('Video loadstart event', 'info');
+            };
+
+            const ondurationchange = () => {
+                log(`Video duration: ${video.duration}s`, 'info');
+            };
+
+            video.addEventListener('canplay', oncanplay, { once: true });
+            video.addEventListener('error', onerror, { once: true });
+            video.addEventListener('loadstart', onloadstart);
+            video.addEventListener('durationchange', ondurationchange);
+        }
+
+        // Initial log
+        log('Video Streaming Test initialized', 'success');
+        log(`Current location: ${window.location.href}`, 'info');
+    </script>
+</body>
+</html>

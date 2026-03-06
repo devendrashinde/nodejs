@@ -100,6 +100,79 @@ function initFancybox() {
         rotationAngles[current.index] = 0;
       }
       
+      // Handle video source for streaming videos
+      if (current.type === 'video') {
+        console.log('[Fancybox Video] ========== VIDEO HANDLER START ==========');
+        console.log('[Fancybox Video] current.type:', current.type);
+        console.log('[Fancybox Video] current.src:', current.src);
+        console.log('[Fancybox Video] current.$trigger exists:', !!current.$trigger);
+        
+        if (current.$trigger) {
+          console.log('[Fancybox Video] trigger tagName:', current.$trigger.prop('tagName'));
+          console.log('[Fancybox Video] trigger href attr:', current.$trigger.attr('href'));
+          console.log('[Fancybox Video] trigger data-src attr:', current.$trigger.attr('data-src'));
+          console.log('[Fancybox Video] trigger data-format attr:', current.$trigger.attr('data-format'));
+          console.log('[Fancybox Video] trigger .data("src"):', current.$trigger.data('src'));
+          console.log('[Fancybox Video] trigger .data("format"):', current.$trigger.data('format'));
+        }
+        
+        var $trigger = current.$trigger;
+        var triggerHref = $trigger ? $trigger.attr('href') || '' : '';
+        var triggerDataSrc = $trigger ? ($trigger.attr('data-src') || $trigger.data('src')) || '' : '';
+        var triggerDataFormat = $trigger ? ($trigger.attr('data-format') || $trigger.data('format')) || '' : '';
+        
+        console.log('[Fancybox Video] Using href:', triggerHref);
+        console.log('[Fancybox Video] Using data-src:', triggerDataSrc);
+        console.log('[Fancybox Video] Using data-format:', triggerDataFormat);
+        
+        // Use data-src if available, otherwise fall back to href
+        var videoSrc = triggerDataSrc || triggerHref || '';
+        var videoFormat = triggerDataFormat || 'video/mp4';
+        
+        console.log('[Fancybox Video] Final videoSrc:', videoSrc);
+        console.log('[Fancybox Video] Final videoFormat:', videoFormat);
+        
+        if (videoSrc) {
+          // Create or update video element
+          setTimeout(function() {
+            var $content = current.$content;
+            var $video = $content.find('video');
+            
+            console.log('[Fancybox Video] $content exists:', !!$content);
+            console.log('[Fancybox Video] Video elements found:', $video.length);
+            
+            if (!$video.length) {
+              // Create video element if it doesn't exist
+              var videoHTML = '<video class="fancybox-video" controls controlsList="nodownload" autoplay style="width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain;">' +
+                            '<source src="' + videoSrc + '" type="' + videoFormat + '">' +
+                            'Your browser does not support the video tag.' +
+                            '</video>';
+              console.log('[Fancybox Video] Creating new video element with src:', videoSrc);
+              $content.html(videoHTML);
+              $video = $content.find('video');
+              console.log('[Fancybox Video] Video element after creation:', $video.length);
+              if ($video.length) {
+                console.log('[Fancybox Video] Source tags in video:', $video.find('source').length);
+              }
+            } else {
+              // Update existing video sources
+              console.log('[Fancybox Video] Updating existing video element');
+              $video.find('source').attr({
+                'src': videoSrc,
+                'type': videoFormat
+              });
+              $video[0].load();
+            }
+            
+            console.log('[Fancybox Video] Final video src:', $video.find('source').attr('src'));
+            console.log('[Fancybox Video] ========== VIDEO HANDLER END ==========');
+          }, 50);
+        } else {
+          console.warn('[Fancybox Video] No video source found!');
+          console.log('[Fancybox Video] ========== VIDEO HANDLER END (NO SOURCE) ==========');
+        }
+      }
+      
       // Add navigation counter
       var total = instance.group.length;
       var currentNum = current.index + 1;

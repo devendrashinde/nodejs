@@ -30,7 +30,7 @@ class Photo {
     static async getPhotoById(id, result) {
         try {
             const res = await query(
-                "SELECT id, name, tags, album, path FROM photos WHERE id = ?", 
+                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE id = ?", 
                 [id]
             );
             result(null, res);
@@ -43,7 +43,7 @@ class Photo {
     static async getPhotoByName(name, result) {
         try {
             const res = await query(
-                "SELECT id, name, tags, album, path FROM photos WHERE name = ?", 
+                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE name = ?", 
                 [name]
             );
             result(null, res);
@@ -69,7 +69,7 @@ class Photo {
     static async getPhotosByAlbum(album, result) {
         try {
             const res = await query(
-                "SELECT id, name, tags, album, path FROM photos WHERE album = ?", 
+                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE album = ?", 
                 [album]
             );
             result(null, res);

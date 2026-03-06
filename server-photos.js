@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import { createPhoto, getPhotos, getTags, getPhoto, updatePhotoTag, removePhoto, getAlbumTags, createPhotoAlbum, getPhotoAlbum, getPhotoAlbums, updateAlbumTag, removeAlbum, getAlbumsByTag } from './app/controllers/photoController.js';
 import { createPlaylist, getPlaylists, getPlaylist, getPlaylistsByTag, updatePlaylist, updatePlaylistTag, addPlaylistItems, getPlaylistItems, removePlaylistItem, removePlaylist, getPlaylistTags } from './app/controllers/playlistController.js';
 import media from './app/services/media.js';
+import VideoConversionService from './app/services/videoConversionService.js';
 import advancedFeaturesRoutes from './app/routes/advancedFeaturesRoutes.js';
 import pkg from 'body-parser';
 import dotenv from 'dotenv';
@@ -467,8 +468,163 @@ app.post('/upload', asyncHandler(async (req, res) => {
     }
 }));
 
+// ============================================================
+// VIDEO SERVING WITH AUTO-CONVERSION TO MP4
+// ============================================================
 
-app.get('/thumb?:id', asyncHandler(async (req, res) => {
+/**
+ * Serve video with automatic MP4 conversion
+ * GET /video?id=path/to/video.mkv
+ * Returns: MP4 video (either original if already MP4, or converted version)
+ */
+app.get('/video', asyncHandler(async (req, res) => {
+    let videoPath = req.query.id;
+
+    if (!videoPath) {
+        return res.status(400).send('Missing video ID parameter.');
+    }
+
+    // Handle path - ensure it doesn't already include 'data/' prefix
+    if (!videoPath.startsWith('data/') && !videoPath.startsWith('data\\')) {
+        videoPath = `data/${videoPath}`;
+    }
+
+    // Normalize path separators
+    videoPath = videoPath.replace(/\\/g, '/');
+    
+    const fullPath = path.resolve(__dirname, videoPath);
+    const dataPath = path.resolve(__dirname, 'data');
+
+    console.log(`[VIDEO] Request for: ${videoPath}`);
+    console.log(`[VIDEO] Full path: ${fullPath}`);
+
+    // Security check for path traversal
+    if (!fullPath.startsWith(dataPath)) {
+        console.error(`[VIDEO] Security error - path traversal attempt: ${fullPath}`);
+        return res.status(403).send('Forbidden');
+    }
+
+    try {
+        // Check if file exists
+        try {
+            await fs.access(fullPath);
+            console.log(`[VIDEO] File found: ${fullPath}`);
+        } catch (err) {
+            console.error(`[VIDEO] File not found: ${fullPath}`);
+            return res.status(404).send(`Video file not found: ${videoPath}`);
+        }
+
+        // Get playable path (converts if needed)
+        console.log(`[VIDEO] Getting playable path for: ${fullPath}`);
+        const playablePath = await VideoConversionService.getPlayablePath(fullPath);
+        console.log(`[VIDEO] Playable path: ${playablePath}`);
+
+        // Stream the file directly
+        const stat = await fs.stat(playablePath);
+        const fileSize = stat.size;
+
+        // Set appropriate headers for video streaming
+        res.setHeader('Content-Type', 'video/mp4');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.setHeader('Accept-Ranges', 'bytes');
+
+        // Support range requests for seeking
+        const range = req.headers.range;
+        if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const chunksize = (end - start) + 1;
+
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader('Content-Length', chunksize);
+
+            console.log(`[VIDEO] Serving range: ${start}-${end}`);
+            createReadStream(playablePath, { start, end }).pipe(res);
+        } else {
+            res.setHeader('Content-Length', fileSize);
+            console.log(`[VIDEO] Serving full file: ${fileSize} bytes`);
+            createReadStream(playablePath).pipe(res);
+        }
+    } catch (err) {
+        console.error(`[VIDEO] Error serving video: ${err.message}`);
+        res.status(500).send(`Failed to serve video: ${err.message}`);
+    }
+}));
+
+        }
+    } catch (err) {
+        console.error('Video serving error:', err);
+        res.status(500).json({ error: 'Failed to serve video', details: err.message });
+    }
+}));
+
+/**
+ * Check video conversion status
+ * GET /api/video/conversion-status?id=path/to/video.mkv
+ */
+app.get('/api/video/conversion-status', asyncHandler(async (req, res) => {
+    const videoPath = req.query.id;
+
+    if (!videoPath) {
+        return res.status(400).json({ error: 'Missing video ID parameter.' });
+    }
+
+    const fullPath = path.join(BASE_DIR, videoPath);
+
+    try {
+        const status = await VideoConversionService.getConversionStatus(fullPath);
+        res.json(status);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to get status', details: err.message });
+    }
+}));
+
+/**
+ * Convert a video to MP4 (on-demand)
+ * POST /api/video/convert
+ * Body: { videoPath: 'path/to/video.mkv' }
+ */
+app.post('/api/video/convert', asyncHandler(async (req, res) => {
+    const { videoPath } = req.body;
+
+    if (!videoPath) {
+        return res.status(400).json({ error: 'Missing videoPath in request body.' });
+    }
+
+    const fullPath = path.join(BASE_DIR, videoPath);
+
+    // Security check
+    if (!fullPath.startsWith(path.resolve(BASE_DIR))) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+        // Check if file exists
+        await fs.access(fullPath);
+
+        // Start conversion (in background)
+        res.json({
+            message: 'Conversion started',
+            originalPath: fullPath,
+            mp4Path: VideoConversionService.getMp4ConversionPath(fullPath)
+        });
+
+        // Convert asynchronously without waiting
+        VideoConversionService.convertToMp4(fullPath)
+            .then(result => {
+                console.log('Conversion completed:', result);
+            })
+            .catch(err => {
+                console.error('Conversion failed:', err);
+            });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to start conversion', details: err.message });
+    }
+}));
+
+
     if (req.query.id) {
         console.log(`Generating thumbnail for: ${req.query.id}`);
         const image = new media(req.query.id, THUMBNAIL_DIR);

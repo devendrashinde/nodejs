@@ -82,7 +82,7 @@ angular.module('photoController', [])
         $scope.currentTime = playerState.currentTime;
         $scope.duration = playerState.duration;
         $scope.progress = playerState.progress;
-        $scope.volume = playerState.volume;
+        $scope.volume = parseInt(playerState.volume, 10) || 50;
         $scope.isShuffle = playerState.isShuffle;
         $scope.isRepeat = playerState.isRepeat;
         $scope.showPlaylist = false;
@@ -98,7 +98,10 @@ angular.module('photoController', [])
                 $scope.currentTime = newState.currentTime;
                 $scope.duration = newState.duration;
                 $scope.progress = newState.progress;
-                $scope.volume = newState.volume;
+                // Only update volume if it wasn't changed by the user
+                if ($scope.volume !== newState.volume) {
+                    $scope.volume = parseInt(newState.volume, 10) || 50;
+                }
                 $scope.isShuffle = newState.isShuffle;
                 $scope.isRepeat = newState.isRepeat;
             }
@@ -117,6 +120,11 @@ angular.module('photoController', [])
                 $scope.isShuffle = newState.isShuffle;
                 $scope.isRepeat = newState.isRepeat;
             }
+        });
+
+        // Listen for volume changes from service
+        $scope.$on('volumeChanged', function(event, newVolume) {
+            $scope.volume = parseInt(newVolume, 10) || 50;
         });
         
         // file upload
@@ -1707,7 +1715,15 @@ angular.module('photoController', [])
 
         // Volume control
         $scope.setVolume = function() {
-            AudioPlayerService.setVolume($scope.volume);
+            // Ensure volume is a number between 0-100
+            var vol = parseInt($scope.volume, 10);
+            if (isNaN(vol)) {
+                vol = 50;
+            } else {
+                vol = Math.max(0, Math.min(100, vol));
+            }
+            $scope.volume = vol;
+            AudioPlayerService.setVolume(vol);
         };
 
         // Toggle shuffle

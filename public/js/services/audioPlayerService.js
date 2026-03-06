@@ -159,8 +159,14 @@ angular.module('AudioPlayerService', [])
              * @param {number} volume - Volume level (0-100)
              */
             setVolume: function(volume) {
-                playerState.volume = Math.max(0, Math.min(100, volume));
-                audio.volume = playerState.volume / 100;
+                var numVolume = Math.max(0, Math.min(100, parseInt(volume, 10) || 50));
+                playerState.volume = numVolume;
+                // Set audio element volume (0-1 scale)
+                if (audio) {
+                    audio.volume = numVolume / 100;
+                }
+                // Notify listeners of state change
+                $rootScope.$broadcast('volumeChanged', numVolume);
             },
             
             /**

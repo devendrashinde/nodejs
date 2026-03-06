@@ -137,7 +137,7 @@ html(ng-app="app")
       // Sidebar + Content
       div.row
         // Sidebar for Folders
-        aside#folderSidebar.col-md-2.mb-3.collapse.d-md-block
+        aside#folderSidebar.col-sm-3.col-md-2.mb-3.collapse.d-sm-block
           div.albums-sidebar
             div.albums-header
               //- Toggle between Albums and Playlists
@@ -380,7 +380,7 @@ html(ng-app="app")
               | No playlists found
 
         // Main Content
-        main(ng-class="{'col-md-10': folders.length > 0, 'col-12': folders.length == 0}")
+        main(ng-class="{'col-sm-9 col-md-10': folders.length > 0, 'col-12': folders.length == 0}")
           // Gallery Grid
           div.row.g-3
             div.col-sm-6.col-md-4.col-lg-3(ng-repeat="image in photos")

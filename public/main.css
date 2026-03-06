@@ -815,7 +815,7 @@ main {
 @media (max-width: 768px) {
   .albums-sidebar {
     height: auto;
-    max-height: 350px;
+    max-height: calc(100vh - 180px);
   }
   
   .album-item {

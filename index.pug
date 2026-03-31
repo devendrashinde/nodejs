@@ -381,15 +381,29 @@ html(ng-app="app")
 
         // Main Content
         main(ng-class="{'col-sm-9 col-md-10': folders.length > 0, 'col-12': folders.length == 0}")
+
+          //- PDF Library toolbar — shown only when viewing an all-PDF album
+          div.d-flex.justify-content-between.align-items-center.mb-3(ng-if="isAllPdf()")
+            span.text-muted.small
+              i.fas.fa-book-open.me-1
+              | PDF Library — {{photos.length}} document{{photos.length !== 1 ? 's' : ''}}
+            button.btn.btn-sm.btn-outline-secondary(
+              type="button"
+              ng-click="togglePdfView()"
+              title="{{pdfLibraryView === 'grid' ? 'Switch to list view' : 'Switch to grid view'}}"
+            )
+              i.fas(ng-class="{'fa-list': pdfLibraryView === 'grid', 'fa-th': pdfLibraryView === 'list'}")
+              span.ms-1 {{pdfLibraryView === 'grid' ? 'List view' : 'Grid view'}}
+
           // Gallery Grid
-          div.row.g-3
+          div.row.g-3(ng-if="!isAllPdf() || pdfLibraryView === 'grid'")
             div.col-sm-6.col-md-4.col-lg-3(ng-repeat="image in photos")
               div.card.shadow-sm(style="position: relative;")
                 //- Checkbox for bulk operations
                 input.photo-checkbox(
                   type="checkbox"
                   ng-attr-data-photo-id="{{image.path}}"
-                  style="position: absolute; bottom: 10px; right: 10px; z-index: 5; width: 20px; height: 20px; cursor: pointer;"
+                  style="position: absolute; top: 10px; right: 10px; z-index: 5; width: 20px; height: 20px; cursor: pointer;"
                   title="Select for bulk operations"
                 )
                 //- Now Playing Indicator for audio
@@ -402,7 +416,7 @@ html(ng-app="app")
                   )
                     i.fas.fa-volume-up.me-1
                     | Now Playing
-                
+
                 //- Audio file - clickable to play
                 a(
                   ng-if="image.isAudio"
@@ -424,7 +438,7 @@ html(ng-app="app")
                 //- Non-audio files - fancybox
                 a(
                   ng-if="!image.isAudio"
-                  ng-href="{{image.path}}"
+                  ng-href="{{getMediaHref(image)}}"
                   data-fancybox="gallery"
                   data-caption="{{image.tags}}"
                   ng-attr-data-type="{{image.isVideo ? 'video' : (image.isPdf ? 'iframe' : 'image')}}"
@@ -448,6 +462,8 @@ html(ng-app="app")
                       ng-click="editImageTag(image)"
                       title="Edit tags"
                     ) {{image.tags || (image.name | stripExtension) || 'Untitled'}}
+                    span.badge.bg-success.ms-1.small(ng-if="image.isPdf && image.isRead" title="Read") ✓
+                  small.text-muted.d-block(ng-if="image.isPdf && image.fileSizeFormatted" style="font-size:0.75rem;") {{image.fileSizeFormatted}}
                   
                   //- Action buttons for advanced features
                   //- For photos and videos
@@ -473,6 +489,14 @@ html(ng-app="app")
                       title="Share photo"
                     )
                       i.fas.fa-share-alt.fa-sm
+
+                    button.btn.btn-sm.btn-outline-primary(
+                      type="button"
+                      ng-if="image.isInPlaylist"
+                      ng-click="openPlaylistsForMedia(image, $event)"
+                      title="View playlists containing this item"
+                    )
+                      i.fas.fa-list.fa-sm
                     
                     //- Show "Remove from Playlist" when viewing a playlist
                     button.btn.btn-sm.btn-outline-warning(
@@ -506,13 +530,120 @@ html(ng-app="app")
                       title="Share"
                     )
                       i.fas.fa-share-alt.fa-sm
-                    
-                    button.btn.btn-sm.btn-outline-secondary(
+
+                    button.btn.btn-sm.btn-outline-primary(
                       type="button"
-                      ng-click="addToPlaylistQueue(image)"
-                      title="Add to playlist"
+                      ng-if="image.isInPlaylist"
+                      ng-click="openPlaylistsForMedia(image, $event)"
+                      title="View playlists containing this item"
                     )
                       i.fas.fa-list.fa-sm
+
+                  //- For PDF files
+                  div.d-flex.gap-1.mt-2.flex-wrap(ng-if="image.isPdf")
+                    button.btn.btn-sm.btn-outline-primary(
+                      type="button"
+                      ng-click="openPdfInNewTab(image)"
+                      title="Open in new tab"
+                    )
+                      i.fas.fa-external-link-alt.fa-sm
+                    button.btn.btn-sm(
+                      type="button"
+                      ng-click="togglePdfRead(image)"
+                      ng-class="image.isRead ? 'btn-success' : 'btn-outline-secondary'"
+                      title="{{image.isRead ? 'Mark as unread' : 'Mark as read'}}"
+                    )
+                      i.fas.fa-check.fa-sm
+                    button.btn.btn-sm.btn-outline-danger(
+                      type="button"
+                      ng-click="toggleFavorite(image)"
+                      ng-class="{'active': image.isFavorite}"
+                      title="Favorite"
+                    )
+                      i.fas.fa-heart.fa-sm
+                    button.btn.btn-sm.btn-outline-success(
+                      type="button"
+                      ng-click="sharePhoto(image)"
+                      title="Share"
+                    )
+                      i.fas.fa-share-alt.fa-sm
+                    button.btn.btn-sm.btn-outline-primary(
+                      type="button"
+                      ng-if="image.isInPlaylist"
+                      ng-click="openPlaylistsForMedia(image, $event)"
+                      title="View playlists containing this item"
+                    )
+                      i.fas.fa-list.fa-sm
+                    button.btn.btn-sm.btn-outline-warning(
+                      type="button"
+                      ng-click="removePlaylistItem(image.id)"
+                      ng-if="selectedAlbum.isPlaylist"
+                      title="Remove from this playlist"
+                    )
+                      i.fas.fa-times.fa-sm
+
+          //- PDF Library List View
+          div.table-responsive(ng-if="isAllPdf() && pdfLibraryView === 'list'")
+            table.table.table-hover.table-sm.align-middle
+              thead.table-light
+                tr
+                  th(style="width:36px;")
+                  th Title
+                  th(style="width:80px;") Size
+                  th(style="width:90px;") Date
+                  th(style="width:56px; text-align:center;") Read
+                  th(style="width:130px;") Actions
+              tbody
+                tr(ng-repeat="image in photos")
+                  td.text-center
+                    i.fas.fa-file-pdf.text-danger(style="font-size:1.2rem;")
+                  td
+                    a.text-decoration-none(
+                      href="javascript:void(0)"
+                      ng-click="openPdfInNewTab(image)"
+                      title="Open PDF in new tab"
+                    ) {{image.tags || (image.name | stripExtension) || 'Untitled'}}
+                  td.text-muted.small {{image.fileSizeFormatted || '—'}}
+                  td.text-muted.small {{image.fileDate || '—'}}
+                  td.text-center
+                    button.btn.btn-sm(
+                      type="button"
+                      ng-click="togglePdfRead(image)"
+                      ng-class="image.isRead ? 'btn-success' : 'btn-outline-secondary'"
+                      title="{{image.isRead ? 'Mark as unread' : 'Mark as read'}}"
+                      style="padding:0.1rem 0.4rem;"
+                    )
+                      i.fas.fa-check
+                  td
+                    div.d-flex.gap-1
+                      button.btn.btn-sm.btn-outline-primary(
+                        type="button"
+                        ng-click="openPdfInNewTab(image)"
+                        title="Open in new tab"
+                      )
+                        i.fas.fa-external-link-alt
+                      button.btn.btn-sm.btn-outline-danger(
+                        type="button"
+                        ng-click="toggleFavorite(image)"
+                        ng-class="{'active': image.isFavorite}"
+                        title="Favorite"
+                      )
+                        i.fas.fa-heart
+                      button.btn.btn-sm.btn-outline-primary(
+                        type="button"
+                        ng-if="image.isInPlaylist"
+                        ng-click="openPlaylistsForMedia(image, $event)"
+                        title="View playlists containing this item"
+                      )
+                        i.fas.fa-list
+                      button.btn.btn-sm.btn-outline-warning(
+                        type="button"
+                        ng-click="removePlaylistItem(image.id)"
+                        ng-if="selectedAlbum.isPlaylist"
+                        title="Remove from this playlist"
+                      )
+                        i.fas.fa-times
+
         // Audio Player Bar
         div#playerBar.fixed-bottom.bg-light.border-top.shadow-lg(ng-if="playlist.length > 0" style="z-index: 1030;")
           div.p-2
@@ -1093,6 +1224,35 @@ html(ng-app="app")
               ) 
                 i.fas.fa-plus.me-1
                 | New Playlist
+
+      //- View Playlists For Media Modal (opened from playlist icon on card)
+      div.modal.fade#viewItemPlaylistsModal(tabindex="-1" aria-labelledby="viewItemPlaylistsModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered
+          div.modal-content
+            div.modal-header
+              h5.modal-title#viewItemPlaylistsModalLabel
+                i.fas.fa-list.me-2
+                | Playlists Containing This Item
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              p.text-muted.small.mb-3(ng-if="selectedPhotoForPlaylistView")
+                | {{selectedPhotoForPlaylistView.tags || selectedPhotoForPlaylistView.name || 'Selected item'}}
+              div.list-group(style="max-height: 300px; overflow-y: auto;")
+                button.list-group-item.list-group-item-action(
+                  ng-repeat="playlist in playlistsForSelectedMedia"
+                  ng-click="viewPlaylistFromIndicator(playlist)"
+                  type="button"
+                )
+                  div.d-flex.w-100.justify-content-between
+                    h6.mb-1
+                      i.fas.fa-play-circle.me-2
+                      | {{playlist.name}}
+                    small.text-muted {{playlist.item_count || 0}} items
+                  p.mb-1.small.text-muted(ng-if="playlist.description") {{playlist.description}}
+              div.alert.alert-info.mt-3(ng-if="playlistsForSelectedMedia.length === 0")
+                small This media item is not found in any available playlist.
+            div.modal-footer
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
       
       //- Edit Playlist Tags Modal
       div.modal.fade#editPlaylistTagModal(tabindex="-1" aria-labelledby="editPlaylistTagModalLabel" aria-hidden="true")

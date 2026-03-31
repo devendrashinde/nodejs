@@ -30,7 +30,7 @@ angular.module('photoController', [])
     })
 
     // inject the Photo service factory into our controller
-    .controller('photoController', ['$scope','$http', '$location','$timeout','PhotoService','ModalService','RecentlyViewedService','APP_CONSTANTS','SearchService','AudioPlayerService','TaggingService','UtilityService','ErrorHandlingService', function($scope, $http, $location, $timeout, PhotoService, ModalService, RecentlyViewedService, APP_CONSTANTS, SearchService, AudioPlayerService, TaggingService, UtilityService, ErrorHandlingService) {
+    .controller('photoController', ['$scope','$http', '$location','$timeout','$q','PhotoService','ModalService','RecentlyViewedService','APP_CONSTANTS','SearchService','AudioPlayerService','TaggingService','UtilityService','ErrorHandlingService', function($scope, $http, $location, $timeout, $q, PhotoService, ModalService, RecentlyViewedService, APP_CONSTANTS, SearchService, AudioPlayerService, TaggingService, UtilityService, ErrorHandlingService) {
 
         $scope.formData = {};
         $scope.tags = [];
@@ -54,11 +54,40 @@ angular.module('photoController', [])
         
         // Playlist variables
         $scope.playlists = []; // Array of user playlists
+        $scope.allPlaylists = []; // Full list used for membership checks
+        $scope.playlistMediaPathSet = {}; // Fast lookup map: media path => true
+        $scope.playlistsForSelectedMedia = []; // Playlists containing clicked media
+        $scope.selectedPhotoForPlaylistView = null; // Media item for playlist selector modal
         $scope.selectedView = 'albums'; // Toggle between 'albums' and 'playlists'
         $scope.playlistsSearchText = ""; // Playlists list search text
         $scope.editingPlaylist = {}; // For playlist creation/edit modal
         $scope.selectedPlaylistItems = []; // Photos in selected playlist
         $scope.showPlaylistModal = false; // Toggle playlist creation modal
+
+        // PDF Library view
+        $scope.pdfLibraryView = 'grid'; // 'grid' | 'list'
+
+        // PDF read/unread tracker — persisted in localStorage
+        var pdfReadTracker = {
+            _key: function(path) { return 'pdf_read_' + path; },
+            isRead: function(path) {
+                try { return !!localStorage.getItem(pdfReadTracker._key(path)); } catch (e) { return false; }
+            },
+            markRead: function(path) {
+                try { localStorage.setItem(pdfReadTracker._key(path), new Date().toISOString()); } catch (e) {}
+            },
+            markUnread: function(path) {
+                try { localStorage.removeItem(pdfReadTracker._key(path)); } catch (e) {}
+            },
+            toggle: function(path) {
+                if (pdfReadTracker.isRead(path)) {
+                    pdfReadTracker.markUnread(path);
+                    return false;
+                }
+                pdfReadTracker.markRead(path);
+                return true;
+            }
+        };
         
         // Bulk playlist operation flags
         $scope.isBulkPlaylistOperation = false;
@@ -439,6 +468,7 @@ angular.module('photoController', [])
                     $scope.totalPhotos = favorites.length;
                     $scope.totalPages = 1;
                     $scope.tags = [];
+                    applyPlaylistMembershipFlags();
                     
                     // Populate audio player with audio files from favorites
                     populateAudioPlayerPlaylist();
@@ -477,6 +507,105 @@ angular.module('photoController', [])
                 $scope.loading = false;  // Ensure loading is hidden on error
                 ErrorHandlingService.handleError(error, 'Error loading tag information');
             });         
+        }
+
+        function normalizeMediaPath(path) {
+            if (!path) return '';
+            return String(path)
+                .replace(/\\/g, '/')
+                .replace(/\/+/g, '/')
+                .trim();
+        }
+
+        function applyPlaylistMembershipFlags() {
+            var mediaPathSet = $scope.playlistMediaPathSet || {};
+            ($scope.photos || []).forEach(function(photo) {
+                var normalizedPath = normalizeMediaPath(photo.path);
+                photo.isInPlaylist = !!(normalizedPath && mediaPathSet[normalizedPath]);
+            });
+        }
+
+        function refreshPlaylistMembershipMap() {
+            var sourcePlaylists = $scope.allPlaylists || [];
+
+            if (!sourcePlaylists.length) {
+                $scope.playlistMediaPathSet = {};
+                applyPlaylistMembershipFlags();
+                return;
+            }
+
+            var playlistItemPromises = sourcePlaylists.map(function(playlist) {
+                return PhotoService.getPlaylistItems(playlist.id)
+                    .catch(function() {
+                        return [];
+                    });
+            });
+
+            $q.all(playlistItemPromises)
+                .then(function(allPlaylistItems) {
+                    var mediaPathSet = Object.create(null);
+
+                    allPlaylistItems.forEach(function(items) {
+                        (items || []).forEach(function(item) {
+                            var normalizedPath = normalizeMediaPath(item.path);
+                            if (normalizedPath) {
+                                mediaPathSet[normalizedPath] = true;
+                            }
+                        });
+                    });
+
+                    $scope.playlistMediaPathSet = mediaPathSet;
+                    applyPlaylistMembershipFlags();
+                })
+                .catch(function(error) {
+                    ErrorHandlingService.handleError(error, 'Error loading playlist membership data');
+                });
+        }
+
+        function ensureAllPlaylistsLoaded() {
+            if (($scope.allPlaylists || []).length > 0) {
+                return $q.when($scope.allPlaylists);
+            }
+
+            return PhotoService.getPlaylists()
+                .then(function(playlists) {
+                    $scope.playlists = playlists || [];
+                    $scope.allPlaylists = playlists || [];
+                    return $scope.allPlaylists;
+                })
+                .catch(function(error) {
+                    ErrorHandlingService.handleError(error, 'Error loading playlists');
+                    return [];
+                });
+        }
+
+        function getPlaylistsContainingMedia(mediaPath, playlists) {
+            var normalizedMediaPath = normalizeMediaPath(mediaPath);
+            var sourcePlaylists = playlists || [];
+
+            if (!normalizedMediaPath || sourcePlaylists.length === 0) {
+                return $q.when([]);
+            }
+
+            var membershipChecks = sourcePlaylists.map(function(playlist) {
+                return PhotoService.getPlaylistItems(playlist.id)
+                    .then(function(items) {
+                        var isMatch = (items || []).some(function(item) {
+                            return normalizeMediaPath(item.path) === normalizedMediaPath;
+                        });
+                        return isMatch ? playlist : null;
+                    })
+                    .catch(function() {
+                        return null;
+                    });
+            });
+
+            return $q.all(membershipChecks)
+                .then(function(results) {
+                    return results.filter(function(playlist) {
+                        return !!playlist;
+                    });
+                });
         }
 
         // Watch search input and filter tags
@@ -802,6 +931,8 @@ angular.module('photoController', [])
             if ($scope.folders.length === 0 && preservedFolders && preservedFolders.length > 0) {
                 $scope.folders = preservedFolders;
             }
+
+            applyPlaylistMembershipFlags();
             
             // Load and merge album tags from database
             loadAndMergeAlbumTags();
@@ -849,9 +980,45 @@ angular.module('photoController', [])
                 photo.isAudio = true;
             } else {
                 photo.isPdf = true;
+                photo.isRead = pdfReadTracker.isRead(photo.path);
             }
             return photo;
         }
+
+        // PDF Library: returns true when all current photos are PDFs
+        $scope.isAllPdf = function() {
+            return $scope.photos.length > 0 && $scope.photos.every(function(p) { return p.isPdf; });
+        };
+
+        // Toggle grid / list layout for PDF albums
+        $scope.togglePdfView = function() {
+            $scope.pdfLibraryView = $scope.pdfLibraryView === 'grid' ? 'list' : 'grid';
+        };
+
+        // Toggle read / unread flag on a PDF card
+        $scope.togglePdfRead = function(image) {
+            if (!image || !image.isPdf) { return; }
+            image.isRead = pdfReadTracker.toggle(image.path);
+        };
+
+        // Open PDF in a new browser tab using the streaming endpoint and mark read
+        $scope.openPdfInNewTab = function(image) {
+            if (!image || !image.isPdf) { return; }
+            window.open('/pdf-stream?id=' + encodeURIComponent(image.path), '_blank');
+            if (!image.isRead) { $scope.togglePdfRead(image); }
+        };
+
+        $scope.getMediaHref = function(image) {
+            if (!image || !image.path) {
+                return '';
+            }
+
+            if (image.isPdf) {
+                return '/pdf-stream?id=' + encodeURIComponent(image.path);
+            }
+
+            return image.path;
+        };
         
         function getUrlParameter(param) {
             var sPageURL = $location.$$absUrl,
@@ -1106,10 +1273,15 @@ angular.module('photoController', [])
             PhotoService.getPlaylists()
                 .then(function(playlists) {
                     $scope.playlists = playlists || [];
+                    $scope.allPlaylists = playlists || [];
+                    refreshPlaylistMembershipMap();
                 })
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error loading playlists');
                     $scope.playlists = [];
+                    $scope.allPlaylists = [];
+                    $scope.playlistMediaPathSet = {};
+                    applyPlaylistMembershipFlags();
                 });
         }
 
@@ -1181,6 +1353,7 @@ angular.module('photoController', [])
                     $scope.photos = photos;
                     $scope.totalPhotos = photos.length;
                     $scope.totalPages = 1;
+                    applyPlaylistMembershipFlags();
                     
                     // Populate audio player with audio files from this playlist
                     populateAudioPlayerPlaylist();
@@ -1196,6 +1369,52 @@ angular.module('photoController', [])
                     ErrorHandlingService.handleError(error, 'Error loading playlist items');
                     $scope.loading = false;
                 });
+        };
+
+        // Open playlist selector from card icon and show playlists containing this media
+        $scope.openPlaylistsForMedia = function(image, $event) {
+            if ($event && typeof $event.stopPropagation === 'function') {
+                $event.stopPropagation();
+            }
+            if ($event && typeof $event.preventDefault === 'function') {
+                $event.preventDefault();
+            }
+
+            if (!image || !image.path) {
+                return;
+            }
+
+            $scope.loading = true;
+
+            ensureAllPlaylistsLoaded()
+                .then(function(playlists) {
+                    return getPlaylistsContainingMedia(image.path, playlists);
+                })
+                .then(function(matchingPlaylists) {
+                    $scope.loading = false;
+                    $scope.selectedPhotoForPlaylistView = image;
+                    $scope.playlistsForSelectedMedia = matchingPlaylists || [];
+
+                    var modalEl = document.getElementById('viewItemPlaylistsModal');
+                    if (modalEl) {
+                        var modal = new bootstrap.Modal(modalEl);
+                        modal.show();
+                    }
+                })
+                .catch(function(error) {
+                    $scope.loading = false;
+                    ErrorHandlingService.handleError(error, 'Error loading playlists for this media');
+                });
+        };
+
+        // Open selected playlist from playlist-selector modal
+        $scope.viewPlaylistFromIndicator = function(playlist) {
+            if (!playlist) {
+                return;
+            }
+
+            $('#viewItemPlaylistsModal').modal('hide');
+            $scope.setPlaylist(playlist);
         };
 
         // Open create playlist modal
@@ -1290,6 +1509,7 @@ angular.module('photoController', [])
                     $scope.loading = false;
                     alert('Added ' + itemCount + ' item(s) to playlist: ' + playlistName);
                     $('#addToPlaylistModal').modal('hide');
+                    refreshPlaylistMembershipMap();
                     
                     // Clear bulk operation flags
                     $scope.isBulkPlaylistOperation = false;
@@ -1526,6 +1746,7 @@ angular.module('photoController', [])
             PhotoService.removePlaylistItem($scope.selectedAlbum.id, itemId)
                 .then(function(response) {
                     $scope.loading = false;
+                    loadPlaylists();
                     
                     // Reload playlist items
                     $scope.setPlaylist($scope.selectedAlbum);

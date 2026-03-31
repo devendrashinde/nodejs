@@ -34,6 +34,13 @@ const MIME_TYPES = {
 
 const MONTHS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
 const SKIP_FILE_TYPES = ['.db','.exe','.tmp','.doc','.dat','.ini', '.srt','.idx','.rar','.sub','.zip','.php','.wmdb'];
+
+const formatFileSize = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+};
 const ITEMS_PER_PAGE = 20;
 
 // Cache configuration - optimized for static albums
@@ -783,6 +790,67 @@ app.route('/playlists/:playlistId/items/:itemId')
 app.route('/playlists/:playlistId/tags')
     .put(updatePlaylistTag);
 
+// Stream PDFs with HTTP range support so browser viewers can load incrementally.
+app.get('/pdf-stream', (req, res) => {
+    const id = req.query.id;
+
+    if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: 'Missing PDF path' });
+    }
+
+    const normalizedRelativePath = id.replace(/\\/g, '/').replace(/^\/+/, '');
+    const absolutePath = join(__dirname, normalizedRelativePath);
+    const resolvedDataRoot = join(__dirname, 'data') + sep;
+
+    // Only allow files under /data
+    if (absolutePath.indexOf(resolvedDataRoot) !== 0) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (extname(absolutePath).toLowerCase() !== '.pdf') {
+        return res.status(400).json({ error: 'Only PDF files are supported' });
+    }
+
+    let fileStats;
+    try {
+        fileStats = statSync(absolutePath);
+    } catch (err) {
+        return res.status(404).json({ error: 'PDF file not found' });
+    }
+
+    const fileSize = fileStats.size;
+    const range = req.headers.range;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+
+    if (!range) {
+        res.setHeader('Content-Length', fileSize);
+        return createReadStream(absolutePath).pipe(res);
+    }
+
+    const matches = /bytes=(\d*)-(\d*)/.exec(range);
+    if (!matches) {
+        return res.status(416).setHeader('Content-Range', `bytes */${fileSize}`).end();
+    }
+
+    const start = matches[1] ? parseInt(matches[1], 10) : 0;
+    const end = matches[2] ? parseInt(matches[2], 10) : fileSize - 1;
+
+    if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= fileSize) {
+        return res.status(416).setHeader('Content-Range', `bytes */${fileSize}`).end();
+    }
+
+    const chunkSize = end - start + 1;
+    res.status(206);
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+    res.setHeader('Content-Length', chunkSize);
+
+    return createReadStream(absolutePath, { start, end }).pipe(res);
+});
+
 app.get('*', (req, res) => {
     const file = join(dataDir, req.path.replace(/\/$/, '/index.html'));
 
@@ -885,14 +953,18 @@ const getImagesFromDir = (dirPath, album, page, onlyDir, numberOfItems) => {
                 if (!SKIP_FILE_TYPES.includes(ext)) {
                     if (imageIndex >= firstImageId && imageCnt < numberOfItems) {
                         const filePath = BASE_DIR + (root ? "" : `${album}/`) + file;
-                        allImages.push(new ImageDetails(
+                        const imageDetail = new ImageDetails(
                             `photo${id}`, 
                             file, 
                             filePath, 
                             false, 
                             album, 
                             getTagFromFileName(file)
-                        ));
+                        );
+                        imageDetail.fileSize = stat.size;
+                        imageDetail.fileSizeFormatted = formatFileSize(stat.size);
+                        imageDetail.fileDate = stat.mtime ? stat.mtime.toISOString().slice(0, 10) : null;
+                        allImages.push(imageDetail);
                         imageCnt++;
                     }
                     imageIndex++;

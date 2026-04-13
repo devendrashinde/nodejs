@@ -1001,9 +1001,15 @@ html(ng-app="app")
                 div.col-6.col-sm-4.col-md-3.col-lg-2(ng-repeat="thumb in pdfThumbnailPicker.files track by thumb.name")
                   div.card.h-100.shadow-sm.pdf-thumbnail-card(
                     ng-click="applyExistingPdfThumbnail(thumb)"
-                    ng-dblclick="previewPdfThumbnail(thumb)"
                     ng-class="{'border-primary': pdfThumbnailPicker.selectingName === thumb.name}"
                   )
+                    button.btn.btn-sm.btn-dark(
+                      type="button"
+                      ng-click="previewPdfThumbnail(thumb, $event)"
+                      title="Preview thumbnail"
+                      style="position:absolute; top:6px; right:6px; z-index:20; opacity:0.9;"
+                    )
+                      i.fas.fa-search-plus
                     img.card-img-top(
                       ng-src="{{thumb.url}}"
                       alt="{{thumb.name}}"

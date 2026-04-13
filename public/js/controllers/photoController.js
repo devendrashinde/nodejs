@@ -1153,7 +1153,12 @@ angular.module('photoController', [])
 
         // PDF Thumbnail Preview Methods
 
-        $scope.previewPdfThumbnail = function(file) {
+        $scope.previewPdfThumbnail = function(file, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+
             if (!file || !file.url) {
                 return;
             }

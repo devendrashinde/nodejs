@@ -21,6 +21,16 @@ angular.module('photoController', [])
         };
     })
 
+    // Custom filter to extract filename from path
+    .filter('getFilename', function() {
+        return function(path) {
+            if (!path) return path;
+            // Extract just the filename from a full path
+            const parts = path.split('/').pop().split('\\').pop();
+            return parts;
+        };
+    })
+
     // Custom case-insensitive search filter for albums and playlists
     .filter('caseInsensitiveContains', function() {
         return function(items, searchField, searchText) {
@@ -1173,6 +1183,7 @@ angular.module('photoController', [])
             }
 
             $scope.pdfThumbnailPreview.file = file;
+            $scope.pdfThumbnailPreview.pdfPath = $scope.pdfThumbnailPicker.targetPdf ? $scope.pdfThumbnailPicker.targetPdf.path : null;
             $scope.pdfThumbnailPreview.show = true;
 
             // Handle ESC key to close preview

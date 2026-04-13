@@ -986,8 +986,7 @@ html(ng-app="app")
               div.alert.alert-secondary.py-2.mb-3(ng-if="pdfThumbnailPicker.targetPdf")
                 div
                   strong PDF:
-                  |  {{pdfThumbnailPicker.targetPdf.name || (pdfThumbnailPicker.targetPdf.path | stripExtension)}}
-                div.small.text-muted.text-break {{pdfThumbnailPicker.targetPdf.path}}
+                  |  {{pdfThumbnailPicker.targetPdf.path | getFilename}}
               p.small.text-muted.mb-3
                 i.fas.fa-hand-pointer.me-1
                 | Click a card to select. Use the zoom icon for preview.
@@ -1019,7 +1018,6 @@ html(ng-app="app")
                       style="object-fit: contain; width: 100%; height: auto;"
                     )
                     div.card-body.p-2
-                      div.small(title="{{thumb.name}}" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.25;") {{thumb.name}}
                       div.small.text-success.mt-1(ng-if="isCurrentPdfThumbnail(thumb)") Current thumbnail
                       div.small.text-primary.mt-1(ng-if="pdfThumbnailPicker.selectingName === thumb.name") Applying...
             div.modal-footer
@@ -1062,7 +1060,9 @@ html(ng-app="app")
           )
 
           div.pdf-thumbnail-preview-info
-            div.pdf-thumbnail-preview-filename {{pdfThumbnailPreview.file.name}}
+            div.pdf-thumbnail-preview-filename
+              strong PDF:
+              |  {{pdfThumbnailPreview.pdfPath | getFilename}}
             div.small.text-muted {{pdfThumbnailPreview.file.size | formatFileSize}}
 
           div.pdf-thumbnail-preview-actions

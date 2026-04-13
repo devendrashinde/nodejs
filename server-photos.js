@@ -601,23 +601,31 @@ app.post('/api/pdf-thumbnails', asyncHandler(async (req, res) => {
 }));
 
 app.get('/api/pdf-thumbnails/files', asyncHandler(async (req, res) => {
+  const page = Math.max(0, parseInt(req.query.page, 10) || 0);
+  const items = Math.min(60, Math.max(1, parseInt(req.query.items, 10) || 24));
   const outputDir = join(__dirname, PDF_THUMBNAIL_DIR);
   if (!existsSync(outputDir)) {
-    return res.json({ files: [] });
+    return res.json({ files: [], page, items, total: 0, totalPages: 0 });
   }
 
   const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']);
-  const files = readdirSync(outputDir)
+  const allFiles = readdirSync(outputDir)
     .filter((fileName) => {
       const extension = extname(fileName).toLowerCase();
       return allowedExtensions.has(extension);
     })
+    .sort((a, b) => a.localeCompare(b));
+
+  const total = allFiles.length;
+  const totalPages = total === 0 ? 0 : Math.ceil(total / items);
+  const start = page * items;
+  const pageFiles = allFiles.slice(start, start + items)
     .map((fileName) => ({
       name: fileName,
       url: `/pdf-thumbnails/${fileName}`
     }));
 
-  return res.json({ files });
+  return res.json({ files: pageFiles, page, items, total, totalPages });
 }));
 
 app.post('/api/pdf-thumbnails/select', asyncHandler(async (req, res) => {

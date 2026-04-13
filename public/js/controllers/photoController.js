@@ -70,7 +70,11 @@ angular.module('photoController', [])
             targetPdf: null,
             files: [],
             loading: false,
-            selectingName: ''
+            selectingName: '',
+            page: 0,
+            items: 24,
+            total: 0,
+            totalPages: 0
         };
 
         // PDF read/unread tracker — persisted in localStorage
@@ -1046,28 +1050,60 @@ angular.module('photoController', [])
             if (!image || !image.isPdf) { return; }
 
             $scope.pdfThumbnailPicker.targetPdf = image;
+            $scope.pdfThumbnailPicker.page = 0;
             $scope.pdfThumbnailPicker.loading = true;
             $scope.pdfThumbnailPicker.files = [];
             $scope.pdfThumbnailPicker.selectingName = '';
 
-            PhotoService.getPdfThumbnailFiles()
-                .then(function(payload) {
-                    var files = (payload && payload.files) || [];
-                    $scope.pdfThumbnailPicker.files = files;
-
+            $scope.loadPdfThumbnailPickerPage(0)
+                .then(function() {
                     var modalEl = document.getElementById('pdfThumbnailPickerModal');
                     if (modalEl) {
                         var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                         modal.show();
                     }
+                });
+        };
+
+        $scope.loadPdfThumbnailPickerPage = function(page) {
+            var requestedPage = page;
+            if (!Number.isInteger(requestedPage) || requestedPage < 0) {
+                requestedPage = 0;
+            }
+
+            $scope.pdfThumbnailPicker.loading = true;
+
+            return PhotoService.getPdfThumbnailFiles(requestedPage, $scope.pdfThumbnailPicker.items)
+                .then(function(payload) {
+                    $scope.pdfThumbnailPicker.files = (payload && payload.files) || [];
+                    $scope.pdfThumbnailPicker.page = (payload && Number.isInteger(payload.page)) ? payload.page : requestedPage;
+                    $scope.pdfThumbnailPicker.total = (payload && payload.total) || 0;
+                    $scope.pdfThumbnailPicker.totalPages = (payload && payload.totalPages) || 0;
                 })
                 .catch(function(error) {
-                    ErrorHandlingService.handleError(error, 'Error selecting existing PDF thumbnail');
-                    alert('Failed to select existing PDF thumbnail');
+                    ErrorHandlingService.handleError(error, 'Error loading PDF thumbnail files');
+                    alert('Failed to load thumbnail files');
                 })
                 .finally(function() {
                     $scope.pdfThumbnailPicker.loading = false;
                 });
+        };
+
+        $scope.prevPdfThumbnailPickerPage = function() {
+            if ($scope.pdfThumbnailPicker.loading || $scope.pdfThumbnailPicker.page <= 0) {
+                return;
+            }
+            $scope.loadPdfThumbnailPickerPage($scope.pdfThumbnailPicker.page - 1);
+        };
+
+        $scope.nextPdfThumbnailPickerPage = function() {
+            if ($scope.pdfThumbnailPicker.loading) {
+                return;
+            }
+            if ($scope.pdfThumbnailPicker.page >= ($scope.pdfThumbnailPicker.totalPages - 1)) {
+                return;
+            }
+            $scope.loadPdfThumbnailPickerPage($scope.pdfThumbnailPicker.page + 1);
         };
 
         $scope.applyExistingPdfThumbnail = function(file) {

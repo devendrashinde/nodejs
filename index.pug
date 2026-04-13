@@ -1014,6 +1014,23 @@ html(ng-app="app")
                       div.small.text-truncate(title="{{thumb.name}}") {{thumb.name}}
                       div.small.text-primary.mt-1(ng-if="pdfThumbnailPicker.selectingName === thumb.name") Applying...
             div.modal-footer
+              div.me-auto.d-flex.align-items-center.gap-2
+                button.btn.btn-outline-secondary.btn-sm(
+                  type="button"
+                  ng-click="prevPdfThumbnailPickerPage()"
+                  ng-disabled="pdfThumbnailPicker.loading || pdfThumbnailPicker.page <= 0"
+                )
+                  i.fas.fa-chevron-left.me-1
+                  | Prev
+                span.small.text-muted
+                  | Page {{pdfThumbnailPicker.totalPages > 0 ? (pdfThumbnailPicker.page + 1) : 0}} / {{pdfThumbnailPicker.totalPages || 0}}
+                button.btn.btn-outline-secondary.btn-sm(
+                  type="button"
+                  ng-click="nextPdfThumbnailPickerPage()"
+                  ng-disabled="pdfThumbnailPicker.loading || pdfThumbnailPicker.page >= (pdfThumbnailPicker.totalPages - 1)"
+                )
+                  | Next
+                  i.fas.fa-chevron-right.ms-1
               button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
 
       //- Edit Tags Modal (for existing photos)

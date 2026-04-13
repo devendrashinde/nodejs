@@ -152,8 +152,10 @@ angular.module('PhotoService', [])
 					return response.data;
 				});
 			},
-			getPdfThumbnailFiles : function() {
-				return $http.get('/api/pdf-thumbnails/files')
+			getPdfThumbnailFiles : function(page, items) {
+				var pageNumber = Number.isInteger(page) ? page : 0;
+				var pageSize = Number.isInteger(items) ? items : 24;
+				return $http.get('/api/pdf-thumbnails/files?page=' + pageNumber + '&items=' + pageSize)
 					.then(function(response) {
 						return response.data;
 					});

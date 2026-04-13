@@ -1001,7 +1001,7 @@ html(ng-app="app")
                 | No thumbnail files found in the server thumbnail folder.
 
               div.row.g-3(ng-if="!pdfThumbnailPicker.loading && pdfThumbnailPicker.files.length > 0")
-                div.col-6.col-md-4.col-lg-3.col-xl-2(ng-repeat="thumb in pdfThumbnailPicker.files track by thumb.name")
+                div.col-sm-6.col-md-4.col-lg-3(ng-repeat="thumb in pdfThumbnailPicker.files track by thumb.name")
                   div.card.h-100.shadow-sm.pdf-thumbnail-card(
                     ng-click="applyExistingPdfThumbnail(thumb)"
                     ng-class="{'border-primary': pdfThumbnailPicker.selectingName === thumb.name, 'border-success': isCurrentPdfThumbnail(thumb)}"
@@ -1012,11 +1012,11 @@ html(ng-app="app")
                       title="Preview thumbnail"
                     )
                       i.fas.fa-search-plus
-                    img.card-img-top(
+                    img.card-img-top.img-fluid(
                       ng-src="{{thumb.url}}"
                       alt="{{thumb.name}}"
                       loading="lazy"
-                      style="height: 170px; object-fit: cover;"
+                      style="object-fit: contain; width: 100%; height: auto;"
                     )
                     div.card-body.p-2
                       div.small(title="{{thumb.name}}" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.25;") {{thumb.name}}

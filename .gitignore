@@ -14,6 +14,8 @@ thumbnails/
 thumbs/
 db/
 cache/album-cache.json
+cache/pdf-thumbnail-map.json
+temp-pic/pdf-thumbnails/
 
 # Database files
 firebasedb.js

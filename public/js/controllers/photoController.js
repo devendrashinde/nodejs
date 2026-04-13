@@ -1008,6 +1008,34 @@ angular.module('photoController', [])
             if (!image.isRead) { $scope.togglePdfRead(image); }
         };
 
+        $scope.setPdfThumbnail = function(image) {
+            if (!image || !image.isPdf) { return; }
+
+            var fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = 'image/*';
+
+            fileInput.onchange = function(event) {
+                var selectedFile = event.target.files && event.target.files[0];
+                if (!selectedFile) {
+                    return;
+                }
+
+                PhotoService.uploadPdfThumbnail(image.path, selectedFile)
+                    .then(function(result) {
+                        if (result && result.thumbnailUrl) {
+                            image.customThumbnail = result.thumbnailUrl + '?t=' + Date.now();
+                        }
+                    })
+                    .catch(function(error) {
+                        ErrorHandlingService.handleError(error, 'Error setting PDF thumbnail');
+                        alert('Failed to set PDF thumbnail');
+                    });
+            };
+
+            fileInput.click();
+        };
+
         $scope.getMediaHref = function(image) {
             if (!image || !image.path) {
                 return '';

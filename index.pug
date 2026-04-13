@@ -447,7 +447,7 @@ html(ng-app="app")
                 )
                   figure
                     img.card-img-top.img-fluid(
-                      ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? 'pdf.png' : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
+                      ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? (image.customThumbnail || 'pdf.png') : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
                       alt="{{image.tags}}"
                       loading="lazy"
                       style="object-fit: contain; width: 100%; height: auto;"
@@ -547,6 +547,12 @@ html(ng-app="app")
                       title="Open in new tab"
                     )
                       i.fas.fa-external-link-alt.fa-sm
+                    button.btn.btn-sm.btn-outline-info(
+                      type="button"
+                      ng-click="setPdfThumbnail(image)"
+                      title="Set custom thumbnail"
+                    )
+                      i.fas.fa-image.fa-sm
                     button.btn.btn-sm(
                       type="button"
                       ng-click="togglePdfRead(image)"

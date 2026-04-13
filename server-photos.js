@@ -1,9 +1,11 @@
-import { createReadStream, readdirSync, statSync } from 'fs';
+import { createReadStream, readdirSync, statSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { promises as fs } from 'fs';
 import express from 'express';
 import fileUpload from 'express-fileupload';
 import { join, sep, extname } from 'path';
 import path from 'path';
+import crypto from 'crypto';
+import sharp from 'sharp';
 import ImageDetails from "./ImageDetails.js";
 import { fileURLToPath } from 'url';
 import { createPhoto, getPhotos, getTags, getPhoto, updatePhotoTag, removePhoto, getAlbumTags, createPhotoAlbum, getPhotoAlbum, getPhotoAlbums, updateAlbumTag, removeAlbum, getAlbumsByTag } from './app/controllers/photoController.js';
@@ -47,6 +49,8 @@ const ITEMS_PER_PAGE = 20;
 const MAX_CACHE_SIZE = parseInt(process.env.MAX_CACHE_SIZE) || 500; // maximum cached pages
 const MAX_CACHE_BYTES = parseInt(process.env.MAX_CACHE_BYTES) || (100 * 1024 * 1024); // 100MB max cache size
 const CACHE_FILE = process.env.CACHE_FILE_PATH || './cache/album-cache.json';
+const PDF_THUMBNAIL_MAP_FILE = process.env.PDF_THUMBNAIL_MAP_FILE || './cache/pdf-thumbnail-map.json';
+const PDF_THUMBNAIL_DIR = process.env.PDF_THUMBNAIL_DIR || './temp-pic/pdf-thumbnails';
 
 // Thumbnail directory - separate from media files
 const THUMBNAIL_DIR = process.env.THUMBNAIL_DIR || './temp-pic/thumbnails';
@@ -71,6 +75,22 @@ app.use(urlencoded({ extended: true }));
 app.use(json());
 
 // Handle favicon.ico requests - prevent 404 errors
+const normalizeAlbumRequestPath = (album) => {
+  if (!album || typeof album !== 'string') {
+    return album;
+  }
+
+  let normalized = album.replace(/\\/g, '/').replace(/^\/+/, '');
+  if (normalized.toLowerCase() === 'data') {
+    return '';
+  }
+
+  if (normalized.toLowerCase().startsWith('data/')) {
+    normalized = normalized.slice(5);
+  }
+
+  return normalized;
+};
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end(); // No Content response
 });
@@ -92,6 +112,7 @@ app.use('/api', advancedFeaturesRoutes);
 
 app.use(express.static(join(__dirname, 'public')));
 app.use('/data', express.static(join(__dirname, "data")));
+app.use('/pdf-thumbnails', express.static(join(__dirname, PDF_THUMBNAIL_DIR)));
 
 // ============================================================
 // OPTIMIZED CACHING SYSTEM FOR STATIC ALBUMS
@@ -113,6 +134,12 @@ const cacheStats = {
   albumMisses: 0,
   playlistHits: 0,
   playlistMisses: 0
+};
+
+const clearImageCache = () => {
+  imageCache.clear();
+  cacheStats.albumCacheSize = 0;
+  cacheStats.cacheSizeBytes = cacheStats.albumCacheSize + cacheStats.playlistCacheSize;
 };
 
 /**
@@ -474,6 +501,104 @@ app.post('/upload', asyncHandler(async (req, res) => {
     }
 }));
 
+app.post('/api/pdf-thumbnails', asyncHandler(async (req, res) => {
+  const pdfPath = req.body && req.body.pdfPath;
+
+  if (!pdfPath || typeof pdfPath !== 'string') {
+    return res.status(400).json({ error: 'pdfPath is required.' });
+  }
+
+  const resolved = getResolvedDataPath(pdfPath);
+  if (!resolved) {
+    return res.status(403).json({ error: 'Forbidden path.' });
+  }
+
+  if (extname(resolved.absolutePath).toLowerCase() !== '.pdf') {
+    return res.status(400).json({ error: 'Only PDF files are supported.' });
+  }
+
+  let fileStats;
+  try {
+    fileStats = statSync(resolved.absolutePath);
+  } catch (err) {
+    return res.status(404).json({ error: 'PDF file not found.' });
+  }
+
+  if (!fileStats || !fileStats.isFile()) {
+    return res.status(404).json({ error: 'PDF file not found.' });
+  }
+
+  if (!req.files || !req.files.thumbnail) {
+    return res.status(400).json({ error: 'Thumbnail image file is required.' });
+  }
+
+  const thumbnailFile = Array.isArray(req.files.thumbnail)
+    ? req.files.thumbnail[0]
+    : req.files.thumbnail;
+
+  const originalExtension = extname(thumbnailFile.name || '').toLowerCase();
+  const allowedImageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'];
+
+  if (!allowedImageExtensions.includes(originalExtension)) {
+    return res.status(400).json({ error: 'Invalid thumbnail type. Use an image file.' });
+  }
+
+  if (thumbnailFile.mimetype && !thumbnailFile.mimetype.toLowerCase().startsWith('image/')) {
+    return res.status(400).json({ error: 'Invalid thumbnail type. Use an image file.' });
+  }
+
+  if (!thumbnailFile.data || !thumbnailFile.size) {
+    return res.status(400).json({ error: 'Invalid thumbnail upload payload.' });
+  }
+
+  if (thumbnailFile.size > MAX_FILE_SIZE) {
+    return res.status(400).json({
+      error: `Thumbnail image is too large. Maximum upload size is ${Math.floor(MAX_FILE_SIZE / (1024 * 1024))}MB.`
+    });
+  }
+
+  const outputDir = join(__dirname, PDF_THUMBNAIL_DIR);
+  if (!existsSync(outputDir)) {
+    mkdirSync(outputDir, { recursive: true });
+  }
+
+  const hashedName = crypto
+    .createHash('md5')
+    .update(`${resolved.normalized}:${Date.now()}:${thumbnailFile.name}`)
+    .digest('hex');
+
+  const outputFileName = `${hashedName}.jpg`;
+  const outputFilePath = join(outputDir, outputFileName);
+
+  try {
+    await sharp(thumbnailFile.data)
+      .rotate()
+      .resize({
+        width: 300,
+        height: 300,
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .jpeg({ quality: 80, mozjpeg: true })
+      .toFile(outputFilePath);
+  } catch (error) {
+    return res.status(400).json({ error: 'Failed to process thumbnail image.' });
+  }
+
+  const thumbnailUrl = `/pdf-thumbnails/${outputFileName}`;
+  const thumbnailMap = loadPdfThumbnailMap();
+  thumbnailMap[resolved.normalized] = thumbnailUrl;
+  savePdfThumbnailMap(thumbnailMap);
+
+  clearImageCache();
+
+  return res.json({
+    success: true,
+    pdfPath: resolved.normalized,
+    thumbnailUrl
+  });
+}));
+
 
 app.get('/thumb?:id', asyncHandler(async (req, res) => {
     if (req.query.id) {
@@ -496,7 +621,7 @@ app.get('/get-images', (req, res) => {
 });
 
 app.get('/photos', asyncHandler(async (req, res) => {
-    let album = req.query.id;
+  let album = normalizeAlbumRequestPath(req.query.id);
     
     // Validate album name
     if (album && !isValidAlbumName(album)) {
@@ -532,6 +657,7 @@ app.get('/photos', asyncHandler(async (req, res) => {
             albumMetaCache.set(album, albumMeta);
             
             const result = imageCache.get(cacheKey);
+            applyPdfThumbnailMapToImages(result.images);
             return res.json({
                 totalPhotos: result.totalPhotos,
                 data: result.images,
@@ -916,10 +1042,79 @@ const getTagFromFileName = (file) => {
 
 const getCacheKey = (album, page, items) => `${album}_${page}_${items}`;
 
+const normalizeRelativePath = (value) => String(value || '').replace(/\\/g, '/').replace(/^\/+/, '');
+
+const getResolvedDataPath = (relativePath) => {
+  const normalized = normalizeRelativePath(relativePath);
+  const absolutePath = join(__dirname, normalized);
+  const resolvedDataRoot = join(__dirname, 'data') + sep;
+
+  if (absolutePath.indexOf(resolvedDataRoot) !== 0) {
+    return null;
+  }
+
+  return { normalized, absolutePath };
+};
+
+const loadPdfThumbnailMap = () => {
+  try {
+    const mapPath = join(__dirname, PDF_THUMBNAIL_MAP_FILE);
+    if (!existsSync(mapPath)) {
+      return {};
+    }
+
+    const data = readFileSync(mapPath, 'utf8');
+    if (!data || !data.trim()) {
+      return {};
+    }
+
+    const parsed = JSON.parse(data);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (err) {
+    console.warn('Failed to load PDF thumbnail map:', err.message);
+    return {};
+  }
+};
+
+const savePdfThumbnailMap = (thumbnailMap) => {
+  const mapPath = join(__dirname, PDF_THUMBNAIL_MAP_FILE);
+  const mapDir = path.dirname(mapPath);
+
+  if (!existsSync(mapDir)) {
+    mkdirSync(mapDir, { recursive: true });
+  }
+
+  writeFileSync(mapPath, JSON.stringify(thumbnailMap, null, 2), 'utf8');
+};
+
+const applyPdfThumbnailMapToImages = (images) => {
+  if (!Array.isArray(images) || images.length === 0) {
+    return images;
+  }
+
+  const thumbnailMap = loadPdfThumbnailMap();
+
+  images.forEach((image) => {
+    if (!image || image.isAlbum || !image.path) {
+      return;
+    }
+
+    const normalizedPath = normalizeRelativePath(image.path);
+    if (extname(normalizedPath).toLowerCase() !== '.pdf') {
+      return;
+    }
+
+    image.customThumbnail = thumbnailMap[normalizedPath] || null;
+  });
+
+  return images;
+};
+
 // Get images from directory with pagination
 const getImagesFromDir = (dirPath, album, page, onlyDir, numberOfItems) => {
     const allImages = [];
     const files = readdirSync(dirPath);
+  const pdfThumbnailMap = loadPdfThumbnailMap();
     
     let id = 0;
     let imageCnt = 0;
@@ -964,6 +1159,10 @@ const getImagesFromDir = (dirPath, album, page, onlyDir, numberOfItems) => {
                         imageDetail.fileSize = stat.size;
                         imageDetail.fileSizeFormatted = formatFileSize(stat.size);
                         imageDetail.fileDate = stat.mtime ? stat.mtime.toISOString().slice(0, 10) : null;
+                        if (ext === '.pdf') {
+                          const normalizedFilePath = normalizeRelativePath(filePath);
+                          imageDetail.customThumbnail = pdfThumbnailMap[normalizedFilePath] || null;
+                        }
                         allImages.push(imageDetail);
                         imageCnt++;
                     }

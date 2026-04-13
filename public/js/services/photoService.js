@@ -139,6 +139,18 @@ angular.module('PhotoService', [])
 					transformRequest: angular.identity,
 					headers: {'Content-Type': undefined}
 				});
+			},
+			uploadPdfThumbnail : function(pdfPath, imageFile) {
+				const fd = new FormData();
+				fd.append('pdfPath', pdfPath);
+				fd.append('thumbnail', imageFile);
+
+				return $http.post('/api/pdf-thumbnails', fd, {
+					transformRequest: angular.identity,
+					headers: {'Content-Type': undefined}
+				}).then(function(response) {
+					return response.data;
+				});
 			}	
 		}
 	}]);

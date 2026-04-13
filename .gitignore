@@ -23,6 +23,7 @@ media.db
 *.sql.gz
 
 # Public libraries
+public/jquery
 public/jquery/
 
 # Logs

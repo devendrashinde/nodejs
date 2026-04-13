@@ -676,8 +676,8 @@ app.post('/api/pdf-thumbnails/select', asyncHandler(async (req, res) => {
   });
 }));
 
-app.delete('/api/pdf-thumbnails', asyncHandler(async (req, res) => {
-  const pdfPath = req.body && req.body.pdfPath;
+const removePdfThumbnailHandler = asyncHandler(async (req, res) => {
+  const pdfPath = (req.body && req.body.pdfPath) || req.query.pdfPath;
 
   if (!pdfPath || typeof pdfPath !== 'string') {
     return res.status(400).json({ error: 'pdfPath is required.' });
@@ -710,7 +710,11 @@ app.delete('/api/pdf-thumbnails', asyncHandler(async (req, res) => {
     pdfPath: resolvedPdf.normalized,
     message: 'Custom thumbnail removed. PDF will use default thumbnail.'
   });
-}));
+});
+
+app.post('/api/pdf-thumbnails/remove', removePdfThumbnailHandler);
+
+app.delete('/api/pdf-thumbnails', removePdfThumbnailHandler);
 
 
 app.get('/thumb?:id', asyncHandler(async (req, res) => {

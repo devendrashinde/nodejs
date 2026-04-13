@@ -169,10 +169,8 @@ angular.module('PhotoService', [])
 				});
 			},
 			removePdfThumbnail : function(pdfPath) {
-				return $http.delete('/api/pdf-thumbnails', {
-					data: {
-						pdfPath: pdfPath
-					}
+				return $http.post('/api/pdf-thumbnails/remove', {
+					pdfPath: pdfPath
 				}).then(function(response) {
 					return response.data;
 				});

@@ -101,7 +101,9 @@ angular.module('photoController', [])
         // PDF Thumbnail Preview/Zoom modal
         $scope.pdfThumbnailPreview = {
             show: false,
-            file: null
+            file: null,
+            pdfPath: null,
+            currentIndex: -1
         };
 
         // PDF read/unread tracker — persisted in localStorage
@@ -1182,8 +1184,20 @@ angular.module('photoController', [])
                 return;
             }
 
+            // Find the current index of the file in the files array
+            var currentIndex = -1;
+            if ($scope.pdfThumbnailPicker.files && $scope.pdfThumbnailPicker.files.length > 0) {
+                for (var i = 0; i < $scope.pdfThumbnailPicker.files.length; i++) {
+                    if ($scope.pdfThumbnailPicker.files[i].url === file.url) {
+                        currentIndex = i;
+                        break;
+                    }
+                }
+            }
+
             $scope.pdfThumbnailPreview.file = file;
             $scope.pdfThumbnailPreview.pdfPath = $scope.pdfThumbnailPicker.targetPdf ? $scope.pdfThumbnailPicker.targetPdf.path : null;
+            $scope.pdfThumbnailPreview.currentIndex = currentIndex;
             $scope.pdfThumbnailPreview.show = true;
 
             // Handle ESC key to close preview
@@ -1220,6 +1234,36 @@ angular.module('photoController', [])
 
             // Call the existing apply method to set the thumbnail
             $scope.applyExistingPdfThumbnail(file);
+        };
+
+        $scope.nextPdfPreview = function() {
+            var files = $scope.pdfThumbnailPicker.files;
+            if (!files || files.length === 0) {
+                return;
+            }
+
+            var nextIndex = $scope.pdfThumbnailPreview.currentIndex + 1;
+            if (nextIndex >= files.length) {
+                nextIndex = 0; // Wrap around to the beginning
+            }
+
+            $scope.pdfThumbnailPreview.file = files[nextIndex];
+            $scope.pdfThumbnailPreview.currentIndex = nextIndex;
+        };
+
+        $scope.prevPdfPreview = function() {
+            var files = $scope.pdfThumbnailPicker.files;
+            if (!files || files.length === 0) {
+                return;
+            }
+
+            var prevIndex = $scope.pdfThumbnailPreview.currentIndex - 1;
+            if (prevIndex < 0) {
+                prevIndex = files.length - 1; // Wrap around to the end
+            }
+
+            $scope.pdfThumbnailPreview.file = files[prevIndex];
+            $scope.pdfThumbnailPreview.currentIndex = prevIndex;
         };
 
         $scope.getMediaHref = function(image) {

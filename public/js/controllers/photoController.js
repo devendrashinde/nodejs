@@ -92,6 +92,7 @@ angular.module('photoController', [])
             files: [],
             loading: false,
             selectingName: '',
+            removing: false,
             page: 0,
             items: 24,
             total: 0,
@@ -1169,6 +1170,39 @@ angular.module('photoController', [])
                 })
                 .finally(function() {
                     $scope.pdfThumbnailPicker.selectingName = '';
+                });
+        };
+
+        // Remove PDF custom thumbnail and revert to default
+        $scope.removePdfThumbnail = function() {
+            if (!$scope.pdfThumbnailPicker.targetPdf) {
+                return;
+            }
+
+            if (!confirm('Remove custom thumbnail and revert to default?')) {
+                return;
+            }
+
+            $scope.pdfThumbnailPicker.removing = true;
+
+            PhotoService.removePdfThumbnail($scope.pdfThumbnailPicker.targetPdf.path)
+                .then(function(result) {
+                    if (result && result.success) {
+                        $scope.pdfThumbnailPicker.targetPdf.customThumbnail = null;
+                    }
+
+                    var modalEl = document.getElementById('pdfThumbnailPickerModal');
+                    if (modalEl) {
+                        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                        modal.hide();
+                    }
+                })
+                .catch(function(error) {
+                    ErrorHandlingService.handleError(error, 'Error removing PDF thumbnail');
+                    alert('Failed to remove thumbnail');
+                })
+                .finally(function() {
+                    $scope.pdfThumbnailPicker.removing = false;
                 });
         };
 

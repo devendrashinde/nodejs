@@ -676,6 +676,42 @@ app.post('/api/pdf-thumbnails/select', asyncHandler(async (req, res) => {
   });
 }));
 
+app.delete('/api/pdf-thumbnails', asyncHandler(async (req, res) => {
+  const pdfPath = req.body && req.body.pdfPath;
+
+  if (!pdfPath || typeof pdfPath !== 'string') {
+    return res.status(400).json({ error: 'pdfPath is required.' });
+  }
+
+  const resolvedPdf = getResolvedDataPath(pdfPath);
+  if (!resolvedPdf) {
+    return res.status(403).json({ error: 'Forbidden path.' });
+  }
+
+  if (extname(resolvedPdf.absolutePath).toLowerCase() !== '.pdf') {
+    return res.status(400).json({ error: 'Only PDF files are supported.' });
+  }
+
+  const thumbnailMap = loadPdfThumbnailMap();
+  
+  // Check if thumbnail mapping exists
+  if (!thumbnailMap[resolvedPdf.normalized]) {
+    return res.status(404).json({ error: 'No custom thumbnail found for this PDF.' });
+  }
+
+  // Remove the thumbnail mapping
+  delete thumbnailMap[resolvedPdf.normalized];
+  savePdfThumbnailMap(thumbnailMap);
+
+  clearImageCache();
+
+  return res.json({
+    success: true,
+    pdfPath: resolvedPdf.normalized,
+    message: 'Custom thumbnail removed. PDF will use default thumbnail.'
+  });
+}));
+
 
 app.get('/thumb?:id', asyncHandler(async (req, res) => {
     if (req.query.id) {

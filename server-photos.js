@@ -113,6 +113,7 @@ app.use('/api', advancedFeaturesRoutes);
 app.use(express.static(join(__dirname, 'public')));
 app.use('/data', express.static(join(__dirname, "data")));
 app.use('/pdf-thumbnails', express.static(join(__dirname, PDF_THUMBNAIL_DIR)));
+app.use('/pdf-thumbnails', express.static(join(__dirname, PDF_THUMBNAIL_DIR)));
 
 // ============================================================
 // OPTIMIZED CACHING SYSTEM FOR STATIC ALBUMS
@@ -595,6 +596,74 @@ app.post('/api/pdf-thumbnails', asyncHandler(async (req, res) => {
   return res.json({
     success: true,
     pdfPath: resolved.normalized,
+    thumbnailUrl
+  });
+}));
+
+app.get('/api/pdf-thumbnails/files', asyncHandler(async (req, res) => {
+  const outputDir = join(__dirname, PDF_THUMBNAIL_DIR);
+  if (!existsSync(outputDir)) {
+    return res.json({ files: [] });
+  }
+
+  const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']);
+  const files = readdirSync(outputDir)
+    .filter((fileName) => {
+      const extension = extname(fileName).toLowerCase();
+      return allowedExtensions.has(extension);
+    })
+    .map((fileName) => ({
+      name: fileName,
+      url: `/pdf-thumbnails/${fileName}`
+    }));
+
+  return res.json({ files });
+}));
+
+app.post('/api/pdf-thumbnails/select', asyncHandler(async (req, res) => {
+  const pdfPath = req.body && req.body.pdfPath;
+  const thumbnailName = req.body && req.body.thumbnailName;
+
+  if (!pdfPath || typeof pdfPath !== 'string') {
+    return res.status(400).json({ error: 'pdfPath is required.' });
+  }
+
+  if (!thumbnailName || typeof thumbnailName !== 'string') {
+    return res.status(400).json({ error: 'thumbnailName is required.' });
+  }
+
+  const resolvedPdf = getResolvedDataPath(pdfPath);
+  if (!resolvedPdf) {
+    return res.status(403).json({ error: 'Forbidden path.' });
+  }
+
+  if (extname(resolvedPdf.absolutePath).toLowerCase() !== '.pdf') {
+    return res.status(400).json({ error: 'Only PDF files are supported.' });
+  }
+
+  const outputDir = join(__dirname, PDF_THUMBNAIL_DIR);
+  const safeThumbnailName = path.basename(thumbnailName);
+  const selectedThumbnailPath = join(outputDir, safeThumbnailName);
+
+  if (!existsSync(selectedThumbnailPath)) {
+    return res.status(404).json({ error: 'Selected thumbnail file not found.' });
+  }
+
+  const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']);
+  if (!allowedExtensions.has(extname(safeThumbnailName).toLowerCase())) {
+    return res.status(400).json({ error: 'Invalid thumbnail file type.' });
+  }
+
+  const thumbnailUrl = `/pdf-thumbnails/${safeThumbnailName}`;
+  const thumbnailMap = loadPdfThumbnailMap();
+  thumbnailMap[resolvedPdf.normalized] = thumbnailUrl;
+  savePdfThumbnailMap(thumbnailMap);
+
+  clearImageCache();
+
+  return res.json({
+    success: true,
+    pdfPath: resolvedPdf.normalized,
     thumbnailUrl
   });
 }));

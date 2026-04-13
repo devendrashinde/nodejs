@@ -553,6 +553,12 @@ html(ng-app="app")
                       title="Set custom thumbnail"
                     )
                       i.fas.fa-image.fa-sm
+                    button.btn.btn-sm.btn-outline-secondary(
+                      type="button"
+                      ng-click="selectExistingPdfThumbnail(image)"
+                      title="Select existing thumbnail from server"
+                    )
+                      i.fas.fa-folder-open.fa-sm
                     button.btn.btn-sm(
                       type="button"
                       ng-click="togglePdfRead(image)"
@@ -966,6 +972,49 @@ html(ng-app="app")
               button.btn.btn-secondary(type="button" data-bs-dismiss="modal")
                 i.fas.fa-times.me-1
                 | Close
+
+      //- PDF Thumbnail Picker Modal
+      div.modal.fade#pdfThumbnailPickerModal(tabindex="-1" aria-labelledby="pdfThumbnailPickerLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered.modal-xl
+          div.modal-content
+            div.modal-header
+              h5.modal-title#pdfThumbnailPickerLabel
+                i.fas.fa-images.me-2
+                | Select Existing Thumbnail
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              div.alert.alert-secondary.py-2.mb-3(ng-if="pdfThumbnailPicker.targetPdf")
+                div
+                  strong PDF:
+                  |  {{pdfThumbnailPicker.targetPdf.name || (pdfThumbnailPicker.targetPdf.path | stripExtension)}}
+                div.small.text-muted.text-break {{pdfThumbnailPicker.targetPdf.path}}
+
+              div.text-center.py-4(ng-if="pdfThumbnailPicker.loading")
+                div.spinner-border.text-primary(role="status")
+                  span.visually-hidden Loading...
+                div.mt-2.text-muted Loading thumbnail files...
+
+              div.alert.alert-info(ng-if="!pdfThumbnailPicker.loading && pdfThumbnailPicker.files.length === 0")
+                | No thumbnail files found in the server thumbnail folder.
+
+              div.row.g-3(ng-if="!pdfThumbnailPicker.loading && pdfThumbnailPicker.files.length > 0")
+                div.col-6.col-sm-4.col-md-3.col-lg-2(ng-repeat="thumb in pdfThumbnailPicker.files track by thumb.name")
+                  div.card.h-100.shadow-sm(
+                    ng-click="applyExistingPdfThumbnail(thumb)"
+                    ng-class="{'border-primary': pdfThumbnailPicker.selectingName === thumb.name}"
+                    style="cursor: pointer;"
+                  )
+                    img.card-img-top(
+                      ng-src="{{thumb.url}}"
+                      alt="{{thumb.name}}"
+                      loading="lazy"
+                      style="height: 120px; object-fit: cover;"
+                    )
+                    div.card-body.p-2
+                      div.small.text-truncate(title="{{thumb.name}}") {{thumb.name}}
+                      div.small.text-primary.mt-1(ng-if="pdfThumbnailPicker.selectingName === thumb.name") Applying...
+            div.modal-footer
+              button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
 
       //- Edit Tags Modal (for existing photos)
       div.modal.fade#editTagModal(tabindex="-1" aria-labelledby="editTagModalLabel" aria-hidden="true")

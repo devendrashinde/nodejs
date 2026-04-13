@@ -975,7 +975,7 @@ html(ng-app="app")
 
       //- PDF Thumbnail Picker Modal
       div.modal.fade#pdfThumbnailPickerModal(tabindex="-1" aria-labelledby="pdfThumbnailPickerLabel" aria-hidden="true")
-        div.modal-dialog.modal-dialog-centered.modal-xl
+        div.modal-dialog.modal-dialog-centered.modal-xxl
           div.modal-content
             div.modal-header
               h5.modal-title#pdfThumbnailPickerLabel
@@ -988,6 +988,9 @@ html(ng-app="app")
                   strong PDF:
                   |  {{pdfThumbnailPicker.targetPdf.name || (pdfThumbnailPicker.targetPdf.path | stripExtension)}}
                 div.small.text-muted.text-break {{pdfThumbnailPicker.targetPdf.path}}
+              p.small.text-muted.mb-3
+                i.fas.fa-hand-pointer.me-1
+                | Click a card to select. Use the zoom icon for preview.
 
               div.text-center.py-4(ng-if="pdfThumbnailPicker.loading")
                 div.spinner-border.text-primary(role="status")
@@ -998,26 +1001,26 @@ html(ng-app="app")
                 | No thumbnail files found in the server thumbnail folder.
 
               div.row.g-3(ng-if="!pdfThumbnailPicker.loading && pdfThumbnailPicker.files.length > 0")
-                div.col-6.col-sm-4.col-md-3.col-lg-2(ng-repeat="thumb in pdfThumbnailPicker.files track by thumb.name")
+                div.col-6.col-md-4.col-lg-3.col-xl-2(ng-repeat="thumb in pdfThumbnailPicker.files track by thumb.name")
                   div.card.h-100.shadow-sm.pdf-thumbnail-card(
                     ng-click="applyExistingPdfThumbnail(thumb)"
-                    ng-class="{'border-primary': pdfThumbnailPicker.selectingName === thumb.name}"
+                    ng-class="{'border-primary': pdfThumbnailPicker.selectingName === thumb.name, 'border-success': isCurrentPdfThumbnail(thumb)}"
                   )
-                    button.btn.btn-sm.btn-dark(
+                    button.btn.btn-sm.pdf-thumbnail-zoom-btn(
                       type="button"
                       ng-click="previewPdfThumbnail(thumb, $event)"
                       title="Preview thumbnail"
-                      style="position:absolute; top:6px; right:6px; z-index:20; opacity:0.9;"
                     )
                       i.fas.fa-search-plus
                     img.card-img-top(
                       ng-src="{{thumb.url}}"
                       alt="{{thumb.name}}"
                       loading="lazy"
-                      style="height: 120px; object-fit: cover;"
+                      style="height: 170px; object-fit: cover;"
                     )
                     div.card-body.p-2
-                      div.small.text-truncate(title="{{thumb.name}}") {{thumb.name}}
+                      div.small(title="{{thumb.name}}" style="display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.25;") {{thumb.name}}
+                      div.small.text-success.mt-1(ng-if="isCurrentPdfThumbnail(thumb)") Current thumbnail
                       div.small.text-primary.mt-1(ng-if="pdfThumbnailPicker.selectingName === thumb.name") Applying...
             div.modal-footer
               div.me-auto.d-flex.align-items-center.gap-2

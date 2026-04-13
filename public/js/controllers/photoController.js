@@ -1123,6 +1123,15 @@ angular.module('photoController', [])
             $scope.loadPdfThumbnailPickerPage($scope.pdfThumbnailPicker.page + 1);
         };
 
+        $scope.isCurrentPdfThumbnail = function(file) {
+            if (!file || !file.url || !$scope.pdfThumbnailPicker.targetPdf) {
+                return false;
+            }
+
+            var current = ($scope.pdfThumbnailPicker.targetPdf.customThumbnail || '').split('?')[0];
+            return current === file.url;
+        };
+
         $scope.applyExistingPdfThumbnail = function(file) {
             if (!file || !file.name || !$scope.pdfThumbnailPicker.targetPdf) {
                 return;

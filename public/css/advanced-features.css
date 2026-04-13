@@ -1640,46 +1640,46 @@ details[open] {
 
 /* Thumbnail card hover magnification */
 .pdf-thumbnail-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
   position: relative;
+  overflow: hidden;
 }
 
 .pdf-thumbnail-card:hover {
-  transform: scale(1.12) translateZ(0);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25) !important;
-  z-index: 50;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18) !important;
 }
 
 .pdf-thumbnail-card img {
-  transition: filter 0.2s ease;
+  transition: transform 0.2s ease, filter 0.2s ease;
 }
 
 .pdf-thumbnail-card:hover img {
+  transform: scale(1.03);
   filter: brightness(1.05);
 }
 
-/* Zoom indicator on hover */
-.pdf-thumbnail-card::after {
-  content: '🔍';
+.pdf-thumbnail-zoom-btn {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0);
-  font-size: 24px;
-  background: rgba(0, 0, 0, 0.5);
-  width: 50px;
-  height: 50px;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  background: rgba(17, 24, 39, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  display: flex;
+  padding: 0;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease;
-  z-index: 10;
 }
 
-.pdf-thumbnail-card:hover::after {
-  transform: translate(-50%, -50%) scale(1);
+.pdf-thumbnail-zoom-btn:hover {
+  background: rgba(17, 24, 39, 0.92);
+  color: #fff;
 }
 
 /* Preview modal styles */
@@ -1788,7 +1788,7 @@ details[open] {
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .pdf-thumbnail-card:hover {
-    transform: scale(1.08) translateZ(0);
+    transform: none;
   }
 
   .pdf-thumbnail-preview-container {

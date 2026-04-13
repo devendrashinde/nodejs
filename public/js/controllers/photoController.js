@@ -10,6 +10,17 @@ angular.module('photoController', [])
         };
     })
 
+    // Custom filter to format file size
+    .filter('formatFileSize', function() {
+        return function(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+    })
+
     // Custom case-insensitive search filter for albums and playlists
     .filter('caseInsensitiveContains', function() {
         return function(items, searchField, searchText) {
@@ -75,6 +86,12 @@ angular.module('photoController', [])
             items: 24,
             total: 0,
             totalPages: 0
+        };
+
+        // PDF Thumbnail Preview/Zoom modal
+        $scope.pdfThumbnailPreview = {
+            show: false,
+            file: null
         };
 
         // PDF read/unread tracker — persisted in localStorage
@@ -1132,6 +1149,52 @@ angular.module('photoController', [])
                 .finally(function() {
                     $scope.pdfThumbnailPicker.selectingName = '';
                 });
+        };
+
+        // PDF Thumbnail Preview Methods
+
+        $scope.previewPdfThumbnail = function(file) {
+            if (!file || !file.url) {
+                return;
+            }
+
+            $scope.pdfThumbnailPreview.file = file;
+            $scope.pdfThumbnailPreview.show = true;
+
+            // Handle ESC key to close preview
+            var handleKeyDown = function(event) {
+                if (event.key === 'Escape' || event.keyCode === 27) {
+                    $scope.$apply(function() {
+                        $scope.closePdfThumbnailPreview();
+                    });
+                }
+            };
+
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // Cleanup when preview closes
+            var cleanup = function() {
+                document.removeEventListener('keydown', handleKeyDown);
+            };
+            
+            $scope.$on('$destroy', cleanup);
+        };
+
+        $scope.closePdfThumbnailPreview = function() {
+            $scope.pdfThumbnailPreview.show = false;
+            $scope.pdfThumbnailPreview.file = null;
+        };
+
+        $scope.selectFromPreview = function(file) {
+            if (!file) {
+                return;
+            }
+
+            // Close preview first
+            $scope.closePdfThumbnailPreview();
+
+            // Call the existing apply method to set the thumbnail
+            $scope.applyExistingPdfThumbnail(file);
         };
 
         $scope.getMediaHref = function(image) {

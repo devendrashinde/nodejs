@@ -999,10 +999,10 @@ html(ng-app="app")
 
               div.row.g-3(ng-if="!pdfThumbnailPicker.loading && pdfThumbnailPicker.files.length > 0")
                 div.col-6.col-sm-4.col-md-3.col-lg-2(ng-repeat="thumb in pdfThumbnailPicker.files track by thumb.name")
-                  div.card.h-100.shadow-sm(
+                  div.card.h-100.shadow-sm.pdf-thumbnail-card(
                     ng-click="applyExistingPdfThumbnail(thumb)"
+                    ng-dblclick="previewPdfThumbnail(thumb)"
                     ng-class="{'border-primary': pdfThumbnailPicker.selectingName === thumb.name}"
-                    style="cursor: pointer;"
                   )
                     img.card-img-top(
                       ng-src="{{thumb.url}}"
@@ -1032,6 +1032,43 @@ html(ng-app="app")
                   | Next
                   i.fas.fa-chevron-right.ms-1
               button.btn.btn-secondary(type="button" data-bs-dismiss="modal") Close
+
+      //- PDF Thumbnail Preview Modal (Zoom view)
+      div(
+        ng-if="pdfThumbnailPreview.show"
+        class="pdf-thumbnail-preview-overlay"
+        ng-click="closePdfThumbnailPreview()"
+      )
+        div.pdf-thumbnail-preview-container(ng-click="$event.stopPropagation()")
+          button.pdf-thumbnail-close-btn(
+            ng-click="closePdfThumbnailPreview()"
+            aria-label="Close preview"
+            title="Close preview (ESC)"
+          )
+            i.fas.fa-times
+
+          img.pdf-thumbnail-preview-image(
+            ng-src="{{pdfThumbnailPreview.file.url}}"
+            alt="{{pdfThumbnailPreview.file.name}}"
+          )
+
+          div.pdf-thumbnail-preview-info
+            div.pdf-thumbnail-preview-filename {{pdfThumbnailPreview.file.name}}
+            div.small.text-muted {{pdfThumbnailPreview.file.size | formatFileSize}}
+
+          div.pdf-thumbnail-preview-actions
+            button.btn.btn-primary.btn-sm(
+              ng-click="selectFromPreview(pdfThumbnailPreview.file)"
+              type="button"
+            )
+              i.fas.fa-check.me-2
+              | Select This Thumbnail
+            button.btn.btn-outline-secondary.btn-sm(
+              ng-click="closePdfThumbnailPreview()"
+              type="button"
+            )
+              i.fas.fa-times.me-2
+              | Close
 
       //- Edit Tags Modal (for existing photos)
       div.modal.fade#editTagModal(tabindex="-1" aria-labelledby="editTagModalLabel" aria-hidden="true")

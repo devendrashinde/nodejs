@@ -1044,13 +1044,22 @@ angular.module('photoController', [])
         // Open PDF in a new browser tab using the streaming endpoint and mark read
         $scope.openPdfInNewTab = function(image) {
             if (!image || !image.isPdf) { return; }
-            var pdfUrl = '/pdf-stream?id=' + encodeURIComponent(image.path);
+            var pdfUrl = getPdfStreamUrl(image.path);
             var openedWindow = window.open(pdfUrl, '_blank');
             if (!openedWindow) {
                 window.location.href = pdfUrl;
             }
             if (!image.isRead) { $scope.togglePdfRead(image); }
         };
+
+        function getPdfStreamUrl(path) {
+            if (!path) {
+                return '/pdf-stream';
+            }
+
+            var fileName = (path.split('/').pop() || 'document.pdf');
+            return '/pdf-stream/' + encodeURIComponent(fileName) + '?id=' + encodeURIComponent(path);
+        }
 
         $scope.setPdfThumbnail = function(image) {
             if (!image || !image.isPdf) { return; }
@@ -1310,7 +1319,7 @@ angular.module('photoController', [])
             }
 
             if (image.isPdf) {
-                return '/pdf-stream?id=' + encodeURIComponent(image.path);
+                return getPdfStreamUrl(image.path);
             }
 
             return image.path;

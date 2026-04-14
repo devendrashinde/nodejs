@@ -1034,7 +1034,7 @@ app.route('/playlists/:playlistId/tags')
     .put(updatePlaylistTag);
 
 // Stream PDFs with HTTP range support so browser viewers can load incrementally.
-app.get('/pdf-stream', (req, res) => {
+const streamPdfHandler = (req, res) => {
     const id = req.query.id;
 
     if (!id || typeof id !== 'string') {
@@ -1072,7 +1072,8 @@ app.get('/pdf-stream', (req, res) => {
     };
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    const encodedFileName = encodeURIComponent(fileName);
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"; filename*=UTF-8''${encodedFileName}`);
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'public, max-age=3600');
 
@@ -1122,7 +1123,10 @@ app.get('/pdf-stream', (req, res) => {
     res.setHeader('Content-Length', chunkSize);
 
     return createReadStream(absolutePath, { start, end }).pipe(res);
-});
+  };
+
+  app.get('/pdf-stream', streamPdfHandler);
+  app.get('/pdf-stream/:filename', streamPdfHandler);
 
 app.get('*', (req, res) => {
     const file = join(dataDir, req.path.replace(/\/$/, '/index.html'));

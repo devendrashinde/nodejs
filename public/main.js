@@ -9,7 +9,7 @@ var rotationAngles = {};
 function isPdfStreamUrl(url) {
   try {
     var parsedUrl = new URL(url, window.location.origin);
-    if (!/\/pdf-stream$/i.test(parsedUrl.pathname)) {
+    if (!/^\/pdf-stream(?:\/[^/?#]+)?$/i.test(parsedUrl.pathname)) {
       return false;
     }
 
@@ -520,7 +520,7 @@ if (isMobile) {
     var isPdfLink = href && (
       href.toLowerCase().endsWith('.pdf') ||
       isPdfStreamUrl(href) ||
-      ($(this).attr('data-type') === 'iframe' && /\/pdf-stream(?:\?|$)/i.test(href))
+      ($(this).attr('data-type') === 'iframe' && /\/pdf-stream(?:\/|\?|$)/i.test(href))
     );
 
     if (isPdfLink) {

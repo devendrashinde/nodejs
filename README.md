@@ -195,6 +195,7 @@ You'll see startup messages:
 - `GET /` - Main photo gallery interface
 - `GET /photos?id={album}&page={page}&items={items}` - Get photos from an album (with validation)
 - `GET /thumb?id={photoPath}&w={width}&h={height}&q={quality}` - Get optimized thumbnail
+- `GET /pdf-stream/:filename?id={pdfPath}` - Stream PDF inline with range support (also supports legacy `/pdf-stream?id={pdfPath}`)
 - `POST /upload` - Upload a new photo (with validation)
 
 #### REST API Endpoints

@@ -113,7 +113,6 @@ app.use('/api', advancedFeaturesRoutes);
 app.use(express.static(join(__dirname, 'public')));
 app.use('/data', express.static(join(__dirname, "data")));
 app.use('/pdf-thumbnails', express.static(join(__dirname, PDF_THUMBNAIL_DIR)));
-app.use('/pdf-thumbnails', express.static(join(__dirname, PDF_THUMBNAIL_DIR)));
 
 // ============================================================
 // OPTIMIZED CACHING SYSTEM FOR STATIC ALBUMS

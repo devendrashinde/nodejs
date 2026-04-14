@@ -6,6 +6,35 @@ var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.
 // Track rotation state for each slide
 var rotationAngles = {};
 
+function isPdfStreamUrl(url) {
+  try {
+    var parsedUrl = new URL(url, window.location.origin);
+    if (!/\/pdf-stream$/i.test(parsedUrl.pathname)) {
+      return false;
+    }
+
+    var pdfId = parsedUrl.searchParams.get('id') || '';
+    return decodeURIComponent(pdfId).toLowerCase().endsWith('.pdf');
+  } catch (error) {
+    return /\/pdf-stream\?id=.*\.pdf/i.test(url);
+  }
+}
+
+function openPdfUrl(pdfUrl) {
+  var absoluteUrl = pdfUrl;
+
+  try {
+    absoluteUrl = new URL(pdfUrl, window.location.origin).toString();
+  } catch (error) {
+    absoluteUrl = window.location.origin + '/' + String(pdfUrl || '').replace(/^\/+/, '');
+  }
+
+  var openedWindow = window.open(absoluteUrl, '_blank');
+  if (!openedWindow) {
+    window.location.href = absoluteUrl;
+  }
+}
+
 // Initialize Fancybox on gallery links with all enhancements
 function initFancybox() {
   if (typeof $.fancybox === 'undefined') return;
@@ -488,18 +517,18 @@ $(document).ready(function() {
 if (isMobile) {
   $(document).on('click', 'a[data-fancybox="gallery"]', function(e) {
     var href = $(this).attr('href') || $(this).attr('data-src');
-    if (href && href.toLowerCase().endsWith('.pdf')) {
+    var isPdfLink = href && (
+      href.toLowerCase().endsWith('.pdf') ||
+      isPdfStreamUrl(href) ||
+      ($(this).attr('data-type') === 'iframe' && /\/pdf-stream(?:\?|$)/i.test(href))
+    );
+
+    if (isPdfLink) {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      
-      var pdfUrl = href;
-      if (!pdfUrl.startsWith('http')) {
-        pdfUrl = window.location.origin + '/' + pdfUrl.replace(/^\/+/, '');
-      }
-      
-      // Open directly in new tab - uses browser's native PDF viewer
-      window.open(pdfUrl, '_blank');
+
+      openPdfUrl(href);
       return false;
     }
   });

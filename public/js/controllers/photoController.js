@@ -1044,7 +1044,11 @@ angular.module('photoController', [])
         // Open PDF in a new browser tab using the streaming endpoint and mark read
         $scope.openPdfInNewTab = function(image) {
             if (!image || !image.isPdf) { return; }
-            window.open('/pdf-stream?id=' + encodeURIComponent(image.path), '_blank');
+            var pdfUrl = '/pdf-stream?id=' + encodeURIComponent(image.path);
+            var openedWindow = window.open(pdfUrl, '_blank');
+            if (!openedWindow) {
+                window.location.href = pdfUrl;
+            }
             if (!image.isRead) { $scope.togglePdfRead(image); }
         };
 

@@ -35,7 +35,7 @@ const MIME_TYPES = {
 };
 
 const MONTHS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
-const SKIP_FILE_TYPES = ['.db','.exe','.tmp','.doc','.dat','.ini', '.srt','.idx','.rar','.sub','.zip','.php','.wmdb'];
+const SKIP_FILE_TYPES = ['.db', '.exe', '.tmp', '.dat', '.php', '.wmdb'];
 
 const formatFileSize = (bytes) => {
     if (!bytes || bytes === 0) return '0 B';

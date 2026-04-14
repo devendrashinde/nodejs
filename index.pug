@@ -382,22 +382,42 @@ html(ng-app="app")
         // Main Content
         main(ng-class="{'col-sm-9 col-md-10': folders.length > 0, 'col-12': folders.length == 0}")
 
-          //- PDF Library toolbar — shown only when viewing an all-PDF album
-          div.d-flex.justify-content-between.align-items-center.mb-3(ng-if="isAllPdf()")
-            span.text-muted.small
+          //- Document/File Library toolbar — shown when viewing only PDFs and other non-media files
+          div.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3(ng-if="isAllLibraryFiles()")
+            div.text-muted.small
               i.fas.fa-book-open.me-1
-              | PDF Library — {{photos.length}} document{{photos.length !== 1 ? 's' : ''}}
-            button.btn.btn-sm.btn-outline-secondary(
-              type="button"
-              ng-click="togglePdfView()"
-              title="{{pdfLibraryView === 'grid' ? 'Switch to list view' : 'Switch to grid view'}}"
-            )
-              i.fas(ng-class="{'fa-list': pdfLibraryView === 'grid', 'fa-th': pdfLibraryView === 'list'}")
-              span.ms-1 {{pdfLibraryView === 'grid' ? 'List view' : 'Grid view'}}
+              | {{getLibraryTitle()}} — {{getLibraryVisibleCount()}} / {{photos.length}} file{{photos.length !== 1 ? 's' : ''}}
+            div.d-flex.align-items-center.flex-wrap.gap-2
+              select.form-select.form-select-sm(style="width: 150px;" ng-model="fileLibrary.filter")
+                option(value="all") All types
+                option(value="pdf") PDF
+                option(value="document") Documents
+                option(value="archive") Archives
+                option(value="text") Text
+                option(value="code") Code
+                option(value="other") Other
+              select.form-select.form-select-sm(style="width: 130px;" ng-model="fileLibrary.sortBy")
+                option(value="name") Sort: Name
+                option(value="type") Sort: Type
+                option(value="size") Sort: Size
+                option(value="date") Sort: Date
+              button.btn.btn-sm.btn-outline-secondary(
+                type="button"
+                ng-click="toggleLibrarySortDirection()"
+                title="Toggle sort direction"
+              )
+                i.fas(ng-class="fileLibrary.sortDir === 'asc' ? 'fa-sort-amount-down-alt' : 'fa-sort-amount-up'")
+              button.btn.btn-sm.btn-outline-secondary(
+                type="button"
+                ng-click="togglePdfView()"
+                title="{{pdfLibraryView === 'grid' ? 'Switch to list view' : 'Switch to grid view'}}"
+              )
+                i.fas(ng-class="{'fa-list': pdfLibraryView === 'grid', 'fa-th': pdfLibraryView === 'list'}")
+                span.ms-1 {{pdfLibraryView === 'grid' ? 'List view' : 'Grid view'}}
 
           // Gallery Grid
-          div.row.g-3(ng-if="!isAllPdf() || pdfLibraryView === 'grid'")
-            div.col-sm-6.col-md-4.col-lg-3(ng-repeat="image in photos")
+          div.row.g-3(ng-if="!isAllLibraryFiles() || pdfLibraryView === 'grid'")
+            div.col-sm-6.col-md-4.col-lg-3(ng-repeat="image in getLibraryDisplayItems()")
               div.card.shadow-sm(style="position: relative;")
                 //- Checkbox for bulk operations
                 input.photo-checkbox(
@@ -435,9 +455,22 @@ html(ng-app="app")
                       style="font-size: 3rem;"
                     )
                 
-                //- Non-audio files - fancybox
+                //- Generic files - open directly in a new tab
                 a(
-                  ng-if="!image.isAudio"
+                  ng-if="image.isGenericFile"
+                  href="javascript:void(0)"
+                  ng-click="openGenericFile(image)"
+                  title="Open file"
+                )
+                  figure.mb-0
+                    div.card-img-top.generic-file-preview
+                      i(ng-class="image.fileIconClass")
+                      span.badge.bg-light.text-dark.border.mt-3 {{image.fileExtension || 'FILE'}}
+                    i.overlay-icon.fas.fa-external-link-alt
+
+                //- Non-audio media files - fancybox
+                a(
+                  ng-if="!image.isAudio && !image.isGenericFile"
                   ng-href="{{getMediaHref(image)}}"
                   data-fancybox="gallery"
                   data-caption="{{image.tags}}"
@@ -461,13 +494,15 @@ html(ng-app="app")
                       href="javascript:void(0)"
                       ng-click="editImageTag(image)"
                       title="Edit tags"
-                    ) {{image.tags || (image.name | stripExtension) || 'Untitled'}}
+                    ) {{getLibraryItemTitle(image)}}
                     span.badge.bg-success.ms-1.small(ng-if="image.isPdf && image.isRead" title="Read") ✓
                   small.text-muted.d-block(ng-if="image.isPdf && image.fileSizeFormatted" style="font-size:0.75rem;") {{image.fileSizeFormatted}}
+                  small.text-muted.d-block(ng-if="image.isGenericFile" style="font-size:0.75rem;") {{image.fileTypeLabel}} • {{image.fileSizeFormatted || '—'}}
+                  small.text-muted.d-block(ng-if="image.isGenericFile && image.fileDate" style="font-size:0.75rem;") Updated {{image.fileDate}}
                   
                   //- Action buttons for advanced features
                   //- For photos and videos
-                  div.d-flex.gap-1.mt-2(ng-if="!image.isAudio && !image.isPdf")
+                  div.d-flex.gap-1.mt-2(ng-if="!image.isAudio && !image.isPdf && !image.isGenericFile")
                     button.btn.btn-sm.btn-outline-info(
                       type="button"
                       ng-click="showExifModal(image)"
@@ -594,40 +629,82 @@ html(ng-app="app")
                     )
                       i.fas.fa-times.fa-sm
 
-          //- PDF Library List View
-          div.table-responsive(ng-if="isAllPdf() && pdfLibraryView === 'list'")
+                  //- For generic files
+                  div.d-flex.gap-1.mt-2.flex-wrap(ng-if="image.isGenericFile")
+                    button.btn.btn-sm.btn-outline-info(
+                      type="button"
+                      ng-if="isTextPreviewAvailable(image)"
+                      ng-click="previewGenericFile(image)"
+                      title="Preview text content"
+                    )
+                      i.fas.fa-eye.fa-sm
+                    button.btn.btn-sm.btn-outline-primary(
+                      type="button"
+                      ng-click="openGenericFile(image)"
+                      title="Open file"
+                    )
+                      i.fas.fa-external-link-alt.fa-sm
+                    button.btn.btn-sm.btn-outline-secondary(
+                      type="button"
+                      ng-click="downloadGenericFile(image)"
+                      title="Download file"
+                    )
+                      i.fas.fa-download.fa-sm
+                    button.btn.btn-sm.btn-outline-danger(
+                      type="button"
+                      ng-click="toggleFavorite(image)"
+                      ng-class="{'active': image.isFavorite}"
+                      title="Favorite"
+                    )
+                      i.fas.fa-heart.fa-sm
+                    button.btn.btn-sm.btn-outline-success(
+                      type="button"
+                      ng-click="sharePhoto(image)"
+                      title="Share"
+                    )
+                      i.fas.fa-share-alt.fa-sm
+                    button.btn.btn-sm.btn-outline-primary(
+                      type="button"
+                      ng-if="image.isInPlaylist"
+                      ng-click="openPlaylistsForMedia(image, $event)"
+                      title="View playlists containing this item"
+                    )
+                      i.fas.fa-list.fa-sm
+                    button.btn.btn-sm.btn-outline-warning(
+                      type="button"
+                      ng-click="removePlaylistItem(image.id)"
+                      ng-if="selectedAlbum.isPlaylist"
+                      title="Remove from this playlist"
+                    )
+                      i.fas.fa-times.fa-sm
+
+          //- Document/File Library List View
+          div.table-responsive(ng-if="isAllLibraryFiles() && pdfLibraryView === 'list'")
             table.table.table-hover.table-sm.align-middle
               thead.table-light
                 tr
                   th(style="width:36px;")
+                  th Type
                   th Title
                   th(style="width:80px;") Size
                   th(style="width:90px;") Date
-                  th(style="width:56px; text-align:center;") Read
-                  th(style="width:130px;") Actions
+                  th(style="width:220px;") Actions
               tbody
-                tr(ng-repeat="image in photos")
+                tr(ng-repeat="image in getLibraryDisplayItems()")
                   td.text-center
-                    i.fas.fa-file-pdf.text-danger(style="font-size:1.2rem;")
+                    i(ng-class="image.fileIconClass || 'fas fa-file text-muted'" style="font-size:1.2rem;")
+                  td
+                    span.badge.bg-light.text-dark.border {{image.fileExtension || 'FILE'}}
                   td
                     a.text-decoration-none(
                       href="javascript:void(0)"
-                      ng-click="openPdfInNewTab(image)"
-                      title="Open PDF in new tab"
-                    ) {{image.tags || (image.name | stripExtension) || 'Untitled'}}
+                      ng-click="image.isPdf ? openPdfInNewTab(image) : openGenericFile(image)"
+                      title="Open file"
+                    ) {{getLibraryItemTitle(image)}}
                   td.text-muted.small {{image.fileSizeFormatted || '—'}}
                   td.text-muted.small {{image.fileDate || '—'}}
-                  td.text-center
-                    button.btn.btn-sm(
-                      type="button"
-                      ng-click="togglePdfRead(image)"
-                      ng-class="image.isRead ? 'btn-success' : 'btn-outline-secondary'"
-                      title="{{image.isRead ? 'Mark as unread' : 'Mark as read'}}"
-                      style="padding:0.1rem 0.4rem;"
-                    )
-                      i.fas.fa-check
                   td
-                    div.d-flex.gap-1
+                    div.d-flex.gap-1.flex-wrap(ng-if="image.isPdf")
                       button.btn.btn-sm.btn-outline-primary(
                         type="button"
                         ng-click="openPdfInNewTab(image)"
@@ -641,6 +718,53 @@ html(ng-app="app")
                         title="Favorite"
                       )
                         i.fas.fa-heart
+                      button.btn.btn-sm.btn-outline-primary(
+                        type="button"
+                        ng-if="image.isInPlaylist"
+                        ng-click="openPlaylistsForMedia(image, $event)"
+                        title="View playlists containing this item"
+                      )
+                        i.fas.fa-list
+                      button.btn.btn-sm.btn-outline-warning(
+                        type="button"
+                        ng-click="removePlaylistItem(image.id)"
+                        ng-if="selectedAlbum.isPlaylist"
+                        title="Remove from this playlist"
+                      )
+                        i.fas.fa-times
+                    div.d-flex.gap-1.flex-wrap(ng-if="image.isGenericFile")
+                      button.btn.btn-sm.btn-outline-info(
+                        type="button"
+                        ng-if="isTextPreviewAvailable(image)"
+                        ng-click="previewGenericFile(image)"
+                        title="Preview text content"
+                      )
+                        i.fas.fa-eye
+                      button.btn.btn-sm.btn-outline-primary(
+                        type="button"
+                        ng-click="openGenericFile(image)"
+                        title="Open file"
+                      )
+                        i.fas.fa-external-link-alt
+                      button.btn.btn-sm.btn-outline-secondary(
+                        type="button"
+                        ng-click="downloadGenericFile(image)"
+                        title="Download file"
+                      )
+                        i.fas.fa-download
+                      button.btn.btn-sm.btn-outline-danger(
+                        type="button"
+                        ng-click="toggleFavorite(image)"
+                        ng-class="{'active': image.isFavorite}"
+                        title="Favorite"
+                      )
+                        i.fas.fa-heart
+                      button.btn.btn-sm.btn-outline-success(
+                        type="button"
+                        ng-click="sharePhoto(image)"
+                        title="Share"
+                      )
+                        i.fas.fa-share-alt
                       button.btn.btn-sm.btn-outline-primary(
                         type="button"
                         ng-if="image.isInPlaylist"
@@ -1106,6 +1230,48 @@ html(ng-app="app")
               type="button"
             )
               i.fas.fa-times.me-2
+              | Close
+
+      //- Generic File Text Preview Modal
+      div(
+        ng-if="filePreview.show"
+        class="file-preview-overlay"
+        ng-click="closeFilePreview()"
+      )
+        div.file-preview-container(ng-click="$event.stopPropagation()")
+          div.file-preview-header
+            div
+              h6.mb-0 {{filePreview.file.name || 'File preview'}}
+              div.small.text-muted {{filePreview.file.path}}
+            button.btn.btn-sm.btn-outline-secondary(type="button" ng-click="closeFilePreview()")
+              i.fas.fa-times
+          div.file-preview-body
+            div.text-center.py-5(ng-if="filePreview.loading")
+              div.spinner-border.text-primary(role="status")
+                span.visually-hidden Loading...
+              div.mt-2.text-muted Loading preview...
+            div.alert.alert-warning.mb-0(ng-if="!filePreview.loading && filePreview.error")
+              | {{filePreview.error}}
+            pre.file-preview-content(ng-if="!filePreview.loading && !filePreview.error")
+              | {{filePreview.content}}
+          div.file-preview-footer
+            button.btn.btn-sm.btn-outline-primary(
+              type="button"
+              ng-click="openGenericFile(filePreview.file)"
+            )
+              i.fas.fa-external-link-alt.me-1
+              | Open
+            button.btn.btn-sm.btn-outline-secondary(
+              type="button"
+              ng-click="downloadGenericFile(filePreview.file)"
+            )
+              i.fas.fa-download.me-1
+              | Download
+            button.btn.btn-sm.btn-secondary(
+              type="button"
+              ng-click="closeFilePreview()"
+            )
+              i.fas.fa-times.me-1
               | Close
 
       //- Edit Tags Modal (for existing photos)

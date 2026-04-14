@@ -87,6 +87,18 @@ angular.module('photoController', [])
 
         // PDF Library view
         $scope.pdfLibraryView = 'grid'; // 'grid' | 'list'
+        $scope.fileLibrary = {
+            filter: 'all',
+            sortBy: 'name',
+            sortDir: 'asc'
+        };
+        $scope.filePreview = {
+            show: false,
+            loading: false,
+            file: null,
+            content: '',
+            error: ''
+        };
         $scope.pdfThumbnailPicker = {
             targetPdf: null,
             files: [],
@@ -137,6 +149,12 @@ angular.module('photoController', [])
         const imageTypes = APP_CONSTANTS.IMAGE_TYPES;
         const videoTypes = APP_CONSTANTS.VIDEO_TYPES;
         const audioTypes = APP_CONSTANTS.AUDIO_TYPES;
+        const wordFileTypes = ['doc', 'docx', 'odt', 'rtf'];
+        const spreadsheetFileTypes = ['xls', 'xlsx', 'ods'];
+        const presentationFileTypes = ['ppt', 'pptx', 'odp'];
+        const archiveFileTypes = ['zip', 'rar', '7z', 'tar', 'gz', 'tgz', 'bz2', 'xz'];
+        const textFileTypes = ['txt', 'md', 'csv', 'log', 'srt', 'sub', 'idx', 'ini', 'cfg', 'conf'];
+        const codeFileTypes = ['json', 'xml', 'yml', 'yaml', 'js', 'ts', 'css', 'scss', 'less', 'html', 'htm', 'sql', 'py', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'bat', 'ps1', 'sh'];
         
 		$scope.pageId = 0;
         $scope.totalPhotos = 0;
@@ -1010,17 +1028,117 @@ angular.module('photoController', [])
                 });
         }       
         
+        function getFileExtension(fileName) {
+            if (!fileName || fileName.lastIndexOf('.') === -1) {
+                return '';
+            }
+
+            return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+        }
+
+        function getGenericFileMetadata(extension) {
+            var normalizedExtension = extension || '';
+
+            if (wordFileTypes.indexOf(normalizedExtension) !== -1) {
+                return { label: 'Document', iconClass: 'fas fa-file-word text-primary' };
+            }
+
+            if (spreadsheetFileTypes.indexOf(normalizedExtension) !== -1) {
+                return { label: 'Spreadsheet', iconClass: 'fas fa-file-excel text-success' };
+            }
+
+            if (presentationFileTypes.indexOf(normalizedExtension) !== -1) {
+                return { label: 'Presentation', iconClass: 'fas fa-file-powerpoint text-danger' };
+            }
+
+            if (archiveFileTypes.indexOf(normalizedExtension) !== -1) {
+                return { label: 'Archive', iconClass: 'fas fa-file-archive text-warning' };
+            }
+
+            if (textFileTypes.indexOf(normalizedExtension) !== -1) {
+                return { label: 'Text', iconClass: 'fas fa-file-alt text-secondary' };
+            }
+
+            if (codeFileTypes.indexOf(normalizedExtension) !== -1) {
+                return { label: 'Code', iconClass: 'fas fa-file-code text-dark' };
+            }
+
+            return { label: 'File', iconClass: 'fas fa-file text-muted' };
+        }
+
+        function getLibraryCategory(image) {
+            if (!image) {
+                return 'other';
+            }
+
+            if (image.isPdf) {
+                return 'pdf';
+            }
+
+            if (!image.isGenericFile) {
+                return 'other';
+            }
+
+            if (image.fileTypeLabel === 'Archive') {
+                return 'archive';
+            }
+
+            if (image.fileTypeLabel === 'Text') {
+                return 'text';
+            }
+
+            if (image.fileTypeLabel === 'Code') {
+                return 'code';
+            }
+
+            if (image.fileTypeLabel === 'Document' || image.fileTypeLabel === 'Spreadsheet' || image.fileTypeLabel === 'Presentation') {
+                return 'document';
+            }
+
+            return 'other';
+        }
+
+        function isPreviewableTextFile(image) {
+            var extension = getFileExtension(image && (image.name || image.path));
+            return !!(image && image.isGenericFile && (textFileTypes.indexOf(extension) !== -1 || codeFileTypes.indexOf(extension) !== -1));
+        }
+
+        function isLibraryFile(photo) {
+            return !!(photo && !photo.isAlbum && !photo.isPhoto && !photo.isVideo && !photo.isAudio);
+        }
+
+        function getDataFileUrl(filePath) {
+            if (!filePath) {
+                return '';
+            }
+
+            var normalizedPath = filePath.replace(/^\/+/, '');
+            return '/' + normalizedPath.split('/').map(function(segment) {
+                return encodeURIComponent(segment);
+            }).join('/');
+        }
+
         function getImageType(photo) {
-            ext = photo.name.substr(photo.name.lastIndexOf(".")+1).toLowerCase();
+            var ext = getFileExtension(photo.name || photo.path);
+
             if(imageTypes.indexOf(ext) != -1) {
                 photo.isPhoto = true;
             } else if(videoTypes.indexOf(ext) != -1) {
                 photo.isVideo = true;
             } else if(audioTypes.indexOf(ext) != -1) {
                 photo.isAudio = true;
-            } else {
+            } else if (ext === 'pdf') {
                 photo.isPdf = true;
+                photo.fileExtension = 'PDF';
+                photo.fileTypeLabel = 'PDF';
+                photo.fileIconClass = 'fas fa-file-pdf text-danger';
                 photo.isRead = pdfReadTracker.isRead(photo.path);
+            } else {
+                var fileMeta = getGenericFileMetadata(ext);
+                photo.isGenericFile = true;
+                photo.fileExtension = (ext || 'file').toUpperCase();
+                photo.fileTypeLabel = fileMeta.label;
+                photo.fileIconClass = fileMeta.iconClass;
             }
             return photo;
         }
@@ -1028,6 +1146,96 @@ angular.module('photoController', [])
         // PDF Library: returns true when all current photos are PDFs
         $scope.isAllPdf = function() {
             return $scope.photos.length > 0 && $scope.photos.every(function(p) { return p.isPdf; });
+        };
+
+        $scope.isAllLibraryFiles = function() {
+            return $scope.photos.length > 0 && $scope.photos.every(function(photo) {
+                return isLibraryFile(photo);
+            });
+        };
+
+        $scope.isAllGenericFiles = function() {
+            return $scope.photos.length > 0 && $scope.photos.every(function(photo) {
+                return photo && photo.isGenericFile;
+            });
+        };
+
+        $scope.getLibraryTitle = function() {
+            if ($scope.isAllPdf()) {
+                return 'PDF Library';
+            }
+
+            if ($scope.isAllGenericFiles()) {
+                return 'Files Library';
+            }
+
+            return 'Document Library';
+        };
+
+        $scope.getLibraryVisibleCount = function() {
+            return $scope.getLibraryDisplayItems().length;
+        };
+
+        $scope.getLibraryDisplayItems = function() {
+            var items = ($scope.photos || []).slice();
+            if (!$scope.isAllLibraryFiles()) {
+                return items;
+            }
+
+            var activeFilter = ($scope.fileLibrary && $scope.fileLibrary.filter) || 'all';
+            if (activeFilter !== 'all') {
+                items = items.filter(function(image) {
+                    return getLibraryCategory(image) === activeFilter;
+                });
+            }
+
+            var sortBy = ($scope.fileLibrary && $scope.fileLibrary.sortBy) || 'name';
+            var sortDir = (($scope.fileLibrary && $scope.fileLibrary.sortDir) || 'asc') === 'desc' ? -1 : 1;
+
+            items.sort(function(a, b) {
+                var aValue;
+                var bValue;
+
+                if (sortBy === 'type') {
+                    aValue = String(a.fileTypeLabel || '').toLowerCase();
+                    bValue = String(b.fileTypeLabel || '').toLowerCase();
+                } else if (sortBy === 'size') {
+                    aValue = Number(a.fileSize || 0);
+                    bValue = Number(b.fileSize || 0);
+                } else if (sortBy === 'date') {
+                    aValue = String(a.fileDate || '');
+                    bValue = String(b.fileDate || '');
+                } else {
+                    aValue = String($scope.getLibraryItemTitle(a) || '').toLowerCase();
+                    bValue = String($scope.getLibraryItemTitle(b) || '').toLowerCase();
+                }
+
+                if (aValue < bValue) return -1 * sortDir;
+                if (aValue > bValue) return 1 * sortDir;
+                return 0;
+            });
+
+            return items;
+        };
+
+        $scope.toggleLibrarySortDirection = function() {
+            $scope.fileLibrary.sortDir = $scope.fileLibrary.sortDir === 'asc' ? 'desc' : 'asc';
+        };
+
+        $scope.isTextPreviewAvailable = function(image) {
+            return isPreviewableTextFile(image);
+        };
+
+        $scope.getLibraryItemTitle = function(image) {
+            if (!image) {
+                return 'Untitled';
+            }
+
+            if (image.isGenericFile) {
+                return image.name || 'Untitled';
+            }
+
+            return image.tags || (image.name ? image.name.replace(/\.[^.]+$/, '') : 'Untitled');
         };
 
         // Toggle grid / list layout for PDF albums
@@ -1050,6 +1258,76 @@ angular.module('photoController', [])
                 window.location.href = pdfUrl;
             }
             if (!image.isRead) { $scope.togglePdfRead(image); }
+        };
+
+        $scope.openGenericFile = function(image) {
+            if (!image || !image.isGenericFile) { return; }
+
+            var fileUrl = getDataFileUrl(image.path);
+            var openedWindow = window.open(fileUrl, '_blank');
+            if (!openedWindow) {
+                window.location.href = fileUrl;
+            }
+        };
+
+        $scope.downloadGenericFile = function(image) {
+            if (!image || !image.path) { return; }
+
+            var link = document.createElement('a');
+            link.href = getDataFileUrl(image.path);
+            link.download = image.name || '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        $scope.previewGenericFile = function(image) {
+            if (!isPreviewableTextFile(image)) {
+                return;
+            }
+
+            if (image.fileSize && image.fileSize > (1024 * 1024)) {
+                $scope.filePreview.show = true;
+                $scope.filePreview.loading = false;
+                $scope.filePreview.file = image;
+                $scope.filePreview.content = '';
+                $scope.filePreview.error = 'Preview is limited to files up to 1 MB. Use Open or Download for larger files.';
+                return;
+            }
+
+            $scope.filePreview.show = true;
+            $scope.filePreview.loading = true;
+            $scope.filePreview.file = image;
+            $scope.filePreview.content = '';
+            $scope.filePreview.error = '';
+
+            fetch(getDataFileUrl(image.path), { cache: 'no-store' })
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Failed to load file preview.');
+                    }
+                    return response.text();
+                })
+                .then(function(content) {
+                    $scope.$apply(function() {
+                        $scope.filePreview.content = content;
+                        $scope.filePreview.loading = false;
+                    });
+                })
+                .catch(function(error) {
+                    $scope.$apply(function() {
+                        $scope.filePreview.loading = false;
+                        $scope.filePreview.error = error && error.message ? error.message : 'Unable to load file preview.';
+                    });
+                });
+        };
+
+        $scope.closeFilePreview = function() {
+            $scope.filePreview.show = false;
+            $scope.filePreview.loading = false;
+            $scope.filePreview.file = null;
+            $scope.filePreview.content = '';
+            $scope.filePreview.error = '';
         };
 
         function getPdfStreamUrl(path) {
@@ -1320,6 +1598,10 @@ angular.module('photoController', [])
 
             if (image.isPdf) {
                 return getPdfStreamUrl(image.path);
+            }
+
+            if (image.isGenericFile) {
+                return getDataFileUrl(image.path);
             }
 
             return image.path;

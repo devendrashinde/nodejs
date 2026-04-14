@@ -1063,28 +1063,58 @@ app.get('/pdf-stream', (req, res) => {
 
     const fileSize = fileStats.size;
     const range = req.headers.range;
+    const fileName = normalizedRelativePath.split('/').pop() || 'document.pdf';
+
+    const streamFullPdf = () => {
+      res.status(200);
+      res.setHeader('Content-Length', fileSize);
+      return createReadStream(absolutePath).pipe(res);
+    };
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline');
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'public, max-age=3600');
 
     if (!range) {
-        res.setHeader('Content-Length', fileSize);
-        return createReadStream(absolutePath).pipe(res);
+      return streamFullPdf();
     }
 
-    const matches = /bytes=(\d*)-(\d*)/.exec(range);
-    if (!matches) {
-        return res.status(416).setHeader('Content-Range', `bytes */${fileSize}`).end();
+    // Some mobile browsers/proxies may send multipart or malformed ranges.
+    // Fall back to full streaming instead of returning an empty/unreadable response.
+    if (!/^bytes=/i.test(range) || range.includes(',')) {
+      return streamFullPdf();
     }
 
-    const start = matches[1] ? parseInt(matches[1], 10) : 0;
-    const end = matches[2] ? parseInt(matches[2], 10) : fileSize - 1;
+    const byteRange = range.replace(/^bytes=/i, '').trim();
+    const parts = byteRange.split('-');
+
+    if (parts.length !== 2) {
+      return streamFullPdf();
+    }
+
+    const startText = parts[0];
+    const endText = parts[1];
+    let start;
+    let end;
+
+    if (!startText) {
+      const suffixLength = parseInt(endText, 10);
+      if (Number.isNaN(suffixLength) || suffixLength <= 0) {
+        return streamFullPdf();
+      }
+      start = Math.max(fileSize - suffixLength, 0);
+      end = fileSize - 1;
+    } else {
+      start = parseInt(startText, 10);
+      end = endText ? parseInt(endText, 10) : fileSize - 1;
+    }
 
     if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= fileSize) {
         return res.status(416).setHeader('Content-Range', `bytes */${fileSize}`).end();
     }
+
+    end = Math.min(end, fileSize - 1);
 
     const chunkSize = end - start + 1;
     res.status(206);

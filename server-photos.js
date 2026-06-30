@@ -123,6 +123,8 @@ const imageCache = new Map(); // { cacheKey: cacheData } for albums
 const albumMetaCache = new Map(); // { albumPath: { mtime, indexed, hits } }
 const playlistCache = new Map(); // { playlistId: playlistData }
 const playlistMetaCache = new Map(); // { playlistId: { name, hits, lastAccessed } }
+let pdfThumbnailMapCache = null;
+let pdfThumbnailMapCacheMtime = 0;
 const cacheStats = { 
   hits: 0, 
   misses: 0, 
@@ -747,6 +749,7 @@ app.get('/photos', asyncHandler(async (req, res) => {
     let targetDir = dataDir;
     if (!album || album === "Home") {
         album = "Home";
+      targetDir = join(dataDir, "Home");
     } else {
         targetDir = join(dataDir, album);
     }
@@ -795,7 +798,7 @@ app.get('/photos', asyncHandler(async (req, res) => {
         albumMetaCache.set(album, albumMeta);
         
         // Get images from directory
-        const result = getImagesFromDir(targetDir, album, page, false, items);
+        const result = await getImagesFromDir(targetDir, album, page, false, items);
         
         // Add to cache with size tracking
         addToCache(cacheKey, result);
@@ -1207,22 +1210,42 @@ const getResolvedDataPath = (relativePath) => {
 };
 
 const loadPdfThumbnailMap = () => {
+  const mapPath = join(__dirname, PDF_THUMBNAIL_MAP_FILE);
+
   try {
-    const mapPath = join(__dirname, PDF_THUMBNAIL_MAP_FILE);
     if (!existsSync(mapPath)) {
-      return {};
+      pdfThumbnailMapCache = {};
+      pdfThumbnailMapCacheMtime = 0;
+      return pdfThumbnailMapCache;
+    }
+
+    const stat = statSync(mapPath);
+    const currentMtime = stat.mtimeMs;
+    if (pdfThumbnailMapCache && pdfThumbnailMapCacheMtime === currentMtime) {
+      return pdfThumbnailMapCache;
     }
 
     const data = readFileSync(mapPath, 'utf8');
     if (!data || !data.trim()) {
-      return {};
+      pdfThumbnailMapCache = {};
+      pdfThumbnailMapCacheMtime = currentMtime;
+      return pdfThumbnailMapCache;
     }
 
     const parsed = JSON.parse(data);
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    pdfThumbnailMapCache = parsed && typeof parsed === 'object' ? parsed : {};
+    pdfThumbnailMapCacheMtime = currentMtime;
+    return pdfThumbnailMapCache;
   } catch (err) {
     console.warn('Failed to load PDF thumbnail map:', err.message);
-    return {};
+
+    if (pdfThumbnailMapCache) {
+      return pdfThumbnailMapCache;
+    }
+
+    pdfThumbnailMapCache = {};
+    pdfThumbnailMapCacheMtime = 0;
+    return pdfThumbnailMapCache;
   }
 };
 
@@ -1235,6 +1258,14 @@ const savePdfThumbnailMap = (thumbnailMap) => {
   }
 
   writeFileSync(mapPath, JSON.stringify(thumbnailMap, null, 2), 'utf8');
+
+  // Keep in-memory cache hot after write-through to avoid immediate disk reread.
+  pdfThumbnailMapCache = thumbnailMap && typeof thumbnailMap === 'object' ? thumbnailMap : {};
+  try {
+    pdfThumbnailMapCacheMtime = statSync(mapPath).mtimeMs;
+  } catch {
+    pdfThumbnailMapCacheMtime = Date.now();
+  }
 };
 
 const applyPdfThumbnailMapToImages = (images) => {
@@ -1261,9 +1292,9 @@ const applyPdfThumbnailMapToImages = (images) => {
 };
 
 // Get images from directory with pagination
-const getImagesFromDir = (dirPath, album, page, onlyDir, numberOfItems) => {
+const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) => {
     const allImages = [];
-    const files = readdirSync(dirPath);
+  const files = await fs.readdir(dirPath);
   const pdfThumbnailMap = loadPdfThumbnailMap();
     
     let id = 0;
@@ -1279,13 +1310,42 @@ const getImagesFromDir = (dirPath, album, page, onlyDir, numberOfItems) => {
         allImages.push(new ImageDetails(`album${id}`, albumName, album, true, albumName));
     } else {
         allImages.push(new ImageDetails(`album${id}`, album, "", true, album));
+
+      // For Home view, also include top-level album folders so sidebar navigation remains available.
+      if (dirPath !== dataDir) {
+        try {
+          const topLevelEntries = await fs.readdir(dataDir);
+          for (const entry of topLevelEntries) {
+            if (entry.startsWith('.')) {
+              continue;
+            }
+
+            if (entry === 'Home') {
+              continue;
+            }
+
+            const entryPath = join(dataDir, entry);
+            const entryStat = await fs.stat(entryPath);
+            if (entryStat && entryStat.isDirectory()) {
+              id++;
+              allImages.push(new ImageDetails(`album${id}`, entry, entry, true, entry));
+            }
+          }
+        } catch (err) {
+          console.error('Error loading top-level albums for Home view:', err);
+        }
+      }
     }
     
     for (const file of files) {
+      if (file.startsWith('.')) {
+        continue;
+      }
+
         const fileLocation = join(dirPath, file);
         
         try {
-            const stat = statSync(fileLocation);
+          const stat = await fs.stat(fileLocation);
             id++;
             
             if (stat && stat.isDirectory()) {

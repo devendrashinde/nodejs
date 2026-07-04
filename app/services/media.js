@@ -3,7 +3,8 @@
 import { resolve, dirname, extname } from 'path';
 import path from 'path';
 import gm from 'gm';
-import { statSync, writeFile } from 'fs';
+import { statSync } from 'fs';
+import { promises as fs } from 'fs';
 import pkg from 'shelljs';
 import e from 'express';
 import mime from 'mime-types';
@@ -74,7 +75,7 @@ const THUMBNAIL_SIZES = {
 class Media {
     constructor(path, thumbnailDir = './temp-pic/thumbnails') {
         this.src = path;
-        this.thumbnailDir = thumbnailDir;
+        this.thumbnailDir = resolve(thumbnailDir);
     }
 
     getMimeType() {
@@ -101,9 +102,7 @@ class Media {
     async thumb(request, response) {
         const image = this.src;
         const mimeType = this.getMimeType();
-        
-        console.log(`Generating thumbnail for: ${image}, type: ${mimeType}`);
-        
+
         if (!this.isValidMedia(mimeType) || !exists(image)) {
             return response.status(404).json({ error: 'Media file not found or invalid type' });
         }
@@ -114,7 +113,7 @@ class Media {
         const ext = getFileExtension(image) || 'jpg';
         const thumbFilename = `${hash}.${ext}`;
         const thumb = path.join(this.thumbnailDir, thumbFilename);
-        const thumbPath = resolve(thumb);
+        const thumbPath = thumb;
         
         response.type(mimeType);
         
@@ -140,29 +139,26 @@ class Media {
                 : 80;
 
             if (!exists(thumb)) {
+                console.log(`Generating thumbnail for: ${image}, type: image/*`);
                 mkdir('-p', dirname(thumbPath));
-                
-                gm(image)
-                    .resize(width, height)
-                    .autoOrient()
-                    .quality(quality)
-                    .noProfile() // Remove EXIF data from thumbnails
-                    .toBuffer((err, buffer) => {
-                        if (err) {
-                            console.error('Error generating image thumbnail:', err);
-                            return response.status(422).json({ error: 'Failed to generate thumbnail' });
-                        }
-                        
-                        // Save thumbnail to disk
-                        writeFile(thumb, buffer, (writeErr) => {
-                            if (writeErr) {
-                                console.error('Error saving thumbnail:', writeErr);
+
+                const buffer = await new Promise((resolveBuffer, rejectBuffer) => {
+                    gm(image)
+                        .resize(width, height)
+                        .autoOrient()
+                        .quality(quality)
+                        .noProfile() // Remove EXIF data from thumbnails
+                        .toBuffer((err, outputBuffer) => {
+                            if (err) {
+                                return rejectBuffer(err);
                             }
+                            resolveBuffer(outputBuffer);
                         });
-                        
-                        // Stream to response
-                        gm(buffer).stream().pipe(response);
-                    });
+                });
+
+                await fs.writeFile(thumb, buffer);
+                response.set('Cache-Control', 'public, max-age=86400'); // 24 hours
+                response.send(buffer);
             } else {
                 // Set cache headers for existing thumbnails
                 response.set('Cache-Control', 'public, max-age=86400'); // 24 hours

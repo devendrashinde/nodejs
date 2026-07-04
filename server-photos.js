@@ -63,6 +63,7 @@ const __dirname = path.dirname(__filename); // get the name of the directory
 
 const dataDir = join(__dirname, "data");
 const BASE_DIR = 'data/';
+const THUMBNAIL_DIR_ABS = path.isAbsolute(THUMBNAIL_DIR) ? THUMBNAIL_DIR : join(__dirname, THUMBNAIL_DIR);
 
 app.set('view engine', 'pug');
 app.set('views', __dirname);
@@ -720,8 +721,7 @@ app.delete('/api/pdf-thumbnails', removePdfThumbnailHandler);
 
 app.get('/thumb?:id', asyncHandler(async (req, res) => {
     if (req.query.id) {
-        console.log(`Generating thumbnail for: ${req.query.id}`);
-        const image = new media(req.query.id, THUMBNAIL_DIR);
+    const image = new media(req.query.id, THUMBNAIL_DIR_ABS);
         image.thumb(req, res);
     } else {
         res.status(403).json({ error: 'Missing image ID parameter.' });

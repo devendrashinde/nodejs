@@ -1228,6 +1228,12 @@ main {
   display: inline-block;
 }
 
+.album-tag-picker {
+  max-height: 150px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 /* =========== KEYBOARD SHORTCUTS HELP =========== */
 .fancybox-keyboard-help {
   position: absolute;

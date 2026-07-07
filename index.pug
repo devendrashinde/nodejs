@@ -473,7 +473,7 @@ html(ng-app="app")
                   ng-if="!image.isAudio && !image.isGenericFile"
                   ng-href="{{getMediaHref(image)}}"
                   data-fancybox="gallery"
-                  data-caption="{{image.tags}}"
+                  ng-attr-data-caption="{{image.tags || image.tag || getLibraryItemTitle(image)}}"
                   ng-attr-data-type="{{image.isVideo ? 'video' : (image.isPdf ? 'iframe' : 'image')}}"
                   ng-attr-data-width="{{image.isVideo ? '640' : undefined}}"
                   ng-attr-data-height="{{image.isVideo ? '360' : undefined}}"
@@ -481,7 +481,7 @@ html(ng-app="app")
                   figure
                     img.card-img-top.img-fluid(
                       ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? (image.customThumbnail || 'pdf.png') : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
-                      alt="{{image.tags}}"
+                      alt="{{image.tags || image.tag || getLibraryItemTitle(image)}}"
                       loading="lazy"
                       style="object-fit: contain; width: 100%; height: auto;"
                     )
@@ -1288,8 +1288,30 @@ html(ng-app="app")
                 h6.text-muted.mb-2
                   i.fas.fa-th.me-2
                   | Current Tags
-                div(ng-repeat="tag in selectedPhoto.tags.split(',')" ng-if="selectedPhoto.tags")
-                  span.badge.bg-secondary.me-1 {{tag.trim()}}
+                small.text-muted.d-block(ng-if="!currentTagsExpanded")
+                  | {{getCurrentTagsSummary()}}
+                div.d-flex.flex-wrap.gap-1(ng-if="currentTagsExpanded")
+                  span.badge.bg-secondary(ng-repeat="tag in getSelectedPhotoTags() track by $index") {{tag}}
+                a.text-decoration-none.small(href="javascript:void(0)" ng-if="hasHiddenCurrentTags()" ng-click="toggleCurrentTagsExpanded()")
+                  | {{currentTagsExpanded ? 'Show less' : 'Show all'}}
+              div.mb-3(ng-if="getDistinctAlbumTags().length")
+                h6.text-muted.mb-2
+                  i.fas.fa-tags.me-2
+                  | Album Tag Library
+                input.form-control.form-control-sm.mb-2(
+                  type="text"
+                  ng-model="tagSuggestionFilter"
+                  placeholder="Filter album tags..."
+                )
+                div.d-flex.flex-wrap.gap-2.album-tag-picker
+                  a.tag-badge.text-decoration-none(
+                    href="javascript:void(0)"
+                    ng-repeat="tag in getDistinctAlbumTags(tagSuggestionFilter) track by tag"
+                    ng-click="onTagSelected(tag)"
+                    title="Add this tag to the current photo"
+                  ) {{tag}}
+                small.text-muted.d-block.mt-2
+                  | Click a tag to append it. Showing distinct tags from currently displayed photos in this album.
               div.mb-3
                 label.form-label Tags
                 textarea.form-control(

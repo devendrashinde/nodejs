@@ -32,11 +32,11 @@ html
           div.container
             div(class="container pp-section")                
               div(class="h3 font-weight-normal") Digital Photography Studio
-              img(class="img-fluid mt-4" src=photo.getPath() alt=photo.tag)
+              img(class="img-fluid mt-4" src=photo.getPath() alt=photo.getTag())
               div(class="row mt-5")
                 div.col-md-3
                   div.h5 Tags
-                  a(class="mr-1 badge badge-primary" href="#") #{photo.tag}
+                  a(class="mr-1 badge badge-primary" href="#") #{photo.getTag()}
                   div(class="h5 pt-4") 
                    p #{photo.getAlbumName()}
                    p photo year goes here               

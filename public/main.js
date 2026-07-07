@@ -320,7 +320,7 @@ function toggleInfoPanel(instance, current) {
   // Create info panel
   var url = current.src;
   var filename = url.substring(url.lastIndexOf('/') + 1);
-  var caption = current.opts.caption || '';
+  var caption = getCurrentCaption(current);
   
   var infoHtml = '<div class="fancybox-info-panel">' +
     '<div class="info-header">' +
@@ -352,6 +352,30 @@ function toggleInfoPanel(instance, current) {
   $('.info-close').on('click', function() {
     $('.fancybox-info-panel').slideUp(200);
   });
+}
+
+function getCurrentCaption(current) {
+  if (!current || !current.opts) {
+    return '';
+  }
+
+  var caption = current.opts.caption || '';
+  if (caption) {
+    return caption;
+  }
+
+  if (current.opts.$orig && current.opts.$orig.length) {
+    caption = current.opts.$orig.attr('data-caption') || current.opts.$orig.attr('title') || '';
+    if (caption) {
+      return caption;
+    }
+  }
+
+  if (current.opts.$trigger && current.opts.$trigger.length) {
+    return current.opts.$trigger.attr('data-caption') || current.opts.$trigger.attr('title') || '';
+  }
+
+  return '';
 }
 
 // Format tags as badges

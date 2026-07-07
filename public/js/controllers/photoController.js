@@ -1238,6 +1238,26 @@ angular.module('photoController', [])
             return image.tags || (image.name ? image.name.replace(/\.[^.]+$/, '') : 'Untitled');
         };
 
+        $scope.getPhotoTags = function(image) {
+            if (!image) {
+                return [];
+            }
+
+            var tagSource = image.tags || image.tag || '';
+            if (!tagSource) {
+                return [];
+            }
+
+            return String(tagSource)
+                .split(/[\s,]+/)
+                .map(function(tag) {
+                    return tag.trim();
+                })
+                .filter(function(tag) {
+                    return tag.length > 0;
+                });
+        };
+
         // Toggle grid / list layout for PDF albums
         $scope.togglePdfView = function() {
             $scope.pdfLibraryView = $scope.pdfLibraryView === 'grid' ? 'list' : 'grid';
@@ -1625,16 +1645,44 @@ angular.module('photoController', [])
         $scope.openModal = function(id){
             ModalService.Open(id);
         };
+
+        $scope.tagSuggestionFilter = '';
 		
-        $scope.getMatchingTags = function(tag) {
-			var matchedTags = [];
-			for (tag of $scope.tags) {
-				if(tag.tags.match('/' + tag + '.*/')){
-					matchedTags.push(tag.tags);					
-				}
-			}
-            return matchedTags;
-        };		
+        $scope.getDistinctAlbumTags = function(filterText) {
+            var matchedTags = [];
+            var seenTags = {};
+            var searchText = (filterText || '').trim().toLowerCase();
+
+            ($scope.photos || []).forEach(function(photo) {
+                if (!photo) {
+                    return;
+                }
+
+                var tagValues = $scope.splitTags(photo.tags || photo.tag);
+                tagValues.forEach(function(tagValue) {
+                    var normalizedTag = tagValue.toLowerCase();
+                    if (!normalizedTag) {
+                        return;
+                    }
+                    if (searchText && normalizedTag.indexOf(searchText) === -1) {
+                        return;
+                    }
+                    if (seenTags[normalizedTag]) {
+                        return;
+                    }
+
+                    seenTags[normalizedTag] = true;
+                    matchedTags.push(tagValue);
+                });
+            });
+
+            return matchedTags.sort();
+        };
+
+        // Legacy bridge used by public/main.js
+        $scope.getMatchingTags = function(filterText) {
+            return $scope.getDistinctAlbumTags(filterText);
+        };
 
         $scope.closeModal = function(id) {
             ModalService.Close(id);
@@ -1643,16 +1691,71 @@ angular.module('photoController', [])
         $scope.editImageTag = function(photo) {
             $scope.selectedPhoto = angular.copy(photo);
             $scope.selectedOption = null; // Reset dropdown
+            $scope.tagSuggestionFilter = '';
+            $scope.currentTagsExpanded = false;
             var modalEl = document.getElementById('editTagModal');
             var modal = new bootstrap.Modal(modalEl);
             modal.show();
         };
 
+        $scope.splitTags = function(tagString) {
+			if (!tagString) {
+				return [];
+			}
+
+			return String(tagString)
+				.split(/[\s,]+/)
+				.map(function(tag) {
+					return tag.trim();
+				})
+				.filter(function(tag) {
+					return tag.length > 0;
+				});
+		};
+
+		$scope.getSelectedPhotoTags = function() {
+			return $scope.splitTags($scope.selectedPhoto && $scope.selectedPhoto.tags);
+		};
+
+        $scope.getCurrentTagsSummary = function() {
+            var tags = $scope.getSelectedPhotoTags();
+            if (!tags.length) {
+                return '';
+            }
+
+            var previewCount = Math.min(tags.length, 4);
+            var preview = tags.slice(0, previewCount).join(', ');
+            if (tags.length > previewCount) {
+                preview += ' +' + (tags.length - previewCount) + ' more';
+            }
+
+            return preview;
+        };
+
+        $scope.hasHiddenCurrentTags = function() {
+            return $scope.getSelectedPhotoTags().length > 4;
+        };
+
+        $scope.toggleCurrentTagsExpanded = function() {
+            $scope.currentTagsExpanded = !$scope.currentTagsExpanded;
+        };
+
         // Handle tag selection from dropdown
         $scope.onTagSelected = function(selectedTag) {
             if (selectedTag) {
-                // Replace or append the selected tag to the textarea
-                $scope.selectedPhoto.tags = selectedTag;
+                var currentTags = $scope.getSelectedPhotoTags();
+                var normalizedSelectedTag = String(selectedTag).trim();
+
+                if (!normalizedSelectedTag) {
+                    return;
+                }
+
+                if (currentTags.map(function(tag) { return tag.toLowerCase(); }).indexOf(normalizedSelectedTag.toLowerCase()) !== -1) {
+                    return;
+                }
+
+                currentTags.push(normalizedSelectedTag);
+                $scope.selectedPhoto.tags = currentTags.join(', ');
             }
         };
 

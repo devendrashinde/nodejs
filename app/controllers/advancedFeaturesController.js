@@ -17,6 +17,8 @@ import SocialFeaturesService from '../services/socialFeaturesService.js';
 import ImageEditingService from '../services/imageEditingService.js';
 import VideoEnhancementService from '../services/videoEnhancementService.js';
 import AutoTaggingService from '../services/autoTaggingService.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import Photo from '../models/photoModel.js';
 import { query } from '../models/db.js';
 
@@ -60,17 +62,118 @@ export const getPhotoExif = async (req, res) => {
  */
 export const advancedSearch = async (req, res) => {
     try {
+        const normalizePath = (value) => {
+            const normalized = String(value || '').replaceAll('\\', '/');
+            const compacted = normalized.split('/').filter(Boolean).join('/');
+            return compacted;
+        };
+
+        const buildSearchMediaPath = (photo) => {
+            const name = normalizePath(photo.name);
+            const basePath = normalizePath(photo.path);
+            const album = normalizePath(photo.album);
+
+            if (!name) {
+                return basePath;
+            }
+
+            if (basePath.endsWith(`/${name}`) || basePath === name) {
+                return basePath;
+            }
+
+            // "Home" represents the root data folder and should not become a real path segment.
+            if (!album || album.toLowerCase() === 'home') {
+                return [basePath, name].filter(Boolean).join('/');
+            }
+
+            // If base path already contains the album folder (e.g. data/pictures), don't duplicate it.
+            if (basePath.endsWith(`/${album}`) || basePath === album) {
+                return [basePath, name].filter(Boolean).join('/');
+            }
+
+            return [basePath, album, name].filter(Boolean).join('/');
+        };
+
+        const parseSort = (sortValue = 'name-asc') => {
+            const [rawKey, rawOrder] = String(sortValue).toLowerCase().split('-');
+            const keyMap = {
+                name: 'name',
+                date: 'date',
+                size: 'size',
+                album: 'album'
+            };
+
+            let sortOrder = 'asc';
+            if (rawKey === 'date') {
+                sortOrder = rawOrder === 'newest' ? 'desc' : 'asc';
+            } else if (rawKey === 'size') {
+                sortOrder = rawOrder === 'largest' ? 'desc' : 'asc';
+            } else if (rawOrder === 'desc') {
+                sortOrder = 'desc';
+            }
+
+            return {
+                sortBy: keyMap[rawKey] || 'name',
+                sortOrder
+            };
+        };
+
+        const getFileMetadata = async (relativePath) => {
+            if (!relativePath) {
+                return { fileSize: 0, dateModifiedIso: null };
+            }
+
+            try {
+                const absolutePath = path.resolve(process.cwd(), relativePath);
+                const fileInfo = await fs.stat(absolutePath);
+                return {
+                    fileSize: fileInfo.size || 0,
+                    dateModifiedIso: fileInfo.mtime ? fileInfo.mtime.toISOString() : null
+                };
+            } catch (error_) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.debug(`Search metadata fallback for ${relativePath}:`, error_.message);
+                }
+                return { fileSize: 0, dateModifiedIso: null };
+            }
+        };
+
+        const sortConfig = parseSort(req.query.sort || 'name-asc');
+        const rawFileTypes = req.query.fileTypes;
+        let fileTypes = [];
+        if (rawFileTypes) {
+            fileTypes = Array.isArray(rawFileTypes) ? rawFileTypes : [rawFileTypes];
+        }
+
+        const rawTags = req.query.tags;
+        const parsedTags = Array.isArray(rawTags)
+            ? rawTags.map((tag) => String(tag || '').trim()).filter(Boolean)
+            : String(rawTags || '')
+                .split(',')
+                .map((tag) => tag.trim())
+                .filter(Boolean);
+
         const criteria = {
             query: req.query.query || req.query.q,
-            tags: req.query.tags ? req.query.tags.split(',').map(t => t.trim()) : [],
+            tags: parsedTags,
             tagMatchMode: req.query.tagMode === 'OR' ? 'any' : 'all',
             dateFrom: req.query['dateRange.from'],
             dateTo: req.query['dateRange.to'],
-            fileTypes: req.query.fileTypes ? (Array.isArray(req.query.fileTypes) ? req.query.fileTypes : [req.query.fileTypes]) : [],
+            fileTypes,
             album: req.query.album,
             size: req.query.size,
-            sort: req.query.sort || 'name-asc'
+            sort: req.query.sort || 'name-asc',
+            sortBy: sortConfig.sortBy,
+            sortOrder: sortConfig.sortOrder
         };
+
+        const requiresFileMetadata = Boolean(
+            criteria.dateFrom ||
+            criteria.dateTo ||
+            criteria.size ||
+            criteria.sortBy === 'date' ||
+            criteria.sortBy === 'size'
+        );
 
         // Fetch all photos from database
         const photos = await query("SELECT id, name, tags, album, path FROM photos");
@@ -90,21 +193,21 @@ export const advancedSearch = async (req, res) => {
         }
 
         // Transform photos to include necessary fields for search
-        const transformedPhotos = photos.map(photo => {
+        const transformPhoto = async (photo) => {
             // Handle tags - could be string, array, null, or undefined
             let tagsArray = [];
             if (photo.tags) {
                 if (typeof photo.tags === 'string') {
-                    tagsArray = photo.tags.split(/[\s,]+/).filter(t => t && t.trim());
+                    tagsArray = photo.tags.split(/[\s,]+/).map((t) => t.trim()).filter(Boolean);
                 } else if (Array.isArray(photo.tags)) {
                     tagsArray = photo.tags;
                 }
             }
             
-            // Construct full file path: path/album/name
-            const fullPath = photo.path && photo.album && photo.name
-                ? `${photo.path}/${photo.album}/${photo.name}`
-                : photo.path || photo.name;
+            const fullPath = buildSearchMediaPath(photo);
+            const metadata = requiresFileMetadata
+                ? await getFileMetadata(fullPath)
+                : { fileSize: 0, dateModifiedIso: null };
             
             return {
                 id: photo.id,
@@ -114,9 +217,32 @@ export const advancedSearch = async (req, res) => {
                 path: fullPath,
                 url: fullPath,
                 thumbnail: `/thumbs?id=${encodeURIComponent(fullPath)}&w=300&h=200`,
-                dateModified: new Date() // You might want to add this field to DB
+                createdAt: metadata.dateModifiedIso,
+                dateModified: metadata.dateModifiedIso,
+                fileSize: metadata.fileSize
             };
-        });
+        };
+
+        const transformedPhotos = requiresFileMetadata
+            ? await Promise.all(photos.map((photo) => transformPhoto(photo)))
+            : photos.map((photo) => ({
+                id: photo.id,
+                name: photo.name,
+                tags: photo.tags
+                    ? (typeof photo.tags === 'string'
+                        ? photo.tags.split(/[\s,]+/).map((t) => t.trim()).filter(Boolean)
+                        : Array.isArray(photo.tags)
+                            ? photo.tags
+                            : [])
+                    : [],
+                album: photo.album || 'Uncategorized',
+                path: buildSearchMediaPath(photo),
+                url: buildSearchMediaPath(photo),
+                thumbnail: `/thumbs?id=${encodeURIComponent(buildSearchMediaPath(photo))}&w=300&h=200`,
+                createdAt: null,
+                dateModified: null,
+                fileSize: 0
+            }));
 
         // Perform search
         const results = AdvancedSearchService.search(transformedPhotos, criteria);
@@ -145,10 +271,41 @@ export const advancedSearch = async (req, res) => {
 export const getSearchSuggestions = async (req, res) => {
     try {
         const { prefix = '', field = 'tags' } = req.query;
+        const photos = await query("SELECT name, tags, album FROM photos");
+        const normalizedPrefix = String(prefix || '').trim().toLowerCase();
 
-        // Mock data - in real implementation would fetch from database
-        const mockPhotos = [];
-        const suggestions = AdvancedSearchService.getSuggestions(mockPhotos, prefix, field);
+        if (!normalizedPrefix) {
+            return res.json({ suggestions: [] });
+        }
+
+        let suggestions = [];
+
+        if (field === 'all') {
+            const suggestionSet = new Set();
+
+            photos.forEach((photo) => {
+                const names = [photo?.name || '', photo?.album || ''];
+                names.forEach((entry) => {
+                    if (entry?.toLowerCase().startsWith(normalizedPrefix)) {
+                        suggestionSet.add(entry);
+                    }
+                });
+
+                String(photo?.tags || '')
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .filter(Boolean)
+                    .forEach((tag) => {
+                        if (tag.toLowerCase().startsWith(normalizedPrefix)) {
+                            suggestionSet.add(tag);
+                        }
+                    });
+            });
+
+            suggestions = Array.from(suggestionSet).sort((a, b) => a.localeCompare(b)).slice(0, 20);
+        } else {
+            suggestions = AdvancedSearchService.getSuggestions(photos, prefix, field).slice(0, 20);
+        }
 
         res.json({ suggestions });
     } catch (err) {

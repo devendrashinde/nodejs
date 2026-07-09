@@ -346,8 +346,6 @@ details[open] {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 }
-  gap: 15px;
-}
 
 .result-item {
   background: white;
@@ -1926,116 +1924,6 @@ details[open] {
 
   .pdf-thumbnail-preview-actions button {
     width: 100%;
-  }
-}
-    border-top: 1px solid #dee2e6;
-    flex-shrink: 0;
-    z-index: 10;
-  }
-
-  .search-footer .btn {
-    width: 100%;
-    padding: 12px;
-    font-size: 14px;
-    font-weight: 600;
-  }
-
-  .results-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 8px;
-  }
-
-  .result-thumbnail {
-    height: 100px;
-  }
-
-  .result-info {
-    padding: 6px;
-  }
-
-  .result-info h4 {
-    font-size: 11px;
-    margin-bottom: 3px;
-  }
-
-  .result-meta {
-    font-size: 10px;
-  }
-
-  .result-actions {
-    flex-direction: column;
-    gap: 3px;
-  }
-
-  .btn-view,
-  .btn-exif {
-    padding: 4px;
-    font-size: 10px;
-  }
-
-  .results-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .activity-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .exif-table {
-    margin: 0 10px 15px 10px;
-  }
-
-  .modal-header h2 {
-    font-size: 1.2rem;
-  }
-
-  .bulk-toolbar {
-    padding: 6px 8px;
-    font-size: 11px;
-  }
-
-  .bulk-toolbar-header {
-    gap: 6px;
-  }
-
-  .bulk-info label {
-    gap: 6px;
-    font-size: 12px;
-  }
-
-  .bulk-info input[type='checkbox'] {
-    width: 14px;
-    height: 14px;
-  }
-
-  .bulk-actions {
-    gap: 4px;
-    padding-top: 6px;
-  }
-
-  .action-group {
-    padding: 4px 6px;
-    gap: 3px;
-  }
-
-  .action-input {
-    min-width: 100px;
-    padding: 3px 6px;
-    font-size: 11px;
-  }
-
-  .btn.btn-small {
-    padding: 3px 6px;
-    font-size: 11px;
-  }
-
-  .btn-rating {
-    padding: 2px 4px;
-    font-size: 11px;
-  }
-
-  .rating-selector {
-    gap: 1px;
   }
 }
 /* ===== RECENTLY VIEWED STYLES ===== */

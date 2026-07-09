@@ -163,7 +163,13 @@ class AdvancedSearch {
       const response = await fetch(
         `/api/search/suggestions?prefix=${encodeURIComponent(query)}&field=all`
       );
-      const suggestions = await response.json();
+      const payload = await response.json();
+      let suggestions = [];
+      if (Array.isArray(payload)) {
+        suggestions = payload;
+      } else if (Array.isArray(payload?.suggestions)) {
+        suggestions = payload.suggestions;
+      }
 
       const suggestionsList = document.getElementById('suggestions-list');
       suggestionsList.innerHTML = '';
@@ -300,7 +306,7 @@ class AdvancedSearch {
     document.getElementById('filterSize').value = '';
     document.getElementById('filterSort').value = 'name-asc';
     document.querySelectorAll('input[name="fileType"]').forEach((el) => {
-      el.checked = el.value === 'jpg';
+      el.checked = el.value === 'photos';
     });
     document.getElementById('results-container').innerHTML = '';
     document.getElementById('search-stats').style.display = 'none';

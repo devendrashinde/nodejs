@@ -10,8 +10,8 @@ import ImageDetails from "./ImageDetails.js";
 import { fileURLToPath } from 'url';
 import { createPhoto, getPhotos, getTags, getPhoto, updatePhotoTag, removePhoto, getAlbumTags, createPhotoAlbum, getPhotoAlbum, getPhotoAlbums, updateAlbumTag, removeAlbum, getAlbumsByTag } from './app/controllers/photoController.js';
 import { createPlaylist, getPlaylists, getPlaylist, getPlaylistsByTag, updatePlaylist, updatePlaylistTag, addPlaylistItems, getPlaylistItems, removePlaylistItem, removePlaylist, getPlaylistTags } from './app/controllers/playlistController.js';
+import { getDbStatus } from './app/models/db.js';
 import media from './app/services/media.js';
-import advancedFeaturesRoutes from './app/routes/advancedFeaturesRoutes.js';
 import pkg from 'body-parser';
 import dotenv from 'dotenv';
 import logger from './app/config/logger.js';
@@ -64,6 +64,11 @@ const __dirname = path.dirname(__filename); // get the name of the directory
 const dataDir = join(__dirname, "data");
 const BASE_DIR = 'data/';
 const THUMBNAIL_DIR_ABS = path.isAbsolute(THUMBNAIL_DIR) ? THUMBNAIL_DIR : join(__dirname, THUMBNAIL_DIR);
+let advancedFeaturesRoutesPromise = null;
+const VERBOSE_REQUEST_LOGS = process.env.VERBOSE_REQUEST_LOGS === 'true';
+const CACHE_SAVE_INTERVAL_MS = Number.parseInt(process.env.CACHE_SAVE_INTERVAL_MS || '', 10) || (5 * 60 * 1000);
+const CACHE_STATS_INTERVAL_MS = Number.parseInt(process.env.CACHE_STATS_INTERVAL_MS || '', 10) || (10 * 60 * 1000);
+const ALBUM_SCAN_INTERVAL_MS = Number.parseInt(process.env.ALBUM_SCAN_INTERVAL_MS || '', 10) || (15 * 60 * 1000);
 
 app.set('view engine', 'pug');
 app.set('views', __dirname);
@@ -92,12 +97,68 @@ const normalizeAlbumRequestPath = (album) => {
 
   return normalized;
 };
+
+const ADVANCED_FEATURE_API_PATTERNS = [
+  /^\/search(?:\/|$)/,
+  /^\/bulk(?:\/|$)/,
+  /^\/favorites(?:\/|$)/,
+  /^\/filters(?:\/|$)/,
+  /^\/videos(?:\/|$)/,
+  /^\/albums\/share(?:\/|$)/,
+  /^\/albums\/[^/]+\/public(?:\/|$)/,
+  /^\/albums\/[^/]+\/comments(?:\/|$)/,
+  /^\/photos\/autotag(?:\/|$)/,
+  /^\/photos\/[^/]+\/(?:exif|comments|ratings|favorite|share|activity|edit|rotate|flip|crop|filter|adjust)(?:\/|$)/
+];
+
+const isAdvancedFeatureApiPath = (requestPath) => ADVANCED_FEATURE_API_PATTERNS.some((pattern) => pattern.test(requestPath || ''));
+
+const loadAdvancedFeaturesRoutes = async () => {
+  if (!advancedFeaturesRoutesPromise) {
+    advancedFeaturesRoutesPromise = import('./app/routes/advancedFeaturesRoutes.js')
+      .then((module) => module.default);
+  }
+
+  return advancedFeaturesRoutesPromise;
+};
+
+const getElapsedMilliseconds = (startedAt) => Number(process.hrtime.bigint() - startedAt) / 1e6;
+
+const applyResponseTiming = (res, metricName, startedAt) => {
+  const durationMs = getElapsedMilliseconds(startedAt);
+  const roundedDuration = durationMs.toFixed(1);
+  const existingTiming = res.getHeader('Server-Timing');
+  const nextTiming = `${metricName};dur=${roundedDuration}`;
+
+  res.setHeader('X-Response-Time-ms', roundedDuration);
+  res.setHeader('Server-Timing', existingTiming ? `${existingTiming}, ${nextTiming}` : nextTiming);
+
+  if (VERBOSE_REQUEST_LOGS) {
+    console.log(`⏱ ${metricName} ${roundedDuration}ms`);
+  }
+};
+
+const startIntervalIfEnabled = (callback, intervalMs) => {
+  if (intervalMs > 0) {
+    return setInterval(callback, intervalMs);
+  }
+
+  return null;
+};
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end(); // No Content response
 });
 
-// Mount API routes BEFORE static file serving to prevent conflicts
-app.use('/api', advancedFeaturesRoutes);
+// Lazy-load advanced feature routes so the core gallery path doesn't pay startup cost for ML and EXIF modules.
+app.use('/api', (req, res, next) => {
+  if (!isAdvancedFeatureApiPath(req.path)) {
+    return next();
+  }
+
+  Promise.resolve(loadAdvancedFeaturesRoutes())
+    .then((advancedFeaturesRoutes) => advancedFeaturesRoutes(req, res, next))
+    .catch(next);
+});
 
 // Mount image editing routes if available (optional for backward compatibility)
 (async () => {
@@ -416,19 +477,19 @@ const scanForNewAlbums = async () => {
 /**
  * Save cache every 5 minutes
  */
-setInterval(savePersistentCache, 5 * 60 * 1000);
+startIntervalIfEnabled(savePersistentCache, CACHE_SAVE_INTERVAL_MS);
 
 /**
  * Log cache statistics every 10 minutes
  */
-setInterval(() => {
+startIntervalIfEnabled(() => {
   console.log(`📊 Cache Stats - Size: ${imageCache.size} entries (${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB), Hits: ${cacheStats.hits}, Misses: ${cacheStats.misses}, Hit Rate: ${((cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100) || 0).toFixed(1)}%`);
-}, 10 * 60 * 1000);
+}, CACHE_STATS_INTERVAL_MS);
 
 /**
  * Scan for new albums every 15 minutes (lightweight directory scan)
  */
-setInterval(scanForNewAlbums, 15 * 60 * 1000);
+startIntervalIfEnabled(scanForNewAlbums, ALBUM_SCAN_INTERVAL_MS);
 
 // Validation helpers
 const isValidFileType = (filename) => {
@@ -719,14 +780,17 @@ app.post('/api/pdf-thumbnails/remove', removePdfThumbnailHandler);
 app.delete('/api/pdf-thumbnails', removePdfThumbnailHandler);
 
 
-app.get('/thumb?:id', asyncHandler(async (req, res) => {
-    if (req.query.id) {
+const thumbnailHandler = asyncHandler(async (req, res) => {
+  if (req.query.id) {
     const image = new media(req.query.id, THUMBNAIL_DIR_ABS);
-        image.thumb(req, res);
-    } else {
-        res.status(403).json({ error: 'Missing image ID parameter.' });
-    }
-}));
+    image.thumb(req, res);
+  } else {
+    res.status(403).json({ error: 'Missing image ID parameter.' });
+  }
+});
+
+app.get('/thumb?:id', thumbnailHandler);
+app.get('/thumbs?:id', thumbnailHandler);
 
 // Root path - Main gallery interface
 app.get('/', (req, res) => {
@@ -739,6 +803,7 @@ app.get('/get-images', (req, res) => {
 });
 
 app.get('/photos', asyncHandler(async (req, res) => {
+  const requestStartedAt = process.hrtime.bigint();
   let album = normalizeAlbumRequestPath(req.query.id);
     
     // Validate album name
@@ -772,11 +837,14 @@ app.get('/photos', asyncHandler(async (req, res) => {
         // If cached and mtime matches, return cached result
         if (albumMeta.mtime === currentMtime && imageCache.has(cacheKey)) {
             cacheStats.hits++;
-            console.log(`✓ Cache HIT (mtime match) for album "${album}" page ${page} items ${items} [${albumMeta.hits} hits]`);
+            if (VERBOSE_REQUEST_LOGS) {
+              console.log(`✓ Cache HIT (mtime match) for album "${album}" page ${page} items ${items} [${albumMeta.hits} hits]`);
+            }
             albumMetaCache.set(album, albumMeta);
             
             const result = imageCache.get(cacheKey);
             applyPdfThumbnailMapToImages(result.images);
+          applyResponseTiming(res, 'photos', requestStartedAt);
             return res.json({
                 totalPhotos: result.totalPhotos,
                 data: result.images,
@@ -787,9 +855,13 @@ app.get('/photos', asyncHandler(async (req, res) => {
         
         // Directory changed or first access - read from disk
         if (albumMeta.mtime !== currentMtime) {
+          if (VERBOSE_REQUEST_LOGS) {
             console.log(`✗ Cache MISS (mtime changed) for album "${album}" - was ${albumMeta.mtime}, now ${currentMtime}`);
+          }
         } else {
+          if (VERBOSE_REQUEST_LOGS) {
             console.log(`✗ Cache MISS (page not cached) for album "${album}" page ${page} items ${items}`);
+          }
         }
         
         cacheStats.misses++;
@@ -805,6 +877,7 @@ app.get('/photos', asyncHandler(async (req, res) => {
         
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Cache-Control', 'public, max-age=300'); // Browser cache 5 minutes
+        applyResponseTiming(res, 'photos', requestStartedAt);
         
         res.json({
             totalPhotos: result.totalPhotos,
@@ -941,6 +1014,39 @@ app.get('/api/cache/stats', (req, res) => {
         topPlaylists
     });
 });
+
+    app.get('/api/perf', (req, res) => {
+      const totalHitRate = ((cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100) || 0).toFixed(1);
+      const dbStatus = getDbStatus();
+
+      res.json({
+        server: {
+          pid: process.pid,
+          uptimeSeconds: Math.round(process.uptime()),
+          nodeEnv: process.env.NODE_ENV || 'development'
+        },
+        intervals: {
+          cacheSaveMs: CACHE_SAVE_INTERVAL_MS,
+          cacheStatsMs: CACHE_STATS_INTERVAL_MS,
+          albumScanMs: ALBUM_SCAN_INTERVAL_MS
+        },
+        cache: {
+          entries: imageCache.size,
+          playlistEntries: playlistCache.size,
+          totalSizeMB: (cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2),
+          hitRatePercent: totalHitRate,
+          hits: cacheStats.hits,
+          misses: cacheStats.misses,
+          albumsTracked: albumMetaCache.size,
+          playlistsTracked: playlistMetaCache.size
+        },
+        database: dbStatus,
+        timing: {
+          responseHeadersEnabled: true,
+          verboseRequestLogs: VERBOSE_REQUEST_LOGS
+        }
+      });
+    });
 
 /**
  * Trigger manual album scan
@@ -1193,6 +1299,39 @@ const getTagFromFileName = (file) => {
     return tag;
 };
 
+const getImageDetailsForPageFile = async ({
+  dirPath,
+  album,
+  root,
+  albumPathPrefix,
+  fileName,
+  id,
+  pdfThumbnailMap
+}) => {
+  const fileLocation = join(dirPath, fileName);
+  const stat = await fs.stat(fileLocation);
+  const filePath = BASE_DIR + (albumPathPrefix ? `${albumPathPrefix}/` : '') + fileName;
+  const imageDetail = new ImageDetails(
+    `photo${id}`,
+    fileName,
+    filePath,
+    false,
+    album,
+    getTagFromFileName(fileName)
+  );
+
+  imageDetail.fileSize = stat.size;
+  imageDetail.fileSizeFormatted = formatFileSize(stat.size);
+  imageDetail.fileDate = stat.mtime ? stat.mtime.toISOString().slice(0, 10) : null;
+
+  if (extname(fileName).toLowerCase() === '.pdf') {
+    const normalizedFilePath = normalizeRelativePath(filePath);
+    imageDetail.customThumbnail = pdfThumbnailMap[normalizedFilePath] || null;
+  }
+
+  return imageDetail;
+};
+
 const getCacheKey = (album, page, items) => `${album}_${page}_${items}`;
 
 const normalizeRelativePath = (value) => String(value || '').replace(/\\/g, '/').replace(/^\/+/, '');
@@ -1294,14 +1433,16 @@ const applyPdfThumbnailMapToImages = (images) => {
 // Get images from directory with pagination
 const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) => {
     const allImages = [];
-  const files = await fs.readdir(dirPath);
+  const entries = await fs.readdir(dirPath, { withFileTypes: true });
   const pdfThumbnailMap = loadPdfThumbnailMap();
     
     let id = 0;
-    let imageCnt = 0;
-    let imageIndex = 0;
     const firstImageId = page * numberOfItems;
+    const lastImageExclusive = firstImageId + numberOfItems;
     const root = album === "Home";
+    const albumPathPrefix = normalizeRelativePath(path.relative(dataDir, dirPath));
+    const pageFileEntries = [];
+    let imageIndex = 0;
     
     // Add parent album
     if (!root) {
@@ -1314,21 +1455,19 @@ const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) =>
       // For Home view, also include top-level album folders so sidebar navigation remains available.
       if (dirPath !== dataDir) {
         try {
-          const topLevelEntries = await fs.readdir(dataDir);
+          const topLevelEntries = await fs.readdir(dataDir, { withFileTypes: true });
           for (const entry of topLevelEntries) {
-            if (entry.startsWith('.')) {
+            if (entry.name.startsWith('.')) {
               continue;
             }
 
-            if (entry === 'Home') {
+            if (entry.name === 'Home') {
               continue;
             }
 
-            const entryPath = join(dataDir, entry);
-            const entryStat = await fs.stat(entryPath);
-            if (entryStat && entryStat.isDirectory()) {
+            if (entry.isDirectory()) {
               id++;
-              allImages.push(new ImageDetails(`album${id}`, entry, entry, true, entry));
+              allImages.push(new ImageDetails(`album${id}`, entry.name, entry.name, true, entry.name));
             }
           }
         } catch (err) {
@@ -1337,55 +1476,58 @@ const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) =>
       }
     }
     
-    for (const file of files) {
+    for (const entry of entries) {
+      const file = entry.name;
+
       if (file.startsWith('.')) {
         continue;
       }
 
-        const fileLocation = join(dirPath, file);
-        
-        try {
-          const stat = await fs.stat(fileLocation);
-            id++;
-            
-            if (stat && stat.isDirectory()) {
-                const album_name = (root ? "" : `${album}/`) + file;
-                const imageDetails = new ImageDetails(`album${id}`, file, album_name, true, file);
-                allImages.push(imageDetails);
-            } else if (!onlyDir && stat && stat.isFile()) {
-                const ext = extname(fileLocation).toLowerCase();
-                
-                if (!SKIP_FILE_TYPES.includes(ext)) {
-                    if (imageIndex >= firstImageId && imageCnt < numberOfItems) {
-                        const filePath = BASE_DIR + (root ? "" : `${album}/`) + file;
-                        const imageDetail = new ImageDetails(
-                            `photo${id}`, 
-                            file, 
-                            filePath, 
-                            false, 
-                            album, 
-                            getTagFromFileName(file)
-                        );
-                        imageDetail.fileSize = stat.size;
-                        imageDetail.fileSizeFormatted = formatFileSize(stat.size);
-                        imageDetail.fileDate = stat.mtime ? stat.mtime.toISOString().slice(0, 10) : null;
-                        if (ext === '.pdf') {
-                          const normalizedFilePath = normalizeRelativePath(filePath);
-                          imageDetail.customThumbnail = pdfThumbnailMap[normalizedFilePath] || null;
-                        }
-                        allImages.push(imageDetail);
-                        imageCnt++;
-                    }
-                    imageIndex++;
-                }
-            }
-        } catch (err) {
-            console.error(`Error processing file ${fileLocation}:`, err);
-            continue;
-        }
+      id++;
+
+      if (entry.isDirectory()) {
+        const albumName = (albumPathPrefix ? `${albumPathPrefix}/` : '') + file;
+        allImages.push(new ImageDetails(`album${id}`, file, albumName, true, file));
+        continue;
+      }
+
+      if (onlyDir || !entry.isFile()) {
+        continue;
+      }
+
+      const ext = extname(file).toLowerCase();
+      if (SKIP_FILE_TYPES.includes(ext)) {
+        continue;
+      }
+
+      if (imageIndex >= firstImageId && imageIndex < lastImageExclusive) {
+        pageFileEntries.push({ fileName: file, id });
+      }
+
+      imageIndex++;
+    }
+
+    for (const pageFileEntry of pageFileEntries) {
+      try {
+        const imageDetail = await getImageDetailsForPageFile({
+          dirPath,
+          album,
+          root,
+          albumPathPrefix,
+          fileName: pageFileEntry.fileName,
+          id: pageFileEntry.id,
+          pdfThumbnailMap
+        });
+
+        allImages.push(imageDetail);
+      } catch (err) {
+        console.error(`Error processing file ${join(dirPath, pageFileEntry.fileName)}:`, err);
+      }
     }
     
-    console.log(`Found ${imageIndex} total images, returning ${allImages.length} items`);
+    if (VERBOSE_REQUEST_LOGS) {
+      console.log(`Found ${imageIndex} total images, returning ${allImages.length} items`);
+    }
     
     return {
         totalPhotos: imageIndex,

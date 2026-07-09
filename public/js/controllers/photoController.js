@@ -72,6 +72,7 @@ angular.module('photoController', [])
         $scope.albumsSearchText = ""; // albums list search text
         $scope.selectedAlbum = {path:'Home',name:'Home'};
         $scope.uploadDetails = {};
+        $scope.favoriteMap = Object.create(null);
         
         // Playlist variables
         $scope.playlists = []; // Array of user playlists
@@ -118,6 +119,7 @@ angular.module('photoController', [])
             pdfPath: null,
             currentIndex: -1
         };
+        var playlistMembershipInitialized = false;
 
         // PDF read/unread tracker — persisted in localStorage
         var pdfReadTracker = {
@@ -288,35 +290,6 @@ angular.module('photoController', [])
             SearchService.clearSearch('playlistsSearchInput', 'playlistsSearchText', $scope);
         };
 
-        // GET  ==================================================================
-        // get photos
-        $scope.getPhotos = function(id) {
-            $scope.loading = true;
-
-            PhotoService.getPhotos(id, $scope.pageId, $scope.numberOfItemsOnPage)
-                // if successful creation, call our get function to get all the new photos
-                .then(function successCallback(response) {
-                        $scope.totalPhotos = response.totalPhotos;
-                        $scope.totalPages = Math.ceil($scope.totalPhotos / $scope.numberOfItemsOnPage);
-                        updatePhotoTagsFromDb(response.data);
-                        // Load favorites for these photos
-                        $scope.loadUserFavorites();
-                        // Populate audio player with audio files from this album
-                        populateAudioPlayerPlaylist();
-                        $scope.loading = false;
-                        
-                        // Reinitialize Fancybox after Angular renders new images
-                        $timeout(function() {
-                          if (typeof initFancybox === 'function') {
-                            initFancybox();
-                          }
-                        }, 100);
-                }, function(error) {
-                    $scope.loading = false;  // Ensure loading is hidden on error
-                    ErrorHandlingService.handleError(error, 'Error loading photos');
-                });         
-        };
-
         // get tag
         $scope.getTag = function(name) {            
             for (photo of $scope.photos) {
@@ -327,32 +300,57 @@ angular.module('photoController', [])
             return "";
         };
 
+        function applyFavoriteFlags() {
+            const favoriteMap = $scope.favoriteMap || {};
+
+            ($scope.photos || []).forEach(function(photo) {
+                photo.isFavorite = !!favoriteMap[photo.path];
+            });
+        }
+
+        function applyAlbumPayload(response) {
+            $scope.totalPhotos = response.totalPhotos;
+            $scope.totalPages = Math.ceil($scope.totalPhotos / $scope.numberOfItemsOnPage);
+            updatePhotoTagsFromDb(response.data);
+            applyFavoriteFlags();
+            populateAudioPlayerPlaylist();
+            $scope.loading = false;
+
+            $timeout(function() {
+              if (typeof initFancybox === 'function') {
+                initFancybox();
+              }
+            }, 100);
+        }
+
+        function syncFavorites(response) {
+            const favorites = response.data.favorites || [];
+            const favoriteMap = Object.create(null);
+
+            $scope.favoritesCount = favorites.length;
+            $scope.allFavorites = favorites;
+
+            favorites.forEach(function(fav) {
+                favoriteMap[fav.photo_path] = true;
+            });
+
+            $scope.favoriteMap = favoriteMap;
+            applyFavoriteFlags();
+        }
+
         // Load user's favorite photos from database
-        $scope.loadUserFavorites = function() {
-            $http.get('/api/favorites')
+        function loadUserFavorites() {
+            return $http.get('/api/favorites')
                 .then(function successCallback(response) {
-                    const favorites = response.data.favorites || [];
-                    const favoriteMap = {};
-                    
-                    // Update favorites count for badge
-                    $scope.favoritesCount = favorites.length;
-                    $scope.allFavorites = favorites;
-                    
-                    // Create a map of favorite photo paths for quick lookup
-                    favorites.forEach(fav => {
-                        favoriteMap[fav.photo_path] = true;
-                    });
-                    
-                    // Mark photos as favorites
-                    $scope.photos.forEach(photo => {
-                        if (favoriteMap[photo.path]) {
-                            photo.isFavorite = true;
-                        }
-                    });
+                    syncFavorites(response);
+                    return response;
                 }, function(error) {
                     ErrorHandlingService.handleError(error, 'Error loading user favorites');
+                    throw error;
                 });
-        };
+        }
+
+        $scope.loadUserFavorites = loadUserFavorites;
         
         function getNameAndAlbum(name){
             var prop = {};
@@ -557,13 +555,20 @@ angular.module('photoController', [])
 			id = id == "Home"? "" : id;
 			$scope.loading = true;
 			$scope.noMorePhotos = false;
-            PhotoService.getTagsByAlbum(id)
-            .then(function successCallback(response) {
-                $scope.tags = response.data;
-                $scope.getPhotos(id);
+
+            var tagsPromise = PhotoService.getTagsByAlbum(id);
+            var photosPromise = PhotoService.getPhotos(id, $scope.pageId, $scope.numberOfItemsOnPage);
+            var favoritesPromise = loadUserFavorites().catch(function() {
+                return { data: { favorites: [] } };
+            });
+
+            $q.all([tagsPromise, photosPromise, favoritesPromise])
+            .then(function successCallback(results) {
+                $scope.tags = results[0].data;
+                applyAlbumPayload(results[1]);
             }, function(error) {
                 $scope.loading = false;  // Ensure loading is hidden on error
-                ErrorHandlingService.handleError(error, 'Error loading tag information');
+                ErrorHandlingService.handleError(error, 'Error loading album data');
             });         
         }
 
@@ -588,8 +593,9 @@ angular.module('photoController', [])
 
             if (!sourcePlaylists.length) {
                 $scope.playlistMediaPathSet = {};
+                playlistMembershipInitialized = true;
                 applyPlaylistMembershipFlags();
-                return;
+                return $q.when($scope.playlistMediaPathSet);
             }
 
             var playlistItemPromises = sourcePlaylists.map(function(playlist) {
@@ -599,7 +605,7 @@ angular.module('photoController', [])
                     });
             });
 
-            $q.all(playlistItemPromises)
+            return $q.all(playlistItemPromises)
                 .then(function(allPlaylistItems) {
                     var mediaPathSet = Object.create(null);
 
@@ -613,10 +619,13 @@ angular.module('photoController', [])
                     });
 
                     $scope.playlistMediaPathSet = mediaPathSet;
+                    playlistMembershipInitialized = true;
                     applyPlaylistMembershipFlags();
+                    return mediaPathSet;
                 })
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error loading playlist membership data');
+                    throw error;
                 });
         }
 
@@ -635,6 +644,14 @@ angular.module('photoController', [])
                     ErrorHandlingService.handleError(error, 'Error loading playlists');
                     return [];
                 });
+        }
+
+        function ensurePlaylistMembershipMapLoaded() {
+            if (playlistMembershipInitialized) {
+                return $q.when($scope.playlistMediaPathSet || {});
+            }
+
+            return refreshPlaylistMembershipMap();
         }
 
         function getPlaylistsContainingMedia(mediaPath, playlists) {
@@ -1964,13 +1981,18 @@ angular.module('photoController', [])
                 .then(function(playlists) {
                     $scope.playlists = playlists || [];
                     $scope.allPlaylists = playlists || [];
-                    refreshPlaylistMembershipMap();
+                    if (!(playlists || []).length) {
+                        $scope.playlistMediaPathSet = {};
+                        playlistMembershipInitialized = true;
+                        applyPlaylistMembershipFlags();
+                    }
                 })
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error loading playlists');
                     $scope.playlists = [];
                     $scope.allPlaylists = [];
                     $scope.playlistMediaPathSet = {};
+                    playlistMembershipInitialized = false;
                     applyPlaylistMembershipFlags();
                 });
         }
@@ -2077,6 +2099,11 @@ angular.module('photoController', [])
             $scope.loading = true;
 
             ensureAllPlaylistsLoaded()
+                .then(function(playlists) {
+                    return ensurePlaylistMembershipMapLoaded().then(function() {
+                        return playlists;
+                    });
+                })
                 .then(function(playlists) {
                     return getPlaylistsContainingMedia(image.path, playlists);
                 })

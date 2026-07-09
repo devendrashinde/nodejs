@@ -6,9 +6,42 @@ import { createPool } from 'mysql';
 // Load environment variables from .env file
 dotenv.config();
 
+const DB_CONNECTION_LIMIT = Number.parseInt(process.env.DB_CONNECTION_LIMIT || '', 10) || 10;
+const DB_CONNECT_TIMEOUT_MS = Number.parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '', 10) || 5000;
+const DB_ACQUIRE_TIMEOUT_MS = Number.parseInt(process.env.DB_ACQUIRE_TIMEOUT_MS || '', 10) || 10000;
+
+const dbStatus = {
+    connected: false,
+    lastSuccessAt: null,
+    lastError: null,
+    lastErrorCode: null,
+    lastErrorAt: null,
+    config: {
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'mydb',
+        connectionLimit: DB_CONNECTION_LIMIT,
+        connectTimeoutMs: DB_CONNECT_TIMEOUT_MS,
+        acquireTimeoutMs: DB_ACQUIRE_TIMEOUT_MS
+    }
+};
+
+const markDbSuccess = () => {
+    dbStatus.connected = true;
+    dbStatus.lastSuccessAt = new Date().toISOString();
+    dbStatus.lastError = null;
+    dbStatus.lastErrorCode = null;
+};
+
+const markDbError = (err) => {
+    dbStatus.connected = false;
+    dbStatus.lastError = err?.message || 'Unknown database error';
+    dbStatus.lastErrorCode = err?.code || null;
+    dbStatus.lastErrorAt = new Date().toISOString();
+};
+
 // MySQL connection pool configuration
 const pool = createPool({
-    connectionLimit: 10,
+    connectionLimit: DB_CONNECTION_LIMIT,
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || 'photos',
@@ -16,6 +49,8 @@ const pool = createPool({
     multipleStatements: true,
     waitForConnections: true,
     queueLimit: 0,
+    connectTimeout: DB_CONNECT_TIMEOUT_MS,
+    acquireTimeout: DB_ACQUIRE_TIMEOUT_MS,
     enableKeepAlive: true,
     keepAliveInitialDelay: 0
 });
@@ -23,6 +58,7 @@ const pool = createPool({
 // Test connection on startup
 pool.getConnection((err, connection) => {
     if (err) {
+        markDbError(err);
         console.error('❌ Database connection failed:', err.message);
         if (err.code === 'PROTOCOL_CONNECTION_LOST') {
             console.error('Database connection was closed.');
@@ -34,6 +70,7 @@ pool.getConnection((err, connection) => {
             console.error('Database connection was refused.');
         }
     } else {
+        markDbSuccess();
         console.log('✓ Database connected successfully');
         connection.release();
     }
@@ -41,6 +78,7 @@ pool.getConnection((err, connection) => {
 
 // Handle pool errors
 pool.on('error', (err) => {
+    markDbError(err);
     console.error('Unexpected database error:', err);
     if (err.code === 'PROTOCOL_CONNECTION_LOST') {
         // Connection lost, pool will automatically reconnect
@@ -55,13 +93,20 @@ export const query = (sql, params) => {
     return new Promise((resolve, reject) => {
         pool.query(sql, params, (err, results) => {
             if (err) {
+                markDbError(err);
                 reject(err);
             } else {
+                markDbSuccess();
                 resolve(results);
             }
         });
     });
 };
+
+export const getDbStatus = () => ({
+    ...dbStatus,
+    config: { ...dbStatus.config }
+});
 
 // Graceful shutdown
 export const closePool = () => {

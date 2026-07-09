@@ -88,6 +88,25 @@ DB_NAME=mydb
 DB_CONNECTION_LIMIT=10
 ```
 
+Optional performance tuning for lower-power devices such as Raspberry Pi:
+
+```env
+VERBOSE_REQUEST_LOGS=false
+CACHE_SAVE_INTERVAL_MS=900000
+CACHE_STATS_INTERVAL_MS=0
+ALBUM_SCAN_INTERVAL_MS=1800000
+DB_CONNECT_TIMEOUT_MS=5000
+DB_ACQUIRE_TIMEOUT_MS=10000
+```
+
+- `CACHE_STATS_INTERVAL_MS=0` disables periodic cache-stat log writes.
+- Longer save/scan intervals reduce background churn on slower storage.
+- Lower DB timeout values help the app fail fast when the database is slow or unreachable.
+
+Runtime diagnostics:
+
+- `GET /api/perf` returns a lightweight summary of cache state, interval settings, DB health, and timing instrumentation.
+
 ### 4. Install System Dependencies
 
 #### GraphicsMagick (for image thumbnails)

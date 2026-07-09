@@ -5,13 +5,15 @@ import path from 'path';
 import gm from 'gm';
 import { statSync } from 'fs';
 import { promises as fs } from 'fs';
+import sharp from 'sharp';
 import pkg from 'shelljs';
 import e from 'express';
 import mime from 'mime-types';
 import ffmpeg from 'fluent-ffmpeg';
 import which from 'which';
 
-const { mkdir } = pkg;
+const thumbnailGenerationPromises = new Map();
+let ffmpegConfigurationPromise = null;
 
 // Configure FFmpeg and FFprobe paths
 const configureFfmpeg = async () => {
@@ -33,8 +35,13 @@ const configureFfmpeg = async () => {
     }
 };
 
-// Call configuration on module load
-configureFfmpeg();
+const ensureFfmpegConfigured = () => {
+    if (!ffmpegConfigurationPromise) {
+        ffmpegConfigurationPromise = configureFfmpeg();
+    }
+
+    return ffmpegConfigurationPromise;
+};
 
 const videoMimeMap = {
   mp4: 'video/mp4',
@@ -70,6 +77,25 @@ const THUMBNAIL_SIZES = {
     small: { width: 150, height: 150 },
     medium: { width: 300, height: 300 },
     large: { width: 600, height: 600 }
+};
+
+const SHARP_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+
+const withInFlightThumbnail = async (thumbnailPath, generateThumbnail) => {
+    const existingPromise = thumbnailGenerationPromises.get(thumbnailPath);
+    if (existingPromise) {
+        await existingPromise;
+        return;
+    }
+
+    const generationPromise = Promise.resolve()
+        .then(generateThumbnail)
+        .finally(() => {
+            thumbnailGenerationPromises.delete(thumbnailPath);
+        });
+
+    thumbnailGenerationPromises.set(thumbnailPath, generationPromise);
+    await generationPromise;
 };
 
 class Media {
@@ -139,39 +165,70 @@ class Media {
                 : 80;
 
             if (!exists(thumb)) {
-                console.log(`Generating thumbnail for: ${image}, type: image/*`);
-                mkdir('-p', dirname(thumbPath));
+                await withInFlightThumbnail(thumbPath, async () => {
+                    if (exists(thumb)) {
+                        return;
+                    }
 
-                const buffer = await new Promise((resolveBuffer, rejectBuffer) => {
-                    gm(image)
-                        .resize(width, height)
-                        .autoOrient()
-                        .quality(quality)
-                        .noProfile() // Remove EXIF data from thumbnails
-                        .toBuffer((err, outputBuffer) => {
-                            if (err) {
-                                return rejectBuffer(err);
-                            }
-                            resolveBuffer(outputBuffer);
-                        });
+                    await fs.mkdir(dirname(thumbPath), { recursive: true });
+
+                    const extension = extname(image).toLowerCase();
+                    const buffer = SHARP_IMAGE_EXTENSIONS.has(extension)
+                        ? await this.generateSharpThumbnailBuffer(image, extension, width, height, quality)
+                        : await this.generateGmThumbnailBuffer(image, width, height, quality);
+
+                    await fs.writeFile(thumb, buffer);
                 });
-
-                await fs.writeFile(thumb, buffer);
-                response.set('Cache-Control', 'public, max-age=86400'); // 24 hours
-                response.send(buffer);
-            } else {
-                // Set cache headers for existing thumbnails
-                response.set('Cache-Control', 'public, max-age=86400'); // 24 hours
-                response.sendFile(thumbPath);
             }
+
+            response.set('Cache-Control', 'public, max-age=86400'); // 24 hours
+            response.sendFile(thumbPath);
         } catch (err) {
             console.error('Error in generateImageThumbnail:', err);
             response.status(500).json({ error: 'Internal server error' });
         }
     }
 
+    async generateSharpThumbnailBuffer(image, extension, width, height, quality) {
+        let pipeline = sharp(image)
+            .rotate()
+            .resize(width, height, {
+                fit: 'inside',
+                withoutEnlargement: true
+            });
+
+        if (extension === '.png') {
+            pipeline = pipeline.png({ compressionLevel: 9, quality });
+        } else if (extension === '.webp') {
+            pipeline = pipeline.webp({ quality });
+        } else {
+            pipeline = pipeline.jpeg({ quality, mozjpeg: true });
+        }
+
+        return pipeline.toBuffer();
+    }
+
+    async generateGmThumbnailBuffer(image, width, height, quality) {
+        return new Promise((resolveBuffer, rejectBuffer) => {
+            gm(image)
+                .resize(width, height)
+                .autoOrient()
+                .quality(quality)
+                .noProfile()
+                .toBuffer((err, outputBuffer) => {
+                    if (err) {
+                        return rejectBuffer(err);
+                    }
+
+                    resolveBuffer(outputBuffer);
+                });
+        });
+    }
+
     async generateVideoThumbnail(response, image, thumb, thumbPath) {
         try {
+            await ensureFfmpegConfigured();
+
             // Generate PNG thumbnail for videos
             const pngThumb = thumb.replace(/\.[^/.]+$/, '.png'); // Replace extension with .png
             const pngThumbPath = thumbPath.replace(/\.[^/.]+$/, '.png');
@@ -179,73 +236,76 @@ class Media {
             response.type("image/png");
             
             if (!exists(pngThumb)) {
-                mkdir('-p', dirname(pngThumbPath));
-                
-                const thumbnailName = path.basename(pngThumbPath);
-                const outputDir = path.dirname(pngThumbPath);
-                
-                // Get video metadata to determine best capture time
-                return new Promise((resolve, reject) => {
-                    ffmpeg.ffprobe(image, (err, metadata) => {
-                        if (err) {
-                            console.warn(`⚠ Could not get video metadata, using default timestamp:`, err.message);
-                            this.captureVideoThumbnail(image, thumbnailName, outputDir, pngThumbPath, '3', response, resolve, reject);
-                        } else {
-                            const duration = metadata.format.duration || 0;
-                            
-                            // Intelligent timestamp selection
-                            let captureTime = '3'; // Default: 3 seconds in
-                            
-                            if (duration > 0) {
-                                // For longer videos, capture at 25% to avoid intros
-                                if (duration > 120) {
-                                    captureTime = Math.floor(duration * 0.25).toString();
-                                }
-                                // For medium videos, capture at 2-3 seconds
-                                else if (duration > 10) {
-                                    captureTime = Math.min(3, Math.floor(duration * 0.2)).toString();
-                                }
-                                // For very short videos, capture at 0.5 seconds
-                                else {
-                                    captureTime = Math.min(0.5, duration * 0.5).toString();
-                                }
-                            }
-                            
-                            console.log(`📹 Video duration: ${duration}s, capturing at ${captureTime}s`);
-                            this.captureVideoThumbnail(image, thumbnailName, outputDir, pngThumbPath, captureTime, response, resolve, reject);
-                        }
-                    });
+                await withInFlightThumbnail(pngThumbPath, async () => {
+                    if (exists(pngThumb)) {
+                        return;
+                    }
+
+                    await fs.mkdir(dirname(pngThumbPath), { recursive: true });
+
+                    const thumbnailName = path.basename(pngThumbPath);
+                    const outputDir = path.dirname(pngThumbPath);
+                    const captureTime = await this.getVideoThumbnailCaptureTime(image);
+
+                    await this.captureVideoThumbnail(image, thumbnailName, outputDir, captureTime);
                 });
-            } else {
-                response.set('Cache-Control', 'public, max-age=86400'); // 24 hours
-                response.sendFile(pngThumbPath);
             }
+
+            response.set('Cache-Control', 'public, max-age=86400'); // 24 hours
+            response.sendFile(pngThumbPath);
         } catch (err) {
             console.error('❌ Error in generateVideoThumbnail:', err);
             response.status(500).json({ error: 'Internal server error' });
         }
     }
 
-    // Helper function to capture video thumbnail at specified time
-    captureVideoThumbnail(videoPath, thumbnailName, outputDir, pngThumbPath, captureTime, response, resolve, reject) {
-        ffmpeg(videoPath)
-            .on('end', () => {
-                console.log('✓ Video thumbnail generated successfully at', captureTime, 's');
-                response.set('Cache-Control', 'public, max-age=86400');
-                response.sendFile(pngThumbPath);
-                resolve();
-            })
-            .on('error', (err) => {
-                console.error('❌ Error generating video thumbnail:', err.message);
-                response.status(422).json({ error: 'Failed to generate video thumbnail: ' + err.message });
-                reject(err);
-            })
-            .screenshots({
-                timestamps: [captureTime], // Intelligent timestamp
-                filename: thumbnailName,
-                folder: outputDir,
-                size: '300x200'
+    async getVideoThumbnailCaptureTime(image) {
+        return new Promise((resolve) => {
+            ffmpeg.ffprobe(image, (err, metadata) => {
+                if (err) {
+                    console.warn(`⚠ Could not get video metadata, using default timestamp:`, err.message);
+                    resolve('3');
+                    return;
+                }
+
+                const duration = metadata.format.duration || 0;
+                let captureTime = '3';
+
+                if (duration > 0) {
+                    if (duration > 120) {
+                        captureTime = Math.floor(duration * 0.25).toString();
+                    } else if (duration > 10) {
+                        captureTime = Math.min(3, Math.floor(duration * 0.2)).toString();
+                    } else {
+                        captureTime = Math.min(0.5, duration * 0.5).toString();
+                    }
+                }
+
+                console.log(`📹 Video duration: ${duration}s, capturing at ${captureTime}s`);
+                resolve(captureTime);
             });
+        });
+    }
+
+    // Helper function to capture video thumbnail at specified time
+    async captureVideoThumbnail(videoPath, thumbnailName, outputDir, captureTime) {
+        return new Promise((resolve, reject) => {
+            ffmpeg(videoPath)
+                .on('end', () => {
+                    console.log('✓ Video thumbnail generated successfully at', captureTime, 's');
+                    resolve();
+                })
+                .on('error', (err) => {
+                    console.error('❌ Error generating video thumbnail:', err.message);
+                    reject(err);
+                })
+                .screenshots({
+                    timestamps: [captureTime], // Intelligent timestamp
+                    filename: thumbnailName,
+                    folder: outputDir,
+                    size: '300x200'
+                });
+        });
     }
 }
 

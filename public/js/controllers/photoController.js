@@ -51,7 +51,7 @@ angular.module('photoController', [])
     })
 
     // inject the Photo service factory into our controller
-    .controller('photoController', ['$scope','$http', '$location','$timeout','$q','PhotoService','ModalService','RecentlyViewedService','APP_CONSTANTS','SearchService','AudioPlayerService','TaggingService','UtilityService','ErrorHandlingService', function($scope, $http, $location, $timeout, $q, PhotoService, ModalService, RecentlyViewedService, APP_CONSTANTS, SearchService, AudioPlayerService, TaggingService, UtilityService, ErrorHandlingService) {
+    .controller('photoController', ['$scope','$http', '$location','$timeout','$q','PhotoService','ModalService','RecentlyViewedService','APP_CONSTANTS','SearchService','AudioPlayerService','TaggingService','UtilityService','ErrorHandlingService','TransliterationService', function($scope, $http, $location, $timeout, $q, PhotoService, ModalService, RecentlyViewedService, APP_CONSTANTS, SearchService, AudioPlayerService, TaggingService, UtilityService, ErrorHandlingService, TransliterationService) {
 
         $scope.formData = {};
         $scope.tags = [];
@@ -1699,7 +1699,13 @@ angular.module('photoController', [])
             });
 
             Object.keys(accumulatedSet).forEach(function(normalizedTag) {
-                if (searchText && normalizedTag.indexOf(searchText) === -1) return;
+                if (searchText) {
+                    // Direct script match (e.g. both Latin or both Devanagari)
+                    var directMatch = normalizedTag.indexOf(searchText) !== -1;
+                    // Cross-script phonetic match (e.g. Latin ↔ Devanagari)
+                    var crossMatch  = !directMatch && TransliterationService.matchesSearch(accumulatedSet[normalizedTag], searchText);
+                    if (!directMatch && !crossMatch) return;
+                }
                 if (seenTags[normalizedTag]) return;
                 seenTags[normalizedTag] = true;
                 matchedTags.push(accumulatedSet[normalizedTag]);

@@ -262,18 +262,43 @@ angular.module('photoController', [])
         });
 
         $scope.search = function() {
-            if($scope.searchTag && $scope.searchTag.trim() !== ''){
-                $scope.loading = true;
-                $location.search('q', $scope.searchTag);
-                PhotoService.getTagsByTag($scope.searchTag)
-                    // if successful creation, call our get function to get all the new photos
-                    .then(function successCallback(response) {                          
-							updatePhotoTagsFromDb(response.data);
-                            $scope.loading = false;
-                    }, function(error) {
-                        ErrorHandlingService.handleError(error, 'Error searching by tag');
-                    });
+            var term = ($scope.searchTag || '').trim();
+            if (!term) return;
+
+            $scope.loading = true;
+            $location.search('q', term);
+
+            // Generate a normalised Latin form for cross-script matching.
+            // normalizeForSearch converts Devanagari → Latin and collapses
+            // long-vowel variants, so "मुंबई" becomes "mumbai" etc.
+            var normTerm = TransliterationService.normalizeForSearch(term);
+            var searches = [PhotoService.getPhotosByTag(term)];
+
+            // Fire a second search with the normalised Latin form when the
+            // original term contained Devanagari (the two terms will differ).
+            if (normTerm && normTerm !== term.toLowerCase()) {
+                searches.push(PhotoService.getPhotosByTag(normTerm));
             }
+
+            $q.all(searches)
+                .then(function(results) {
+                    // Merge results from both searches, deduplicating by path.
+                    var seen = Object.create(null);
+                    var merged = [];
+                    results.forEach(function(response) {
+                        (response.data || response || []).forEach(function(photo) {
+                            if (photo && photo.path && !seen[photo.path]) {
+                                seen[photo.path] = true;
+                                merged.push(photo);
+                            }
+                        });
+                    });
+                    updatePhotoTagsFromDb(merged);
+                    $scope.loading = false;
+                }, function(error) {
+                    ErrorHandlingService.handleError(error, 'Error searching by tag');
+                    $scope.loading = false;
+                });
         };
         
         $scope.clearSearch = function() {
@@ -692,12 +717,16 @@ angular.module('photoController', [])
 
         // Watch search input and filter tags
         $scope.$watch('searchTag', function(newVal) {
-        if (!newVal) {
-            $scope.filteredTags = $scope.allTags;
-        } else {
-            const lower = newVal.toLowerCase();
-            $scope.filteredTags = $scope.allTags.filter(tag => tag.tag.includes(lower));
-        }
+            if (!newVal) {
+                $scope.filteredTags = $scope.allTags;
+            } else {
+                var lower = newVal.toLowerCase();
+                $scope.filteredTags = $scope.allTags.filter(function(tag) {
+                    // Direct script match OR cross-script phonetic match
+                    return tag.tag.includes(lower) ||
+                           TransliterationService.matchesSearch(tag.tag, newVal);
+                });
+            }
         });
 
         // Watch albums search input to trigger folder filtering

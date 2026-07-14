@@ -286,7 +286,10 @@ angular.module('photoController', [])
                     var seen = Object.create(null);
                     var merged = [];
                     results.forEach(function(response) {
-                        (response.data || response || []).forEach(function(photo) {
+                        var photos = Array.isArray(response.data) ? response.data
+                                   : Array.isArray(response)      ? response
+                                   : [];
+                        photos.forEach(function(photo) {
                             if (photo && photo.path && !seen[photo.path]) {
                                 seen[photo.path] = true;
                                 merged.push(photo);

@@ -429,6 +429,8 @@ angular.module('photoController', [])
 
         $scope.setAlbum = function (album) {
 			$scope.selectedAlbum = album;
+			$scope.pageId = 0;
+			$scope.noMorePhotos = false;
             
             // Track recently viewed albums (exclude "All Albums" and "favorites")
             if (album && album.path && album.path !== '' && album.path !== 'favorites') {

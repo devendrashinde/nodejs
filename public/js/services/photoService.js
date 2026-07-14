@@ -11,7 +11,7 @@ angular.module('PhotoService', [])
 				return $http.get('/tags?tag=' + id);
 			},
 			getPhotosByTag : function(tag) {
-				return $http.get('/photos?tag=' + tag);
+				return $http.get('/photos?tag=' + encodeURIComponent(tag) + '&_=' + Date.now());
 			},
 			getPhotos : function(id, page, items) {
 				return $http.get('/photos?id=' + id + '&page=' + page + '&items=' + items)

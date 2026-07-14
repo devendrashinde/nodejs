@@ -268,10 +268,10 @@ angular.module('photoController', [])
             $scope.loading = true;
             $location.search('q', term);
 
-            // Generate a normalised Latin form for cross-script matching.
-            // normalizeForSearch converts Devanagari → Latin and collapses
-            // long-vowel variants, so "मुंबई" becomes "mumbai" etc.
-            var normTerm = TransliterationService.normalizeForSearch(term);
+            // Generate a Latin form for cross-script DB search.
+            // transliterateForSearch preserves digraphs (sh/kh/dh…) so the
+            // generated term matches how the word is actually spelled in English.
+            var normTerm = TransliterationService.transliterateForSearch(term);
             var searches = [PhotoService.getPhotosByTag(term)];
 
             // Fire a second search with the normalised Latin form when the

@@ -196,5 +196,24 @@ angular.module('TransliterationService', [])
             /** Expose for unit testing / debugging */
             devanagariToLatin: devanagariToLatin,
             normalizeForSearch: normalizeForSearch,
+
+            /**
+             * Convert Devanagari to Latin for use as a database LIKE search term.
+             * Unlike normalizeForSearch, this preserves digraphs (sh, kh, dh, th …)
+             * so that the generated term matches how English speakers actually spell
+             * the word (e.g. "वैष्णव" → "vaishnav", not "vaisnav").
+             *
+             * @param {string} text - Search input (may be Devanagari or Latin)
+             * @returns {string} Latin string safe for a LIKE '%…%' query
+             */
+            transliterateForSearch: function(text) {
+                if (!text) return '';
+                return devanagariToLatin(text)
+                    .toLowerCase()
+                    .replace(/aa+/g, 'a')  // long-a → a
+                    .replace(/ii+/g, 'i')  // long-i → i
+                    .replace(/uu+/g, 'u')  // long-u → u
+                    .replace(/a$/g,  '');  // drop final schwa
+            },
         };
     }]);

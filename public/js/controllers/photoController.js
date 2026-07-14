@@ -59,6 +59,7 @@ angular.module('photoController', [])
         $scope.filteredTags = []
         $scope.tagsLoaded = false;
         $scope.photos = []; // current album photos
+        $scope.accumulatedAlbumTags = []; // tags accumulated across all loaded pages for current album
         $scope.allPhotosByAlbum = {}; // Map of album -> photos for counting
         $scope.selectedPhoto = {};
         $scope.editingAlbum = {}; // For album tagging modal
@@ -372,6 +373,10 @@ angular.module('photoController', [])
             }
 			addToTagList(tag);
             addToAllTags(tag);
+            // Keep accumulated album tags in sync with newly saved tags
+            $scope.splitTags(tag).forEach(function(tagValue) {
+                if (tagValue) $scope.accumulatedAlbumTags.push(tagValue);
+            });
         };
         
         function addToTagList(tag) {
@@ -978,6 +983,10 @@ angular.module('photoController', [])
                 	}
                     var photoObj = getImageType(photo);
                     $scope.photos.push(photoObj);
+                    // Accumulate tags across pages for tag suggestions in edit modal
+                    $scope.splitTags(photoObj.tags || photoObj.tag).forEach(function(tagValue) {
+                        if (tagValue) $scope.accumulatedAlbumTags.push(tagValue);
+                    });
                     // Track all photos by album for counting
                     var album = albumDetails.album || 'Home';
                     if (!$scope.allPhotosByAlbum[album]) {
@@ -1672,27 +1681,28 @@ angular.module('photoController', [])
             var seenTags = {};
             var searchText = (filterText || '').trim().toLowerCase();
 
+            // Use tags accumulated across all pages loaded for this album,
+            // merged with any tags on the current page not yet accumulated.
+            var accumulatedSet = Object.create(null);
+            ($scope.accumulatedAlbumTags || []).forEach(function(tagValue) {
+                var normalizedTag = tagValue.toLowerCase();
+                if (!normalizedTag) return;
+                accumulatedSet[normalizedTag] = tagValue;
+            });
+            // Also include current page photos in case they haven't been accumulated yet
             ($scope.photos || []).forEach(function(photo) {
-                if (!photo) {
-                    return;
-                }
-
-                var tagValues = $scope.splitTags(photo.tags || photo.tag);
-                tagValues.forEach(function(tagValue) {
+                if (!photo) return;
+                $scope.splitTags(photo.tags || photo.tag).forEach(function(tagValue) {
                     var normalizedTag = tagValue.toLowerCase();
-                    if (!normalizedTag) {
-                        return;
-                    }
-                    if (searchText && normalizedTag.indexOf(searchText) === -1) {
-                        return;
-                    }
-                    if (seenTags[normalizedTag]) {
-                        return;
-                    }
-
-                    seenTags[normalizedTag] = true;
-                    matchedTags.push(tagValue);
+                    if (normalizedTag) accumulatedSet[normalizedTag] = tagValue;
                 });
+            });
+
+            Object.keys(accumulatedSet).forEach(function(normalizedTag) {
+                if (searchText && normalizedTag.indexOf(searchText) === -1) return;
+                if (seenTags[normalizedTag]) return;
+                seenTags[normalizedTag] = true;
+                matchedTags.push(accumulatedSet[normalizedTag]);
             });
 
             return matchedTags.sort();

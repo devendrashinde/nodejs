@@ -805,6 +805,11 @@ app.get('/get-images', (req, res) => {
 app.get('/photos', asyncHandler(async (req, res) => {
   const requestStartedAt = process.hrtime.bigint();
   let album = normalizeAlbumRequestPath(req.query.id);
+
+  // Tag searches must bypass the album directory cache and query the DB directly
+  if (req.query.tag) {
+    return getPhotos(req, res);
+  }
     
     // Validate album name
     if (album && !isValidAlbumName(album)) {

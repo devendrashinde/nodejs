@@ -268,21 +268,36 @@ angular.module('photoController', [])
             $scope.loading = true;
             $location.search('q', term);
 
-            // Generate a Latin form for cross-script DB search.
-            // transliterateForSearch preserves digraphs (sh/kh/dh…) so the
-            // generated term matches how the word is actually spelled in English.
-            var normTerm = TransliterationService.transliterateForSearch(term);
+            // Track which terms have been queued to avoid duplicate requests.
+            var queuedTerms = Object.create(null);
+            queuedTerms[term.toLowerCase()] = true;
+
             var searches = [PhotoService.getPhotosByTag(term)];
 
-            // Fire a second search with the normalised Latin form when the
-            // original term contained Devanagari (the two terms will differ).
-            if (normTerm && normTerm !== term.toLowerCase()) {
-                searches.push(PhotoService.getPhotosByTag(normTerm));
+            // Direction 1 — Devanagari input → Latin DB search
+            // (e.g. user types "वैष्णव", also search "vaishnav")
+            var latinTerm = TransliterationService.transliterateForSearch(term);
+            if (latinTerm && !queuedTerms[latinTerm]) {
+                queuedTerms[latinTerm] = true;
+                searches.push(PhotoService.getPhotosByTag(latinTerm));
             }
+
+            // Direction 2 — Latin input → Devanagari DB search
+            // Scan the known tag list for any tags that phonetically match
+            // the search term in the other script.
+            // (e.g. user types "vaishnav", finds "वैष्णव" in allTags and searches for it)
+            ($scope.allTags || []).forEach(function(tagObj) {
+                var tag = tagObj.tag || '';
+                var tagLower = tag.toLowerCase();
+                if (!queuedTerms[tagLower] && TransliterationService.matchesSearch(tag, term)) {
+                    queuedTerms[tagLower] = true;
+                    searches.push(PhotoService.getPhotosByTag(tag));
+                }
+            });
 
             $q.all(searches)
                 .then(function(results) {
-                    // Merge results from both searches, deduplicating by path.
+                    // Merge results from all searches, deduplicating by path.
                     var seen = Object.create(null);
                     var merged = [];
                     results.forEach(function(response) {

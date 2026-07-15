@@ -567,7 +567,26 @@ angular.module('photoController', [])
             $scope.loadAlbumWithPageId(0);
         }
 
+        // Navigate to an album by its path string (used from search result album labels)
+        $scope.setAlbumByPath = function(albumPath) {
+            if (!albumPath) return;
+            var match = null;
+            for (var i = 0; i < $scope.folders.length; i++) {
+                if ($scope.folders[i].path === albumPath || $scope.folders[i].album === albumPath) {
+                    match = $scope.folders[i];
+                    break;
+                }
+            }
+            if (match) {
+                $scope.setAlbum(match);
+            } else {
+                // Fallback: construct minimal album object from path
+                $scope.setAlbum({ album: albumPath, path: albumPath, name: albumPath });
+            }
+        };
+
         $scope.setAlbum = function (album) {
+
 			$scope.selectedAlbum = album;
 			$scope.pageId = 0;
 			$scope.noMorePhotos = false;

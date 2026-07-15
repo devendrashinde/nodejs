@@ -562,8 +562,14 @@ html(ng-app="app")
                     ng-if="selectedAlbum.isSearchResult && image.album"
                     style="font-size:0.7rem;"
                   )
-                    i.fas.fa-folder.me-1
-                    | {{image.album}}
+                    a.text-muted.text-decoration-none(
+                      href="javascript:void(0)"
+                      ng-click="setAlbumByPath(image.album)"
+                      title="Open album: {{image.album}}"
+                      style="cursor:pointer;"
+                    )
+                      i.fas.fa-folder.me-1
+                      | {{image.album}}
                   small.text-muted.d-block(ng-if="image.isGenericFile" style="font-size:0.75rem;") {{image.fileTypeLabel}} • {{image.fileSizeFormatted || '—'}}
                   small.text-muted.d-block(ng-if="image.isGenericFile && image.fileDate" style="font-size:0.75rem;") Updated {{image.fileDate}}
                   
@@ -796,8 +802,14 @@ html(ng-app="app")
                 div.track-title
                   span.fw-medium(ng-bind-html="getLibraryItemTitle(image) | searchHighlight:searchQuery")
                   small.d-block.text-muted(ng-if="selectedAlbum.isSearchResult && image.album")
-                    i.fas.fa-folder.me-1
-                    | {{image.album}}
+                    a.text-muted.text-decoration-none(
+                      href="javascript:void(0)"
+                      ng-click="setAlbumByPath(image.album); $event.stopPropagation()"
+                      title="Open album: {{image.album}}"
+                      style="cursor:pointer;"
+                    )
+                      i.fas.fa-folder.me-1
+                      | {{image.album}}
                 //- Duration placeholder (shown if available)
                 div.track-duration.text-muted.small
                   span(ng-if="image.duration") {{image.duration}}

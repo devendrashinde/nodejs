@@ -228,65 +228,34 @@ class AdvancedSearch {
       const response = await fetch(`/api/search?${params.toString()}`);
       const data = await response.json();
 
-      this.displayResults(data);
+      this.pushResultsToGallery(data, criteria.query || '');
     } catch (error) {
       console.error('Search error:', error);
       this.showError('Search failed. Please try again.');
     }
   }
 
-  displayResults(data) {
-    const container = document.getElementById('results-container');
-    const statsDiv = document.getElementById('search-stats');
-    const resultCount = document.getElementById('result-count');
-
+  pushResultsToGallery(data, query) {
     if (!data.results || data.results.length === 0) {
-      container.innerHTML = '<p class="no-results">No results found.</p>';
-      statsDiv.style.display = 'none';
+      this.showError('No results found.');
       return;
     }
 
-    this.currentResults = data.results;
-    resultCount.textContent = `Found ${data.results.length} result${data.results.length !== 1 ? 's' : ''}`;
-    statsDiv.style.display = 'block';
-
-    let html = '<div class="results-grid">';
-    data.results.forEach((photo) => {
-      html += `
-        <div class="result-item" data-photo-id="${photo.id}">
-          <img 
-            src="${photo.thumbnail || photo.url}" 
-            alt="${photo.name}" 
-            class="result-thumbnail" 
-            onclick="viewPhotoDetail('${photo.path}')"
-            style="cursor: pointer;"
-          />
-          <div class="result-info">
-            <h4>${photo.name}</h4>
-            <p class="result-meta">
-              📅 ${new Date(photo.dateModified).toLocaleDateString()}<br/>
-              📁 ${photo.album || 'Uncategorized'}<br/>
-              ${photo.tags ? `🏷️ ${photo.tags.join(', ')}` : ''}
-            </p>
-          </div>
-        </div>
-      `;
-    });
-    html += '</div>';
-
-    if (data.statistics) {
-      html += `
-        <div class="search-stats-panel">
-          <h3>📊 Search Statistics</h3>
-          <p>Total Photos: ${data.statistics.totalPhotos}</p>
-          <p>Albums: ${data.statistics.albums?.length || 0}</p>
-          <p>Tags: ${data.statistics.tags?.length || 0}</p>
-          <p>File Types: ${data.statistics.fileTypes?.join(', ') || 'N/A'}</p>
-        </div>
-      `;
+    // Push results into the AngularJS main gallery
+    const controllerEl = document.getElementById('controller');
+    if (controllerEl && window.angular) {
+      const scope = angular.element(controllerEl).scope();
+      if (scope && typeof scope.loadSearchResults === 'function') {
+        scope.$apply(function() {
+          scope.loadSearchResults(data.results, query);
+        });
+        this.close();
+        return;
+      }
     }
 
-    container.innerHTML = html;
+    // Fallback: show a simple count message if Angular scope is unavailable
+    this.showError(`Found ${data.results.length} result(s) but could not display in gallery.`);
   }
 
   parseTags(tagsString) {
@@ -314,7 +283,7 @@ class AdvancedSearch {
 
   showError(message) {
     const container = document.getElementById('results-container');
-    container.innerHTML = `<p class="error-message">${message}</p>`;
+    if (container) container.innerHTML = `<p class="error-message">${message}</p>`;
   }
 
   mapFileTypeCategories(categories) {
@@ -364,37 +333,35 @@ class AdvancedSearch {
 
 // Global helper functions for search results
 window.viewPhotoDetail = function(photoId) {
-  // Open photo detail view (could be modal, lightbox, or full page)
-  const modal = document.createElement('div');
-  modal.className = 'photo-detail-modal';
-  
-  // Construct image URL - path already includes 'data/' prefix
-  const imageUrl = photoId.startsWith('/') ? photoId : `/${photoId}`;
-  
-  modal.innerHTML = `
-    <div class="photo-detail-overlay">
-      <div class="photo-detail-content">
-        <button class="btn-close" onclick="this.closest('.photo-detail-modal').remove()">&times;</button>
-        <div class="photo-detail-header">
-          <h3>${photoId.split('/').pop()}</h3>
-          <button class="btn-exif-detail" onclick="showExifData('${photoId}')" title="View EXIF data">📸 EXIF</button>
-        </div>
-        <div class="photo-detail-main">
-          <img src="${imageUrl}" alt="Photo detail" class="photo-detail-image" />
-          <div class="photo-detail-info">
-            <p class="photo-path">${photoId}</p>
-            <div id="detail-exif-container"></div>
-            <div id="detail-social-container"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-  
-  // Load EXIF data if available
-  if (typeof embedExifData === 'function') {
-    embedExifData(photoId, 'detail-exif-container').catch(e => console.log('EXIF not available'));
+  const VIDEO_TYPES = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg', 'mpeg', 'mts', 'm4v', 'divx', 'xvid', 'webm', 'ogg', 'ogv', 'flv', 'wmv', 'asf', 'rm', 'rmvb', 'ts', 'vob', 'f4v'];
+  const AUDIO_TYPES = ['mp3', 'amr', 'wav', 'flac', 'aac', 'm4a'];
+
+  const mediaUrl = photoId.startsWith('/') ? photoId : `/${photoId}`;
+  const ext = (photoId.split('.').pop() || '').toLowerCase();
+
+  if (VIDEO_TYPES.includes(ext)) {
+    $.fancybox.open({
+      src: mediaUrl,
+      type: 'video',
+      opts: { width: 640, height: 360 }
+    });
+  } else if (AUDIO_TYPES.includes(ext)) {
+    const fileName = photoId.split('/').pop();
+    $.fancybox.open({
+      src: `<audio controls autoplay style="width:100%;min-width:320px;outline:none"><source src="${mediaUrl}">Your browser does not support audio.</audio>`,
+      type: 'html',
+      opts: { caption: fileName }
+    });
+  } else if (ext === 'pdf') {
+    $.fancybox.open({
+      src: mediaUrl,
+      type: 'iframe'
+    });
+  } else {
+    $.fancybox.open({
+      src: mediaUrl,
+      type: 'image'
+    });
   }
 };
 

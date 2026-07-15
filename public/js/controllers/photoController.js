@@ -324,6 +324,53 @@ angular.module('photoController', [])
             $scope.showSearch = false; // hide box after clearing
         };
 
+        /**
+         * Load advanced search API results directly into the main gallery view.
+         * Called from advanced-search.js after a successful /api/search response.
+         * @param {Array} results  - array of result objects from /api/search
+         * @param {string} query   - the user's search query string (used in the header label)
+         */
+        $scope.loadSearchResults = function(results, query) {
+            $scope.photos = [];
+            $scope.folders = [];
+            $scope.accumulatedAlbumTags = [];
+            $scope.noMorePhotos = true;
+            $scope.totalPhotos = results.length;
+            $scope.totalPages = 1;
+            $scope.pageId = 0;
+            $scope.loading = false;
+            $scope.selectedAlbum = {
+                name: '\uD83D\uDD0D ' + (query || 'Search Results'),
+                path: null,
+                isSearchResult: true
+            };
+
+            results.forEach(function(result) {
+                var photo = {
+                    id: result.id,
+                    name: result.name,
+                    path: result.path,
+                    tags: Array.isArray(result.tags) ? result.tags.join(', ') : (result.tags || result.name || ''),
+                    album: result.album,
+                    isAlbum: false
+                };
+                getImageType(photo);
+                $scope.photos.push(photo);
+                $scope.splitTags(photo.tags).forEach(function(tagValue) {
+                    if (tagValue) $scope.accumulatedAlbumTags.push(tagValue);
+                });
+            });
+
+            applyFavoriteFlags();
+            populateAudioPlayerPlaylist();
+
+            $timeout(function() {
+                if (typeof initFancybox === 'function') {
+                    initFancybox();
+                }
+            }, 100);
+        };
+
         // Clear albums search and show all albums
         $scope.clearAlbumsSearch = function() {
             SearchService.clearSearch('albumsSearchInput', 'albumsSearchText', $scope);

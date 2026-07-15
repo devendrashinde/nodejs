@@ -36,6 +36,28 @@ function openPdfUrl(pdfUrl) {
 }
 
 // Initialize Fancybox on gallery links with all enhancements
+// Storage for image state (rotation, zoom, etc.) persisted across sessions
+var imageStateStorage = {
+  _key: function(mediaPath) {
+    return 'fancybox_state_' + btoa(mediaPath);
+  },
+  get: function(mediaPath) {
+    try {
+      var stored = localStorage.getItem(this._key(mediaPath));
+      return stored ? JSON.parse(stored) : { rotation: 0, zoom: 1 };
+    } catch (e) {
+      return { rotation: 0, zoom: 1 };
+    }
+  },
+  set: function(mediaPath, state) {
+    try {
+      localStorage.setItem(this._key(mediaPath), JSON.stringify(state));
+    } catch (e) {
+      console.warn('Failed to persist image state:', e);
+    }
+  }
+};
+
 function initFancybox() {
   if (typeof $.fancybox === 'undefined') return;
   
@@ -120,12 +142,19 @@ function initFancybox() {
     beforeShow: function(instance, current) {
       // Clean up video controls from previous slide
       $('.fancybox-video-controls').remove();
+      $('.fancybox-video-spinner').remove();
       
       // Reset toolbar visibility for new slide
       instance.$refs.container.removeClass('fancybox-hide-toolbar');
       
-      // Reset rotation for this slide if not set
-      if (!rotationAngles[current.index]) {
+      // Get media path from data-media-path attribute for persistent storage
+      var mediaPath = current.$trigger ? current.$trigger.getAttribute('data-media-path') : null;
+      
+      // Restore stored state (rotation, zoom) from localStorage
+      if (mediaPath) {
+        var state = imageStateStorage.get(mediaPath);
+        rotationAngles[current.index] = state.rotation;
+      } else if (!rotationAngles[current.index]) {
         rotationAngles[current.index] = 0;
       }
       
@@ -137,6 +166,12 @@ function initFancybox() {
       instance.$refs.toolbar.prepend(
         '<div class="fancybox-counter">' + currentNum + ' / ' + total + '</div>'
       );
+      
+      // Add loading spinner for videos (feature 10)
+      if (current.type === 'video' || (current.type === 'html' && current.src && current.src.includes('mp4|3gp|webm|mov'))) {
+        var $spinner = $('<div class="fancybox-video-spinner"><div class="spinner-border text-light" role="status"><span class="visually-hidden">Loading...</span></div></div>');
+        instance.$refs.container.append($spinner);
+      }
       
       // Apply stored rotation
       setTimeout(function() {
@@ -176,6 +211,25 @@ function initFancybox() {
       // Initial hide after 2 seconds
       showToolbar();
       
+      // Get media path for state persistence
+      var mediaPath = current.$trigger ? current.$trigger.getAttribute('data-media-path') : null;
+      
+      // Hide video spinner when video starts playing (feature 10)
+      if (current.type === 'video' || current.type === 'html') {
+        setTimeout(function() {
+          var $video = $container.find('video');
+          if ($video.length) {
+            $video.on('playing.fancybox', function() {
+              $('.fancybox-video-spinner').fadeOut(300, function() { $(this).remove(); });
+            });
+            // Also hide spinner if video can play (has loaded enough to play)
+            $video.on('canplay.fancybox', function() {
+              $('.fancybox-video-spinner').fadeOut(300, function() { $(this).remove(); });
+            });
+          }
+        }, 100);
+      }
+      
       // Rotate Left button handler
       $container.off('click', '[data-fancybox-rotate-left]').on('click', '[data-fancybox-rotate-left]', function(e) {
         e.preventDefault();
@@ -187,6 +241,13 @@ function initFancybox() {
           'transform': 'rotate(' + angle + 'deg)',
           'transition': 'transform 0.3s ease'
         });
+        
+        // Persist rotation state to localStorage (feature 9)
+        if (mediaPath) {
+          var state = imageStateStorage.get(mediaPath);
+          state.rotation = angle;
+          imageStateStorage.set(mediaPath, state);
+        }
       });
       
       // Rotate Right button handler
@@ -200,6 +261,13 @@ function initFancybox() {
           'transform': 'rotate(' + angle + 'deg)',
           'transition': 'transform 0.3s ease'
         });
+        
+        // Persist rotation state to localStorage (feature 9)
+        if (mediaPath) {
+          var state = imageStateStorage.get(mediaPath);
+          state.rotation = angle;
+          imageStateStorage.set(mediaPath, state);
+        }
       });
       
       // Download button handler

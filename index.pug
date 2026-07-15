@@ -532,10 +532,11 @@ html(ng-app="app")
                   ng-if="!image.isAudio && !image.isGenericFile"
                   ng-href="{{getMediaHref(image)}}"
                   data-fancybox="gallery"
-                  ng-attr-data-caption="{{image.tags || image.tag || getLibraryItemTitle(image)}}"
+                  ng-attr-data-caption="{{(selectedAlbum.isSearchResult && image.album ? (image.album + ' • ') : '') + (image.tags || image.tag || getLibraryItemTitle(image))}}"
                   ng-attr-data-type="{{image.isVideo ? 'video' : (image.isPdf ? 'iframe' : 'image')}}"
                   ng-attr-data-width="{{image.isVideo ? '640' : undefined}}"
                   ng-attr-data-height="{{image.isVideo ? '360' : undefined}}"
+                  ng-attr-data-media-path="{{image.path}}"
                 )
                   figure
                     img.card-img-top.img-fluid.gallery-thumb(

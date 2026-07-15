@@ -334,7 +334,8 @@ angular.module('photoController', [])
                         });
                     });
                     updatePhotoTagsFromDb(merged);
-                    $scope.loading = false;
+                    // Use loadSearchResults to display results with same formatting as advanced search
+                    $scope.loadSearchResults(merged, term);
                 }, function(error) {
                     ErrorHandlingService.handleError(error, 'Error searching by tag');
                     $scope.loading = false;

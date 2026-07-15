@@ -31,6 +31,21 @@ angular.module('photoController', [])
         };
     })
 
+    // Highlight search query terms in any text string (returns trusted HTML)
+    .filter('searchHighlight', ['$sce', function($sce) {
+        return function(text, query) {
+            if (!query || !text) return $sce.trustAsHtml(String(text || ''));
+            var words = String(query).split(/\s+/).filter(function(w) { return w.length > 1; });
+            if (!words.length) return $sce.trustAsHtml(String(text));
+            var pattern = words.map(function(w) {
+                return w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }).join('|');
+            var html = String(text).replace(new RegExp('(' + pattern + ')', 'gi'),
+                '<mark class="search-highlight">$1</mark>');
+            return $sce.trustAsHtml(html);
+        };
+    }])
+
     // Custom case-insensitive search filter for albums and playlists
     .filter('caseInsensitiveContains', function() {
         return function(items, searchField, searchText) {
@@ -86,6 +101,13 @@ angular.module('photoController', [])
         $scope.editingPlaylist = {}; // For playlist creation/edit modal
         $scope.selectedPlaylistItems = []; // Photos in selected playlist
         $scope.showPlaylistModal = false; // Toggle playlist creation modal
+
+        // Gallery display state
+        $scope.galleryDensity = 'comfortable'; // 'compact' | 'comfortable' | 'large'
+        $scope.gallerySort = { by: 'default', dir: 'asc' };
+        $scope.searchResultCount = 0;
+        $scope.searchQuery = '';
+        $scope._prevAlbum = null;
 
         // PDF Library view
         $scope.pdfLibraryView = 'grid'; // 'grid' | 'list'
@@ -324,6 +346,26 @@ angular.module('photoController', [])
             $scope.showSearch = false; // hide box after clearing
         };
 
+        $scope.clearSearchResults = function() {
+            $scope.searchResultCount = 0;
+            $scope.searchQuery = '';
+            var prev = $scope._prevAlbum;
+            $scope._prevAlbum = null;
+            if (prev && !prev.isSearchResult) {
+                $scope.setAlbum(prev);
+            } else {
+                $scope.setAlbum({ album: '', path: '' });
+            }
+        };
+
+        $scope.setGalleryDensity = function(density) {
+            $scope.galleryDensity = density;
+        };
+
+        $scope.toggleGallerySortDir = function() {
+            $scope.gallerySort.dir = $scope.gallerySort.dir === 'asc' ? 'desc' : 'asc';
+        };
+
         /**
          * Load advanced search API results directly into the main gallery view.
          * Called from advanced-search.js after a successful /api/search response.
@@ -331,6 +373,9 @@ angular.module('photoController', [])
          * @param {string} query   - the user's search query string (used in the header label)
          */
         $scope.loadSearchResults = function(results, query) {
+            $scope._prevAlbum = $scope.selectedAlbum;
+            $scope.searchResultCount = results.length;
+            $scope.searchQuery = query || '';
             $scope.photos = [];
             $scope.accumulatedAlbumTags = [];
             $scope.noMorePhotos = true;
@@ -1300,6 +1345,29 @@ angular.module('photoController', [])
         $scope.getLibraryDisplayItems = function() {
             var items = ($scope.photos || []).slice();
             if (!$scope.isAllLibraryFiles()) {
+                // Apply gallery sort for regular media
+                var by = ($scope.gallerySort && $scope.gallerySort.by) || 'default';
+                var dir = (($scope.gallerySort && $scope.gallerySort.dir) || 'asc') === 'desc' ? -1 : 1;
+                if (by !== 'default') {
+                    items.sort(function(a, b) {
+                        var av, bv;
+                        if (by === 'name') {
+                            av = String($scope.getLibraryItemTitle(a) || '').toLowerCase();
+                            bv = String($scope.getLibraryItemTitle(b) || '').toLowerCase();
+                        } else if (by === 'date') {
+                            av = String(a.dateModified || a.createdAt || '');
+                            bv = String(b.dateModified || b.createdAt || '');
+                        } else if (by === 'size') {
+                            av = Number(a.fileSize || 0);
+                            bv = Number(b.fileSize || 0);
+                        } else {
+                            return 0;
+                        }
+                        if (av < bv) return -1 * dir;
+                        if (av > bv) return 1 * dir;
+                        return 0;
+                    });
+                }
                 return items;
             }
 

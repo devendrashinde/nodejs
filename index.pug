@@ -27,7 +27,16 @@ html(ng-app="app")
         // First row: Logo, Album, Controls
         div.d-flex.align-items-center.flex-nowrap.w-100
           img(src="/favicon.png" alt="Home" width="28" class="me-2")
-          h6.mb-0.flex-grow-1.text-truncate {{selectedAlbum.name}}
+          h6.mb-0.flex-grow-1.text-truncate
+            button.btn.btn-sm.btn-outline-secondary.me-2(
+              ng-if="selectedAlbum.isSearchResult"
+              ng-click="clearSearchResults()"
+              title="Return to previous album"
+              style="font-size:0.7rem;padding:0.15rem 0.4rem;"
+            )
+              i.fas.fa-arrow-left.me-1
+              | Back
+            | {{selectedAlbum.name}}
           div.d-flex.align-items-center.ms-auto.gap-2.flex-nowrap
             // Search buttons (Basic + Advanced)
             div.btn-group
@@ -39,12 +48,17 @@ html(ng-app="app")
               )
                 i.fas.fa-search
               
-              button.btn.btn-outline-info.btn-sm(
+              button.btn.btn-sm.position-relative(
                 type="button"
+                ng-class="searchResultCount > 0 ? 'btn-info' : 'btn-outline-info'"
                 onclick="window.advancedSearch && window.advancedSearch.toggle()"
                 title="Advanced search with filters"
               )
                 i.fas.fa-search-plus
+                span.position-absolute.top-0.start-100.translate-middle.badge.rounded-pill.bg-danger(
+                  ng-if="searchResultCount > 0"
+                  style="font-size:0.6rem;"
+                ) {{searchResultCount}}
 
             // Upload button
             button.btn.btn-outline-success.btn-sm(
@@ -416,8 +430,56 @@ html(ng-app="app")
                 span.ms-1 {{pdfLibraryView === 'grid' ? 'List view' : 'Grid view'}}
 
           // Gallery Grid
+          div.d-flex.justify-content-between.align-items-center.mb-2.gap-2(ng-if="!isAllLibraryFiles() && photos.length > 0")
+            //- Sort controls
+            div.d-flex.align-items-center.gap-1
+              select.form-select.form-select-sm(
+                style="width:130px;"
+                ng-model="gallerySort.by"
+                title="Sort gallery"
+              )
+                option(value="default") Sort: Default
+                option(value="name") Sort: Name
+                option(value="date") Sort: Date
+                option(value="size") Sort: Size
+              button.btn.btn-sm.btn-outline-secondary(
+                type="button"
+                ng-click="toggleGallerySortDir()"
+                title="Toggle sort direction"
+              )
+                i.fas(ng-class="gallerySort.dir === 'asc' ? 'fa-sort-amount-down-alt' : 'fa-sort-amount-up'")
+            //- Density controls
+            div.btn-group
+              button.btn.btn-sm(
+                type="button"
+                ng-class="galleryDensity === 'compact' ? 'btn-secondary' : 'btn-outline-secondary'"
+                ng-click="setGalleryDensity('compact')"
+                title="Compact"
+              )
+                i.fas.fa-grip-vertical
+              button.btn.btn-sm(
+                type="button"
+                ng-class="galleryDensity === 'comfortable' ? 'btn-secondary' : 'btn-outline-secondary'"
+                ng-click="setGalleryDensity('comfortable')"
+                title="Comfortable"
+              )
+                i.fas.fa-th
+              button.btn.btn-sm(
+                type="button"
+                ng-class="galleryDensity === 'large' ? 'btn-secondary' : 'btn-outline-secondary'"
+                ng-click="setGalleryDensity('large')"
+                title="Large"
+              )
+                i.fas.fa-th-large
           div.row.g-3(ng-if="!isAllLibraryFiles() || pdfLibraryView === 'grid'")
-            div.col-sm-6.col-md-4.col-lg-3(ng-repeat="image in getLibraryDisplayItems()")
+            div(
+              ng-repeat="image in getLibraryDisplayItems()"
+              ng-class="{
+                'col-6 col-sm-4 col-md-3 col-lg-2': galleryDensity === 'compact',
+                'col-sm-6 col-md-4 col-lg-3': galleryDensity === 'comfortable',
+                'col-sm-6 col-md-6 col-lg-4': galleryDensity === 'large'
+              }"
+            )
               div.card.shadow-sm(style="position: relative;")
                 //- Checkbox for bulk operations
                 input.photo-checkbox(
@@ -445,10 +507,11 @@ html(ng-app="app")
                   title="Click to play"
                 )
                   figure(style="position: relative;")
-                    img.card-img-top.img-fluid(
+                    img.card-img-top.img-fluid.gallery-thumb(
                       ng-src="music.png"
                       alt="{{image.tags}}"
                       loading="lazy"
+                      onload="this.classList.add('img-loaded')"
                       style="object-fit: contain; width: 100%; height: auto;"
                     )
                     i.overlay-icon.fas.fa-play-circle(
@@ -479,10 +542,11 @@ html(ng-app="app")
                   ng-attr-data-height="{{image.isVideo ? '360' : undefined}}"
                 )
                   figure
-                    img.card-img-top.img-fluid(
+                    img.card-img-top.img-fluid.gallery-thumb(
                       ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? (image.customThumbnail || 'pdf.png') : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
                       alt="{{image.tags || image.tag || getLibraryItemTitle(image)}}"
                       loading="lazy"
+                      onload="this.classList.add('img-loaded')"
                       style="object-fit: contain; width: 100%; height: auto;"
                     )
                     i.overlay-icon(
@@ -494,9 +558,15 @@ html(ng-app="app")
                       href="javascript:void(0)"
                       ng-click="editImageTag(image)"
                       title="Edit tags"
-                    ) {{getLibraryItemTitle(image)}}
+                      ng-bind-html="getLibraryItemTitle(image) | searchHighlight:searchQuery"
+                    )
                     span.badge.bg-success.ms-1.small(ng-if="image.isPdf && image.isRead" title="Read") ✓
-                  small.text-muted.d-block(ng-if="image.isPdf && image.fileSizeFormatted" style="font-size:0.75rem;") {{image.fileSizeFormatted}}
+                  small.text-muted.d-block(
+                    ng-if="selectedAlbum.isSearchResult && image.album"
+                    style="font-size:0.7rem;"
+                  )
+                    i.fas.fa-folder.me-1
+                    | {{image.album}}
                   small.text-muted.d-block(ng-if="image.isGenericFile" style="font-size:0.75rem;") {{image.fileTypeLabel}} • {{image.fileSizeFormatted || '—'}}
                   small.text-muted.d-block(ng-if="image.isGenericFile && image.fileDate" style="font-size:0.75rem;") Updated {{image.fileDate}}
                   

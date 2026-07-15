@@ -6,6 +6,34 @@ body {
   font-family: 'Arimo', sans-serif;
 }
 
+/* ===== Skeleton shimmer for gallery thumbnails ===== */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+img.gallery-thumb {
+  background: linear-gradient(90deg, #e8e8e8 25%, #d0d0d0 50%, #e8e8e8 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  min-height: 120px;
+}
+
+img.gallery-thumb.img-loaded {
+  animation: none;
+  background: none;
+  min-height: unset;
+}
+
+/* ===== Search term highlight ===== */
+mark.search-highlight {
+  background: #fff3cd;
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
 .page {
   background: white;
   max-width: 1280px;

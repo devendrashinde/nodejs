@@ -564,7 +564,7 @@ html(ng-app="app")
                   )
                     a.text-muted.text-decoration-none(
                       href="javascript:void(0)"
-                      ng-click="setAlbumByPath(image.album)"
+                      ng-click="setAlbumByPath(image.path)"
                       title="Open album: {{image.album}}"
                       style="cursor:pointer;"
                     )
@@ -804,7 +804,7 @@ html(ng-app="app")
                   small.d-block.text-muted(ng-if="selectedAlbum.isSearchResult && image.album")
                     a.text-muted.text-decoration-none(
                       href="javascript:void(0)"
-                      ng-click="setAlbumByPath(image.album); $event.stopPropagation()"
+                      ng-click="setAlbumByPath(image.path); $event.stopPropagation()"
                       title="Open album: {{image.album}}"
                       style="cursor:pointer;"
                     )

@@ -567,21 +567,43 @@ angular.module('photoController', [])
             $scope.loadAlbumWithPageId(0);
         }
 
-        // Navigate to an album by its path string (used from search result album labels)
-        $scope.setAlbumByPath = function(albumPath) {
-            if (!albumPath) return;
+        // Navigate to the album that contains the given file path.
+        // Accepts the full item path (e.g. "data/pictures/2021-08/photo.jpg") and
+        // extracts the parent directory to build a correct album object.
+        $scope.setAlbumByPath = function(itemPath) {
+            if (!itemPath) return;
+
+            // Normalise slashes and strip trailing separator
+            var normalised = String(itemPath).replace(/\\/g, '/').replace(/\/+$/, '');
+
+            // Derive the album directory (everything before the last "/")
+            var lastSlash = normalised.lastIndexOf('/');
+            var albumDir = lastSlash > 0 ? normalised.substring(0, lastSlash) : normalised;
+
+            // Strip a leading "data/" prefix — the server's normaliseAlbumRequestPath
+            // also strips it, but we want the display name to match existing $scope.albums.
+            var displayName = albumDir.replace(/^data\//, '');
+            // Use last segment as the short album name shown in the sidebar
+            var albumName = displayName.split('/').pop();
+
+            // Try to find an existing entry in $scope.albums for a richer object
             var match = null;
-            for (var i = 0; i < $scope.folders.length; i++) {
-                if ($scope.folders[i].path === albumPath || $scope.folders[i].album === albumPath) {
-                    match = $scope.folders[i];
-                    break;
+            for (var i = 0; i < $scope.albums.length; i++) {
+                var a = $scope.albums[i];
+                if (a && a.path) {
+                    var normA = String(a.path).replace(/\\/g, '/').replace(/\/+$/, '');
+                    if (normA === albumDir || normA === displayName) {
+                        match = a;
+                        break;
+                    }
                 }
             }
+
             if (match) {
                 $scope.setAlbum(match);
             } else {
-                // Fallback: construct minimal album object from path
-                $scope.setAlbum({ album: albumPath, path: albumPath, name: albumPath });
+                // Construct a minimal album object with the correct full path
+                $scope.setAlbum({ album: albumName, name: albumName, path: albumDir });
             }
         };
 

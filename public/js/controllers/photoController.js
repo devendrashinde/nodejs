@@ -332,7 +332,6 @@ angular.module('photoController', [])
          */
         $scope.loadSearchResults = function(results, query) {
             $scope.photos = [];
-            $scope.folders = [];
             $scope.accumulatedAlbumTags = [];
             $scope.noMorePhotos = true;
             $scope.totalPhotos = results.length;

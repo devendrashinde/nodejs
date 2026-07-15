@@ -471,7 +471,7 @@ html(ng-app="app")
                 title="Large"
               )
                 i.fas.fa-th-large
-          div.row.g-3(ng-if="!isAllLibraryFiles() || pdfLibraryView === 'grid'")
+          div.row.g-3(ng-if="!isAllAudioAlbum() && (!isAllLibraryFiles() || pdfLibraryView === 'grid')")
             div(
               ng-repeat="image in getLibraryDisplayItems()"
               ng-class="{'col-6 col-sm-4 col-md-3 col-lg-2': galleryDensity === 'compact', 'col-sm-6 col-md-4 col-lg-3': galleryDensity === 'comfortable', 'col-sm-6 col-md-6 col-lg-4': galleryDensity === 'large'}"
@@ -744,6 +744,92 @@ html(ng-app="app")
                       title="Remove from this playlist"
                     )
                       i.fas.fa-times.fa-sm
+
+          //- Audio Tracklist View — shown automatically when all items are audio
+          div.audio-tracklist-container(ng-if="isAllAudioAlbum()")
+            div.audio-tracklist-header.d-flex.align-items-center.px-3.py-3.mb-2
+              div.audio-album-art.me-3
+                i.fas.fa-music(style="font-size:3rem; color:#6f42c1;")
+              div
+                h5.mb-1.fw-bold {{selectedAlbum.name}}
+                small.text-muted {{getLibraryDisplayItems().length}} track{{getLibraryDisplayItems().length !== 1 ? 's' : ''}}
+              div.ms-auto.d-flex.gap-2
+                button.btn.btn-primary.btn-sm(
+                  type="button"
+                  ng-click="playAudio(getLibraryDisplayItems()[0])"
+                  title="Play all from beginning"
+                )
+                  i.fas.fa-play.me-1
+                  | Play All
+                button.btn.btn-outline-secondary.btn-sm(
+                  type="button"
+                  ng-click="toggleShuffle(); playAudio(getLibraryDisplayItems()[0])"
+                  title="Shuffle play"
+                )
+                  i.fas.fa-shuffle.me-1
+                  | Shuffle
+            div.audio-tracklist
+              div.audio-track-row(
+                ng-repeat="image in getLibraryDisplayItems()"
+                ng-click="playAudio(image)"
+                ng-class="{'now-playing': currentIndex >= 0 && isPlaying && (playlist[currentIndex] || {}).path === image.path, 'paused-track': currentIndex >= 0 && !isPlaying && (playlist[currentIndex] || {}).path === image.path}"
+              )
+                //- Track number / waveform indicator
+                div.track-num
+                  span.track-number.text-muted(
+                    ng-if="!(currentIndex >= 0 && (playlist[currentIndex] || {}).path === image.path)"
+                  ) {{$index + 1}}
+                  div.waveform-bars(
+                    ng-if="currentIndex >= 0 && isPlaying && (playlist[currentIndex] || {}).path === image.path"
+                  )
+                    span
+                    span
+                    span
+                    span
+                  i.fas.fa-pause.text-success(
+                    ng-if="currentIndex >= 0 && !isPlaying && (playlist[currentIndex] || {}).path === image.path"
+                  )
+                //- Music icon
+                div.track-icon
+                  i.fas.fa-music
+                //- Title
+                div.track-title
+                  span.fw-medium(ng-bind-html="getLibraryItemTitle(image) | searchHighlight:searchQuery")
+                  small.d-block.text-muted(ng-if="selectedAlbum.isSearchResult && image.album")
+                    i.fas.fa-folder.me-1
+                    | {{image.album}}
+                //- Duration placeholder (shown if available)
+                div.track-duration.text-muted.small
+                  span(ng-if="image.duration") {{image.duration}}
+                //- Actions
+                div.track-actions(ng-click="$event.stopPropagation()")
+                  button.btn.btn-sm.btn-link.text-danger.p-1(
+                    type="button"
+                    ng-click="toggleFavorite(image)"
+                    ng-class="{'active-fav': image.isFavorite}"
+                    title="{{image.isFavorite ? 'Remove from favorites' : 'Add to favorites'}}"
+                  )
+                    i.fas.fa-heart
+                  button.btn.btn-sm.btn-link.text-secondary.p-1(
+                    type="button"
+                    ng-click="sharePhoto(image)"
+                    title="Share"
+                  )
+                    i.fas.fa-share-alt
+                  button.btn.btn-sm.btn-link.text-secondary.p-1(
+                    type="button"
+                    ng-if="image.isInPlaylist"
+                    ng-click="openPlaylistsForMedia(image, $event)"
+                    title="View playlists"
+                  )
+                    i.fas.fa-list
+                  button.btn.btn-sm.btn-link.text-warning.p-1(
+                    type="button"
+                    ng-click="removePlaylistItem(image.id)"
+                    ng-if="selectedAlbum.isPlaylist"
+                    title="Remove from playlist"
+                  )
+                    i.fas.fa-times
 
           //- Document/File Library List View
           div.table-responsive(ng-if="isAllLibraryFiles() && pdfLibraryView === 'list'")

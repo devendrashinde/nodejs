@@ -1321,6 +1321,13 @@ angular.module('photoController', [])
             });
         };
 
+        $scope.isAllAudioAlbum = function() {
+            var items = $scope.getLibraryDisplayItems();
+            return items.length > 0 && items.every(function(item) {
+                return item && item.isAudio;
+            });
+        };
+
         $scope.isAllGenericFiles = function() {
             return $scope.photos.length > 0 && $scope.photos.every(function(photo) {
                 return photo && photo.isGenericFile;

@@ -50,6 +50,169 @@ mark.search-highlight {
   border-width: 0.3em;
 }
 
+.fancybox-video-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.fancybox-video-spinner .spinner-border {
+  width: 3rem;
+  height: 3rem;
+  border-width: 0.3em;
+}
+
+/* ── Audio Tracklist View ─────────────────────────────────── */
+.audio-tracklist-container {
+  padding: 0 8px;
+}
+
+.audio-tracklist-header {
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 0;
+}
+
+.audio-album-art {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #6f42c1 0%, #0d6efd 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.audio-tracklist {
+  display: flex;
+  flex-direction: column;
+}
+
+.audio-track-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  gap: 12px;
+  transition: background 0.15s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.audio-track-row:hover {
+  background: #f8f9fa;
+}
+
+.audio-track-row:hover .track-number {
+  visibility: hidden;
+}
+.audio-track-row:hover .track-icon::before {
+  content: "\f04b"; /* fa-play unicode */
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  color: #0d6efd;
+}
+
+.audio-track-row.now-playing {
+  background: #f0f7ff;
+}
+
+.audio-track-row.now-playing .track-icon {
+  color: #0d6efd;
+}
+
+.audio-track-row.now-playing .track-title .fw-medium {
+  color: #0d6efd;
+  font-weight: 600 !important;
+}
+
+.audio-track-row.paused-track .track-title .fw-medium {
+  color: #6f42c1;
+}
+
+.track-num {
+  width: 28px;
+  text-align: center;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.track-icon {
+  width: 24px;
+  text-align: center;
+  color: #adb5bd;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.track-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.track-title .fw-medium {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-duration {
+  width: 52px;
+  text-align: right;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.track-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.audio-track-row:hover .track-actions {
+  opacity: 1;
+}
+
+.track-actions .active-fav {
+  color: #dc3545 !important;
+}
+
+/* Waveform animation for now-playing */
+.waveform-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 16px;
+}
+
+.waveform-bars span {
+  display: inline-block;
+  width: 3px;
+  background: #0d6efd;
+  border-radius: 1px;
+  animation: waveform 0.9s ease-in-out infinite;
+}
+
+.waveform-bars span:nth-child(1) { animation-delay: 0s;    height: 40%; }
+.waveform-bars span:nth-child(2) { animation-delay: 0.15s; height: 80%; }
+.waveform-bars span:nth-child(3) { animation-delay: 0.3s;  height: 55%; }
+.waveform-bars span:nth-child(4) { animation-delay: 0.45s; height: 70%; }
+
+@keyframes waveform {
+  0%, 100% { transform: scaleY(0.5); }
+  50%       { transform: scaleY(1.4); }
+}
+/* ─────────────────────────────────────────────────────────── */
+
 .page {
   background: white;
   max-width: 1280px;

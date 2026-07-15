@@ -14,6 +14,27 @@ html(ng-app="app")
   
   body#top
     div(class="container-fluid py-3" id="controller" ng-controller="photoController")
+      // Toast notifications container
+      div.toast-container(ng-if="toasts.length > 0")
+        div.toast(
+          ng-repeat="toast in toasts track by toast.id"
+          ng-class="'toast-' + toast.type"
+        )
+          i.toast-icon.fas(
+            ng-class="{\
+              'fa-check-circle': toast.type === 'success',\
+              'fa-exclamation-circle': toast.type === 'error',\
+              'fa-info-circle': toast.type === 'warning' || toast.type === 'info'\
+            }"
+          )
+          div.toast-message {{toast.message}}
+          button.toast-close(
+            type="button"
+            ng-click="removeToast(toast.id)"
+            aria-label="Close notification"
+          )
+            i.fas.fa-times
+
       // Loading overlay banner
       div.album-loading-overlay(ng-if="loading" ng-class="{'fade-out': !loading}")
         div.loading-banner
@@ -106,6 +127,15 @@ html(ng-app="app")
               title="Toggle albums sidebar"
             )
               i.fas.fa-bars
+
+            // Dark mode toggle
+            button.btn.btn-outline-secondary.btn-sm(
+              type="button"
+              ng-click="toggleDarkMode()"
+              ng-class="{'btn-secondary': isDarkMode}"
+              title="{{isDarkMode ? 'Light mode' : 'Dark mode'}}"
+            )
+              i.fas(ng-class="isDarkMode ? 'fa-sun' : 'fa-moon'")
 
         // Pagination Controls
         // Second row: Pagination + Page Info
@@ -1937,6 +1967,7 @@ html(ng-app="app")
     script(src="js/services/taggingService.js")
     script(src="js/services/audioPlayerService.js")
     script(src="js/services/transliterationService.js")
+    script(src="js/services/toastService.js")
     
     //- Advanced Features Components
     script(src="js/advanced-search.js")

@@ -66,7 +66,29 @@ angular.module('photoController', [])
     })
 
     // inject the Photo service factory into our controller
-    .controller('photoController', ['$scope','$http', '$location','$timeout','$q','PhotoService','ModalService','RecentlyViewedService','APP_CONSTANTS','SearchService','AudioPlayerService','TaggingService','UtilityService','ErrorHandlingService','TransliterationService', function($scope, $http, $location, $timeout, $q, PhotoService, ModalService, RecentlyViewedService, APP_CONSTANTS, SearchService, AudioPlayerService, TaggingService, UtilityService, ErrorHandlingService, TransliterationService) {
+    .controller('photoController', ['$scope','$http', '$location','$timeout','$q','PhotoService','ModalService','RecentlyViewedService','APP_CONSTANTS','SearchService','AudioPlayerService','TaggingService','UtilityService','ErrorHandlingService','TransliterationService','ToastService', function($scope, $http, $location, $timeout, $q, PhotoService, ModalService, RecentlyViewedService, APP_CONSTANTS, SearchService, AudioPlayerService, TaggingService, UtilityService, ErrorHandlingService, TransliterationService, ToastService) {
+
+        // Dark mode management
+        $scope.isDarkMode = localStorage.getItem('darkMode') === 'true' || false;
+        if ($scope.isDarkMode) {
+            document.body.classList.add('dark-mode');
+        }
+
+        $scope.toggleDarkMode = function() {
+            $scope.isDarkMode = !$scope.isDarkMode;
+            if ($scope.isDarkMode) {
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                document.body.classList.remove('dark-mode');
+                localStorage.setItem('darkMode', 'false');
+            }
+        };
+
+        // Toast notification management
+        $scope.removeToast = function(toastId) {
+            ToastService.remove(toastId);
+        };
 
         $scope.formData = {};
         $scope.tags = [];
@@ -2989,12 +3011,14 @@ angular.module('photoController', [])
                     // Update favorites count
                     if (isFavorite) {
                         $scope.favoritesCount++;
+                        ToastService.success('♥ Added to favorites');
                     } else {
                         $scope.favoritesCount = Math.max(0, $scope.favoritesCount - 1);
+                        ToastService.success('♥ Removed from favorites');
                     }
                 }, function(error) {
                     ErrorHandlingService.handleError(error, 'Error toggling favorite');
-                    alert('Failed to toggle favorite');
+                    ToastService.error('Failed to toggle favorite');
                 });
         };
 
@@ -3009,11 +3033,11 @@ angular.module('photoController', [])
                 navigator.share({
                     title: image.tags || 'Photo',
                     url: shareUrl
-                }).catch(err => alert('Error creating share link'));
+                }).catch(err => ToastService.error('Error creating share link'));
             } else {
                 // Fallback: copy to clipboard
                 navigator.clipboard.writeText(shareUrl);
-                alert('Share link copied to clipboard!');
+                ToastService.success('🔗 Share link copied to clipboard!');
             }
         };
 

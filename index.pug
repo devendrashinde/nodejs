@@ -847,8 +847,8 @@ html(ng-app="app")
                       )
                         i.fas.fa-times
 
-        // Audio Player Bar
-        div#playerBar.fixed-bottom.bg-light.border-top.shadow-lg(ng-if="playlist.length > 0" style="z-index: 1030;")
+        // Audio Player Bar (fixed at bottom)
+        div#playerBar.fixed-bottom.bg-light.border-top.shadow-lg(ng-if="playlist.length > 0" style="z-index: 1030; left: 0; right: 0;")
           div.p-2
             div.d-flex.align-items-center.justify-content-between.mb-2
               div.d-flex.align-items-center.flex-grow-1
@@ -888,9 +888,9 @@ html(ng-app="app")
               button.btn.btn-sm.btn-outline-secondary.me-2(
                 ng-click="toggleShuffle()"
                 ng-class="{'btn-success': isShuffle}"
-                title="Shuffle"
+                title="Shuffle (currently {{isShuffle ? 'ON' : 'OFF'}})"
               )
-                i.fas.fa-random
+                i.fas.fa-shuffle
 
               // Progress bar
               div.flex-grow-1.mx-2.progress(
@@ -943,6 +943,7 @@ html(ng-app="app")
       button#goTopBtn.btn.btn-primary.rounded-circle.shadow(
         ng-click="scrollToTop()"
         title="Go to top"
+        ng-style="{'bottom': (playlist.length > 0 ? '90px' : '20px')}"
       )
         i.fas.fa-arrow-up
 

@@ -17,6 +17,33 @@ angular.module('AudioPlayerService', [])
             isRepeat: false
         };
         
+        // Shuffle queue for proper shuffle implementation (Fisher-Yates)
+        var shuffleQueue = [];
+        var shuffleIndex = -1;
+        
+        /**
+         * Fisher-Yates shuffle algorithm
+         * Creates a random permutation of indices (0 to n-1)
+         * @param {number} length - Length of array to shuffle
+         * @returns {array} Array of shuffled indices
+         */
+        function fisherYatesShuffle(length) {
+            var indices = [];
+            for (var i = 0; i < length; i++) {
+                indices.push(i);
+            }
+            
+            // Shuffle from end to beginning
+            for (var i = length - 1; i > 0; i--) {
+                var j = Math.floor(Math.random() * (i + 1));
+                var temp = indices[i];
+                indices[i] = indices[j];
+                indices[j] = temp;
+            }
+            
+            return indices;
+        }
+        
         // Set initial volume
         audio.volume = playerState.volume / 100;
         
@@ -120,8 +147,18 @@ angular.module('AudioPlayerService', [])
                 }
                 
                 if (playerState.isShuffle) {
-                    playerState.currentIndex = Math.floor(Math.random() * playerState.playlist.length);
+                    // Use shuffle queue for proper shuffle implementation
+                    shuffleIndex++;
+                    
+                    // If we've reached the end of the shuffle queue, generate a new one
+                    if (shuffleIndex >= shuffleQueue.length) {
+                        shuffleQueue = fisherYatesShuffle(playerState.playlist.length);
+                        shuffleIndex = 0;
+                    }
+                    
+                    playerState.currentIndex = shuffleQueue[shuffleIndex];
                 } else {
+                    // Normal sequential playback
                     playerState.currentIndex = (playerState.currentIndex + 1) % playerState.playlist.length;
                 }
                 
@@ -174,6 +211,23 @@ angular.module('AudioPlayerService', [])
              */
             toggleShuffle: function() {
                 playerState.isShuffle = !playerState.isShuffle;
+                
+                // When enabling shuffle, generate a new shuffle queue
+                if (playerState.isShuffle && playerState.playlist.length > 0) {
+                    shuffleQueue = fisherYatesShuffle(playerState.playlist.length);
+                    shuffleIndex = 0;
+                    // Find current index in shuffle queue
+                    for (var i = 0; i < shuffleQueue.length; i++) {
+                        if (shuffleQueue[i] === playerState.currentIndex) {
+                            shuffleIndex = i;
+                            break;
+                        }
+                    }
+                } else if (!playerState.isShuffle) {
+                    // When disabling shuffle, reset shuffle queue
+                    shuffleQueue = [];
+                    shuffleIndex = -1;
+                }
             },
             
             /**
@@ -221,6 +275,12 @@ angular.module('AudioPlayerService', [])
                 if (existingIndex === -1) {
                     playerState.playlist.push(track);
                     existingIndex = playerState.playlist.length - 1;
+                    
+                    // If shuffle is enabled and this is a new track, regenerate shuffle queue
+                    if (playerState.isShuffle && playerState.playlist.length > 0) {
+                        shuffleQueue = fisherYatesShuffle(playerState.playlist.length);
+                        shuffleIndex = 0;
+                    }
                 }
                 
                 // Auto-play: play this track immediately (if requested)
@@ -239,6 +299,8 @@ angular.module('AudioPlayerService', [])
             clearPlaylist: function() {
                 playerState.playlist = [];
                 playerState.currentIndex = -1;
+                shuffleQueue = [];
+                shuffleIndex = -1;
                 audio.pause();
                 audio.src = '';
                 playerState.isPlaying = false;
@@ -268,6 +330,17 @@ angular.module('AudioPlayerService', [])
                 } else if (index < playerState.currentIndex) {
                     playerState.currentIndex--;
                 }
+                
+                // Regenerate shuffle queue if shuffle is enabled and playlist still has tracks
+                if (playerState.isShuffle && playerState.playlist.length > 0) {
+                    shuffleQueue = fisherYatesShuffle(playerState.playlist.length);
+                    shuffleIndex = 0;
+                } else if (playerState.playlist.length === 0) {
+                    shuffleQueue = [];
+                    shuffleIndex = -1;
+                }
+                
+                $rootScope.$broadcast('playlistUpdated', playerState);
             },
             
             /**

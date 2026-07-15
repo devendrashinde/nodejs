@@ -44,7 +44,7 @@ html(ng-app="app")
           div.loading-banner-subtext Please wait while we load your items...
       
       // Header
-      header.collapsible-header.d-flex.flex-column.sticky-top.bg-white.border-bottom.shadow-sm.px-2.py-2(combo-header)
+      header.collapsible-header.d-flex.flex-column.sticky-top.border-bottom.shadow-sm.px-2.py-2(combo-header, ng-class="{'bg-white': !isDarkMode, 'bg-dark': isDarkMode}")
         // First row: Logo, Album, Controls
         div.d-flex.align-items-center.flex-nowrap.w-100
           img(src="/favicon.png" alt="Home" width="28" class="me-2")
@@ -976,7 +976,7 @@ html(ng-app="app")
                         i.fas.fa-times
 
         // Audio Player Bar (fixed at bottom)
-        div#playerBar.fixed-bottom.bg-light.border-top.shadow-lg(ng-if="playlist.length > 0" style="z-index: 1030; left: 0; right: 0;")
+        div#playerBar.fixed-bottom.border-top.shadow-lg(ng-if="playlist.length > 0" ng-class="{'bg-light': !isDarkMode, 'bg-dark': isDarkMode}" style="z-index: 1030; left: 0; right: 0;")
           div.p-2
             div.d-flex.align-items-center.justify-content-between.mb-2
               div.d-flex.align-items-center.flex-grow-1
@@ -1079,7 +1079,7 @@ html(ng-app="app")
       div.modal.fade#cacheStatsModal(tabindex="-1" aria-labelledby="cacheStatsLabel" aria-hidden="true")
         div.modal-dialog.modal-dialog-centered.modal-xl
           div.modal-content
-            div.modal-header.bg-light
+            div.modal-header(ng-class="{'bg-light': !isDarkMode, 'bg-dark': isDarkMode}")
               h5.modal-title#cacheStatsLabel
                 i.fas.fa-chart-pie.me-2
                 | Cache Statistics
@@ -1871,7 +1871,7 @@ html(ng-app="app")
             div.modal-body
               div.row
                 div.col-lg-8
-                  div.editor-preview-container.position-relative.bg-light.rounded.mb-3
+                  div.editor-preview-container.position-relative.rounded.mb-3(ng-class="{'bg-light': !isDarkMode, 'bg-dark': isDarkMode}")
                     img.img-fluid.w-100#editorPreview(style="max-height: 500px; object-fit: contain;")
                   div.btn-group.d-grid.gap-2.mb-3
                     button.btn.btn-outline-primary(type="button" onclick="window.imageEditor?.enableCropMode()") ✂️ Crop

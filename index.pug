@@ -181,25 +181,23 @@ html(ng-app="app")
       // Sidebar + Content
       div.row
         // Sidebar for Folders
-        aside#folderSidebar.col-sm-3.col-md-2.mb-3.collapse.d-sm-block
+        aside#folderSidebar.col-sm-4.col-md-4.col-lg-3.col-xl-2.mb-3.collapse.d-sm-block
           div.albums-sidebar
             div.albums-header
               //- Toggle between Albums and Playlists
-              div.btn-group.w-100(role="group" style="margin-bottom: 0.5rem;")
-                button.btn.btn-sm.btn-outline-primary(
+              div.btn-group.w-100.album-mode-toggle(role="group")
+                button.btn.btn-sm.btn-outline-primary.album-mode-btn(
                   type="button"
                   ng-click="switchView('albums')"
                   ng-class="{'active': selectedView === 'albums'}"
-                  style="flex: 1; font-size: 0.75rem; padding: 0.3rem 0.5rem;"
                   title="View albums"
                 )
                   i.fas.fa-folder-open.me-1
                   | Albums
-                button.btn.btn-sm.btn-outline-success(
+                button.btn.btn-sm.btn-outline-success.album-mode-btn(
                   type="button"
                   ng-click="switchView('playlists')"
                   ng-class="{'active': selectedView === 'playlists'}"
-                  style="flex: 1; font-size: 0.75rem; padding: 0.3rem 0.5rem;"
                   title="View playlists"
                 )
                   i.fas.fa-list.me-1
@@ -222,6 +220,29 @@ html(ng-app="app")
               h6.albums-title(ng-if="selectedView === 'playlists'" style="margin-top: 0.5rem; margin-bottom: 0;")
                 i.fas.fa-list.me-2
                 | Playlists
+
+            div.albums-spotlight(ng-if="selectedView === 'albums'")
+              div.albums-spotlight-cover(ng-if="!isLibraryRoot(selectedAlbum)")
+                img.albums-spotlight-image(
+                  ng-if="getAlbumCoverUrl(selectedAlbum)"
+                  ng-src="{{getAlbumCoverUrl(selectedAlbum)}}"
+                  alt="{{selectedAlbum.album || selectedAlbum.name}} cover"
+                )
+                div.albums-spotlight-monogram(ng-if="!getAlbumCoverUrl(selectedAlbum)") {{getAlbumInitials(selectedAlbum)}}
+              div.albums-spotlight-label {{getAlbumContextLabel(selectedAlbum)}}
+              div.albums-spotlight-title {{selectedAlbum.album || 'All Albums'}}
+              div.albums-spotlight-subtitle {{getAlbumSummaryText(selectedAlbum)}}
+              div.albums-spotlight-meta
+                span(ng-if="!isLibraryRoot(selectedAlbum)")
+                  i.fas.fa-music.me-1
+                  | {{getAlbumPhotoCount(selectedAlbum)}} item{{getAlbumPhotoCount(selectedAlbum) === 1 ? '' : 's'}}
+                span(ng-if="isLibraryRoot(selectedAlbum)")
+                  i.fas.fa-folder-open.me-1
+                  | {{getFilteredFolders().length}} collection{{getFilteredFolders().length === 1 ? '' : 's'}}
+                span(ng-if="!isLibraryRoot(selectedAlbum)")
+                  i.fas.fa-layer-group.me-1
+                  | {{getAlbumDepth(selectedAlbum.path)}} level{{getAlbumDepth(selectedAlbum.path) === 1 ? '' : 's'}}
+              div.albums-spotlight-path {{getAlbumDisplayPath(selectedAlbum)}}
             
             //- Albums search
             div.albums-search(ng-if="selectedView === 'albums'")
@@ -349,27 +370,31 @@ html(ng-app="app")
             ul.list-group.list-group-flush.albums-list(ng-if="selectedView === 'albums'")
               li.list-group-item.list-group-item-action.album-item(
                 ng-repeat="folder in getFilteredFolders()"
-                ng-class="{'active': folder.album == selectedAlbum.album}"
+                ng-class="{'active': isAlbumSelected(folder)}"
                 title="{{folder.album}}"
-                style="position: relative; padding-right: 45px;"
               )
-                div.d-flex.justify-content-between.align-items-center
-                  div(ng-click="setAlbum(folder)" style="flex-grow: 1; cursor: pointer;")
-                    div.album-name
-                      i.fas.fa-folder.me-2
-                      span {{folder.album}}
-                    //- Display album tags if they exist
-                    div.album-tags(ng-if="folder.tags && folder.tags.trim()" style="margin-top: 0.3rem; margin-left: 1.5rem;")
-                      span.badge.bg-info.me-1(
-                        ng-repeat="tag in folder.tags.split(',')"
-                        ng-if="tag.trim()"
-                        style="font-size: 0.7rem;"
-                      ) {{tag.trim()}}
-                  button.btn.btn-sm.btn-outline-warning(
+                div.album-item-shell
+                  div.album-item-body(ng-click="setAlbum(folder)")
+                    img.album-cover-thumb(
+                      ng-if="getAlbumCoverUrl(folder)"
+                      ng-src="{{getAlbumCoverUrl(folder)}}"
+                      alt="{{folder.album}} cover"
+                    )
+                    div.album-avatar(ng-if="!getAlbumCoverUrl(folder)") {{getAlbumInitials(folder)}}
+                    div.album-copy
+                      div.album-name-row
+                        span.album-name-text {{folder.album}}
+                        span.badge.album-count-badge {{getAlbumPhotoCount(folder)}}
+                      div.album-tags(ng-if="folder.tags && folder.tags.trim()")
+                        span.badge.album-tag.me-1(
+                          ng-repeat="tag in folder.tags.split(',')"
+                          ng-if="tag.trim()"
+                        ) {{tag.trim()}}
+                      div.album-path {{folder.description || getAlbumParentLabel(folder)}}
+                  button.btn.btn-sm.btn-outline-warning.album-edit-btn(
                     type="button"
                     ng-click="editAlbumTag(folder)"
                     title="Edit tags for this album"
-                    style="padding: 0.25rem 0.5rem; font-size: 0.75rem;"
                   )
                     i.fas.fa-tags
             
@@ -424,7 +449,7 @@ html(ng-app="app")
               | No playlists found
 
         // Main Content
-        main(ng-class="{'col-sm-9 col-md-10': folders.length > 0, 'col-12': folders.length == 0}")
+        main(ng-class="{'col-sm-8 col-md-8 col-lg-9 col-xl-10': folders.length > 0, 'col-12': folders.length == 0}")
 
           //- Document/File Library toolbar — shown when viewing only PDFs and other non-media files
           div.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3(ng-if="isAllLibraryFiles()")
@@ -534,7 +559,7 @@ html(ng-app="app")
                 )
                   figure(style="position: relative;")
                     img.card-img-top.img-fluid.gallery-thumb(
-                      ng-src="music.png"
+                      ng-src="/music.png"
                       alt="{{image.tags}}"
                       loading="lazy"
                       onload="this.classList.add('img-loaded')"
@@ -570,7 +595,7 @@ html(ng-app="app")
                 )
                   figure
                     img.card-img-top.img-fluid.gallery-thumb(
-                      ng-src="{{image.isAudio ? 'music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? (image.customThumbnail || 'pdf.png') : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
+                      ng-src="{{image.isAudio ? '/music.png' : (image.isVideo ? '/thumbs?id=' + image.path + '&w=300&h=200' : (image.isPdf ? (image.customThumbnail || '/pdf.png') : '/thumbs?id=' + image.path + '&w=300&h=200'))}}"
                       alt="{{image.tags || image.tag || getLibraryItemTitle(image)}}"
                       loading="lazy"
                       onload="this.classList.add('img-loaded')"
@@ -783,13 +808,26 @@ html(ng-app="app")
 
           //- Audio Tracklist View — shown automatically when all items are audio
           div.audio-tracklist-container(ng-if="isAllAudioAlbum()")
-            div.audio-tracklist-header.d-flex.align-items-center.px-3.py-3.mb-2
+            div.audio-tracklist-header.music-album-hero.d-flex.align-items-center.px-3.py-3.mb-2
               div.audio-album-art.me-3
-                i.fas.fa-music(style="font-size:3rem; color:#6f42c1;")
-              div
+                img.audio-album-cover(
+                  ng-if="getAlbumCoverUrl(selectedAlbum)"
+                  ng-src="{{getAlbumCoverUrl(selectedAlbum)}}"
+                  alt="{{selectedAlbum.name}} cover"
+                )
+                div.audio-album-cover-fallback(ng-if="!getAlbumCoverUrl(selectedAlbum)")
+                  span {{getAlbumInitials(selectedAlbum)}}
+                  i.fas.fa-music
+              div.audio-album-copy
+                div.audio-album-kicker Listening Now
                 h5.mb-1.fw-bold {{selectedAlbum.name}}
-                small.text-muted {{getLibraryDisplayItems().length}} track{{getLibraryDisplayItems().length !== 1 ? 's' : ''}}
-              div.ms-auto.d-flex.gap-2
+                p.audio-album-subtitle.mb-0 {{getAlbumSummaryText(selectedAlbum)}}
+                div.audio-album-meta
+                  span.audio-meta-pill {{getLibraryDisplayItems().length}} track{{getLibraryDisplayItems().length !== 1 ? 's' : ''}}
+                  span.audio-meta-pill(ng-if="getAudioAlbumFormatsLabel()") {{getAudioAlbumFormatsLabel()}}
+                  span.audio-meta-pill(ng-if="getAudioAlbumTotalSizeLabel() !== '0 B'") {{getAudioAlbumTotalSizeLabel()}}
+                  span.audio-meta-pill(ng-if="getAudioAlbumYearLabel()") {{getAudioAlbumYearLabel()}}
+              div.audio-hero-actions.ms-auto.d-flex.gap-2
                 button.btn.btn-primary.btn-sm(
                   type="button"
                   ng-click="playAudio(getLibraryDisplayItems()[0])"
@@ -831,6 +869,7 @@ html(ng-app="app")
                 //- Title
                 div.track-title
                   span.fw-medium(ng-bind-html="getLibraryItemTitle(image) | searchHighlight:searchQuery")
+                  small.track-meta.d-block(ng-if="getAudioTrackMeta(image)") {{getAudioTrackMeta(image)}}
                   small.d-block.text-muted(ng-if="selectedAlbum.isSearchResult && image.album")
                     a.text-muted.text-decoration-none(
                       href="javascript:void(0)"
@@ -1954,7 +1993,7 @@ html(ng-app="app")
     script(src="js/image-editor.js")
     script(src="js/ng-app.js")    
     script(src="main.js")
-    script(src="js/controllers/photoController.js?v=9")
+    script(src="js/controllers/photoController.js?v=10")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")

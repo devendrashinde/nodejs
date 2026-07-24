@@ -57,6 +57,9 @@ const PDF_THUMBNAIL_DIR = process.env.PDF_THUMBNAIL_DIR || './temp-pic/pdf-thumb
 const THUMBNAIL_DIR = process.env.THUMBNAIL_DIR || './temp-pic/thumbnails';
 const ALLOWED_IMAGE_TYPES = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.bmp', '.webp'];
 const ALLOWED_VIDEO_TYPES = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.mpeg', '.mpg', '.ogv', '.3gp'];
+const ALLOWED_AUDIO_TYPES = ['.mp3', '.wav', '.aac', '.m4a', '.flac', '.ogg', '.oga', '.opus', '.wma'];
+const AUDIO_PLACEHOLDER_URL = '/music.png';
+const PDF_PLACEHOLDER_URL = '/pdf.png';
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
@@ -1343,6 +1346,70 @@ const getImageDetailsForPageFile = async ({
   return imageDetail;
 };
 
+const getAlbumPreviewData = async ({ dirPath, relativeAlbumPath, pdfThumbnailMap }) => {
+  const preview = {
+    coverUrl: null,
+    coverType: null,
+    itemCount: 0
+  };
+
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      if (!entry || entry.name.startsWith('.') || !entry.isFile()) {
+        continue;
+      }
+
+      const extension = extname(entry.name).toLowerCase();
+      if (SKIP_FILE_TYPES.includes(extension)) {
+        continue;
+      }
+
+      preview.itemCount++;
+
+      if (preview.coverUrl) {
+        continue;
+      }
+
+      const relativeFilePath = `${BASE_DIR}${relativeAlbumPath ? `${relativeAlbumPath}/` : ''}${entry.name}`;
+      const normalizedFilePath = normalizeRelativePath(relativeFilePath);
+
+      if (ALLOWED_IMAGE_TYPES.includes(extension) || ALLOWED_VIDEO_TYPES.includes(extension)) {
+        preview.coverUrl = `/thumbs?id=${encodeURIComponent(normalizedFilePath)}&w=160&h=160`;
+        preview.coverType = ALLOWED_IMAGE_TYPES.includes(extension) ? 'image' : 'video';
+        continue;
+      }
+
+      if (extension === '.pdf') {
+        preview.coverUrl = pdfThumbnailMap[normalizedFilePath] || PDF_PLACEHOLDER_URL;
+        preview.coverType = 'pdf';
+        continue;
+      }
+
+      if (ALLOWED_AUDIO_TYPES.includes(extension)) {
+        preview.coverUrl = AUDIO_PLACEHOLDER_URL;
+        preview.coverType = 'audio';
+      }
+    }
+  } catch (error) {
+    console.warn(`Failed to build album preview for ${dirPath}:`, error.message);
+  }
+
+  return preview;
+};
+
+const createAlbumImageDetail = async ({ id, name, pathValue, albumName, dirPath, relativeAlbumPath, pdfThumbnailMap }) => {
+  const detail = new ImageDetails(`album${id}`, name, pathValue, true, albumName);
+  const preview = await getAlbumPreviewData({ dirPath, relativeAlbumPath, pdfThumbnailMap });
+
+  detail.coverUrl = preview.coverUrl;
+  detail.coverType = preview.coverType;
+  detail.itemCount = preview.itemCount;
+
+  return detail;
+};
+
 const getCacheKey = (album, page, items) => `${album}_${page}_${items}`;
 
 const normalizeRelativePath = (value) => String(value || '').replace(/\\/g, '/').replace(/^\/+/, '');
@@ -1460,7 +1527,15 @@ const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) =>
     if (!root) {
         const fileparts = album.split("/");
         const albumName = fileparts[fileparts.length - 1];
-        allImages.push(new ImageDetails(`album${id}`, albumName, album, true, albumName));
+        allImages.push(await createAlbumImageDetail({
+          id,
+          name: albumName,
+          pathValue: album,
+          albumName,
+          dirPath,
+          relativeAlbumPath: normalizeRelativePath(album),
+          pdfThumbnailMap
+        }));
     } else {
         allImages.push(new ImageDetails(`album${id}`, album, "", true, album));
 
@@ -1468,6 +1543,7 @@ const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) =>
       if (dirPath !== dataDir) {
         try {
           const topLevelEntries = await fs.readdir(dataDir, { withFileTypes: true });
+          const topLevelAlbumPromises = [];
           for (const entry of topLevelEntries) {
             if (entry.name.startsWith('.')) {
               continue;
@@ -1479,9 +1555,19 @@ const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) =>
 
             if (entry.isDirectory()) {
               id++;
-              allImages.push(new ImageDetails(`album${id}`, entry.name, entry.name, true, entry.name));
+              topLevelAlbumPromises.push(createAlbumImageDetail({
+                id,
+                name: entry.name,
+                pathValue: entry.name,
+                albumName: entry.name,
+                dirPath: join(dataDir, entry.name),
+                relativeAlbumPath: entry.name,
+                pdfThumbnailMap
+              }));
             }
           }
+
+          allImages.push(...await Promise.all(topLevelAlbumPromises));
         } catch (err) {
           console.error('Error loading top-level albums for Home view:', err);
         }
@@ -1499,7 +1585,15 @@ const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) =>
 
       if (entry.isDirectory()) {
         const albumName = (albumPathPrefix ? `${albumPathPrefix}/` : '') + file;
-        allImages.push(new ImageDetails(`album${id}`, file, albumName, true, file));
+        allImages.push(await createAlbumImageDetail({
+          id,
+          name: file,
+          pathValue: albumName,
+          albumName: file,
+          dirPath: join(dirPath, file),
+          relativeAlbumPath: albumName,
+          pdfThumbnailMap
+        }));
         continue;
       }
 

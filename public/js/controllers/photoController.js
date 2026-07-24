@@ -629,6 +629,266 @@ angular.module('photoController', [])
             }
         };
 
+        function normalizeAlbumKey(value) {
+            return String(value || '')
+                .replace(/\\/g, '/')
+                .replace(/^data\//, '')
+                .replace(/\/+$/, '');
+        }
+
+        function formatBytes(bytes) {
+            if (!bytes || bytes <= 0) {
+                return '0 B';
+            }
+
+            var units = ['B', 'KB', 'MB', 'GB'];
+            var unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+            var value = bytes / Math.pow(1024, unitIndex);
+            return value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1) + ' ' + units[unitIndex];
+        }
+
+        function getCurrentAudioItems() {
+            return $scope.getLibraryDisplayItems().filter(function(item) {
+                return item && item.isAudio;
+            });
+        }
+
+        function getAlbumCountKeyCandidates(album) {
+            if (!album) {
+                return [];
+            }
+
+            return [album.path, album.album, album.name]
+                .map(normalizeAlbumKey)
+                .filter(function(value, index, arr) {
+                    return value && arr.indexOf(value) === index;
+                });
+        }
+
+        $scope.getAlbumPhotoCount = function(album) {
+            if ($scope.isAlbumSelected(album) && Number.isFinite($scope.totalPhotos)) {
+                return $scope.totalPhotos;
+            }
+
+            if (album && Number.isFinite(Number(album.itemCount)) && Number(album.itemCount) > 0) {
+                return Number(album.itemCount);
+            }
+
+            var keys = getAlbumCountKeyCandidates(album);
+
+            for (var i = 0; i < keys.length; i++) {
+                var key = keys[i];
+                if ($scope.allPhotosByAlbum && Array.isArray($scope.allPhotosByAlbum[key])) {
+                    return $scope.allPhotosByAlbum[key].length;
+                }
+            }
+
+            return 0;
+        };
+
+        $scope.isAlbumSelected = function(album) {
+            if (!album || !$scope.selectedAlbum) {
+                return false;
+            }
+
+            var selectedPath = normalizeAlbumKey($scope.selectedAlbum.path);
+            var albumPath = normalizeAlbumKey(album.path);
+
+            if (selectedPath && albumPath) {
+                return selectedPath === albumPath;
+            }
+
+            return normalizeAlbumKey(album.album || album.name) === normalizeAlbumKey($scope.selectedAlbum.album || $scope.selectedAlbum.name);
+        };
+
+        $scope.isLibraryRoot = function(album) {
+            var rawPath = album && album.path;
+            return !rawPath || rawPath === 'Home' || rawPath === '';
+        };
+
+        $scope.getAlbumParentLabel = function(album) {
+            var path = normalizeAlbumKey(album && album.path);
+            if (!path || path === 'Home') {
+                return '';
+            }
+
+            var parts = path.split('/').filter(Boolean);
+            if (parts.length <= 1) {
+                return 'Top level collection';
+            }
+
+            return parts.slice(0, -1).join(' / ');
+        };
+
+        $scope.getAlbumDepth = function(pathValue) {
+            var path = normalizeAlbumKey(pathValue);
+            if (!path || path === 'Home') {
+                return 0;
+            }
+
+            return path.split('/').filter(Boolean).length;
+        };
+
+        $scope.getAlbumDisplayPath = function(album) {
+            var path = normalizeAlbumKey(album && album.path);
+            return path && path !== 'Home' ? path.split('/').join(' / ') : 'Entire library';
+        };
+
+        $scope.getAlbumInitials = function(album) {
+            var label = ((album && (album.name || album.album)) || 'AL').trim();
+            var parts = label.split(/[\s_-]+/).filter(Boolean);
+
+            if (!parts.length) {
+                return 'AL';
+            }
+
+            if (parts.length === 1) {
+                return parts[0].slice(0, 2).toUpperCase();
+            }
+
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        };
+
+        $scope.getAlbumCoverUrl = function(album) {
+            return album && album.coverUrl ? album.coverUrl : '';
+        };
+
+        $scope.getAlbumSummaryText = function(album) {
+            if (!album) {
+                return 'Browse your media library';
+            }
+
+            if (album.description) {
+                return album.description;
+            }
+
+            if ($scope.isLibraryRoot(album)) {
+                return 'Browse collections, favorites, and playlists';
+            }
+
+            var parentLabel = $scope.getAlbumParentLabel(album);
+            return parentLabel || 'Top level collection';
+        };
+
+        $scope.getAlbumContextLabel = function(album) {
+            if ($scope.isLibraryRoot(album)) {
+                return 'Media Library';
+            }
+
+            var items = $scope.getLibraryDisplayItems();
+            if (!items.length && $scope.getFilteredFolders().length > 0) {
+                return 'Album Collection';
+            }
+
+            var hasAudio = items.some(function(item) { return item && item.isAudio; });
+            var hasPhoto = items.some(function(item) { return item && item.isPhoto; });
+            var hasVideo = items.some(function(item) { return item && item.isVideo; });
+            var hasDocs = items.some(function(item) { return item && (item.isPdf || item.isGenericFile); });
+
+            if (hasAudio && !hasPhoto && !hasVideo && !hasDocs) {
+                return 'Music Library';
+            }
+
+            if (hasDocs && !hasAudio && !hasPhoto && !hasVideo) {
+                return $scope.getLibraryTitle();
+            }
+
+            if (hasPhoto && hasVideo && !hasAudio && !hasDocs) {
+                return 'Photo & Video Library';
+            }
+
+            if (hasPhoto && !hasVideo && !hasAudio && !hasDocs) {
+                return 'Photo Library';
+            }
+
+            if (hasVideo && !hasPhoto && !hasAudio && !hasDocs) {
+                return 'Video Library';
+            }
+
+            var coverType = album && album.coverType;
+            if (coverType === 'audio') {
+                return 'Music Library';
+            }
+
+            if (coverType === 'image') {
+                return hasVideo ? 'Photo & Video Library' : 'Photo Library';
+            }
+
+            if (coverType === 'video') {
+                return 'Video Library';
+            }
+
+            if (coverType === 'pdf') {
+                return 'Document Library';
+            }
+
+            return 'Media Library';
+        };
+
+        $scope.getAudioAlbumFormatsLabel = function() {
+            var formats = [];
+
+            getCurrentAudioItems().forEach(function(item) {
+                var extension = getFileExtension(item && (item.name || item.path));
+                if (!extension) {
+                    return;
+                }
+
+                var label = extension.toUpperCase();
+                if (formats.indexOf(label) === -1) {
+                    formats.push(label);
+                }
+            });
+
+            return formats.slice(0, 3).join(' / ');
+        };
+
+        $scope.getAudioAlbumTotalSizeLabel = function() {
+            var totalBytes = getCurrentAudioItems().reduce(function(sum, item) {
+                return sum + Number(item.fileSize || 0);
+            }, 0);
+
+            return formatBytes(totalBytes);
+        };
+
+        $scope.getAudioAlbumYearLabel = function() {
+            var years = getCurrentAudioItems().map(function(item) {
+                return String(item.fileDate || '').slice(0, 4);
+            }).filter(function(year) {
+                return /^\d{4}$/.test(year);
+            });
+
+            if (!years.length) {
+                return '';
+            }
+
+            years.sort();
+            return years[0] === years[years.length - 1] ? years[0] : years[0] + ' - ' + years[years.length - 1];
+        };
+
+        $scope.getAudioTrackMeta = function(image) {
+            if (!image) {
+                return '';
+            }
+
+            var parts = [];
+            var extension = getFileExtension(image.name || image.path);
+
+            if (extension) {
+                parts.push(extension.toUpperCase());
+            }
+
+            if (image.fileSizeFormatted) {
+                parts.push(image.fileSizeFormatted);
+            }
+
+            if (image.fileDate) {
+                parts.push(image.fileDate);
+            }
+
+            return parts.join(' • ');
+        };
+
         $scope.setAlbum = function (album) {
 
 			$scope.selectedAlbum = album;
@@ -638,10 +898,7 @@ angular.module('photoController', [])
             // Track recently viewed albums (exclude "All Albums" and "favorites")
             if (album && album.path && album.path !== '' && album.path !== 'favorites') {
                 // Get photo count for this album
-                var photoCount = 0;
-                if ($scope.allPhotosByAlbum && $scope.allPhotosByAlbum[album.path]) {
-                    photoCount = $scope.allPhotosByAlbum[album.path].length;
-                }
+                var photoCount = $scope.getAlbumPhotoCount(album);
                 
                 var albumToTrack = {
                     album: album.album,
@@ -1237,15 +1494,24 @@ angular.module('photoController', [])
                     if (tags && Array.isArray(tags)) {
                         tags.forEach(function(item) {
                             if (item.name) {
-                                tagMap[item.name] = item.tags || '';
+                                tagMap[item.name] = {
+                                    tags: item.tags || '',
+                                    description: item.description || '',
+                                    id: item.id,
+                                    path: item.path || ''
+                                };
                             }
                         });
                     }
                     
                     // Merge tags with folders array
                     $scope.folders.forEach(function(folder) {
-                        if (tagMap[folder.album]) {
-                            folder.tags = tagMap[folder.album];
+                        var albumMeta = tagMap[folder.album];
+
+                        if (albumMeta) {
+                            folder.tags = albumMeta.tags;
+                            folder.description = albumMeta.description || folder.description || '';
+                            folder.id = folder.id || albumMeta.id;
                         } else if (!folder.tags) {
                             folder.tags = '';
                         }
@@ -2211,6 +2477,7 @@ angular.module('photoController', [])
                         path: album.path,
                         id: album.id,
                         tags: album.tags,
+                        description: album.description || '',
                         isAlbum: true
                     }));
                     $scope.loading = false;

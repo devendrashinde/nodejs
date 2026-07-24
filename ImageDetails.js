@@ -14,6 +14,10 @@ export default class ImageDetails {
     this.fileSizeFormatted = null;
     this.fileDate = null;
     this.customThumbnail = null;
+    this.coverUrl = null;
+    this.coverType = null;
+    this.itemCount = 0;
+    this.description = '';
   }
 
   /**

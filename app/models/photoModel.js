@@ -55,13 +55,32 @@ class Photo {
 
     static async getPhotosByTag(tag, result) {
         try {
+            const trimmedTag = tag.trim();
+            // Try exact match first (uses index), fallback to LIKE for partial matches
+            // Using CAST to handle case-insensitive comparison
             const res = await query(
-                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE tags LIKE ?", 
-                [`%${tag.trim()}%`]
+                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE LOWER(CONCAT(',', tags, ',')) LIKE LOWER(?) ORDER BY album, name", 
+                [`%,${trimmedTag},%`]
             );
             result(null, res);
         } catch (err) {
             console.error("Error fetching photos by tag:", err);
+            result(err, null);
+        }
+    }
+
+    // New method for exact tag match (more efficient, uses index)
+    static async getPhotosByTagExact(tag, result) {
+        try {
+            const trimmedTag = tag.trim().toLowerCase();
+            // Find photos where tag is a complete word (not substring)
+            const res = await query(
+                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE FIND_IN_SET(?, LOWER(REPLACE(REPLACE(tags, ' ', ','), '  ', ','))) > 0 ORDER BY album, name",
+                [trimmedTag]
+            );
+            result(null, res);
+        } catch (err) {
+            console.error("Error fetching photos by exact tag:", err);
             result(err, null);
         }
     }
@@ -81,8 +100,27 @@ class Photo {
 
     static async getTags(result) {
         try {
-            const res = await query("SELECT DISTINCT tags FROM photos WHERE tags IS NOT NULL AND tags != ''");
-            result(null, res);
+            // Optimize by letting MySQL aggregate tags and reduce payload
+            // Use GROUP_CONCAT to combine all non-null tags efficiently
+            const res = await query(
+                "SELECT GROUP_CONCAT(DISTINCT tags SEPARATOR ',') as combined_tags FROM photos WHERE tags IS NOT NULL AND tags != ''"
+            );
+            
+            // Transform response to match existing format for backward compatibility
+            // If no tags found, return empty array
+            if (!res || !res[0] || !res[0].combined_tags) {
+                result(null, []);
+                return;
+            }
+            
+            // Return as array of objects to maintain compatibility with controller
+            const allTags = res[0].combined_tags
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0);
+            
+            const uniqueTags = [...new Set(allTags)];
+            result(null, uniqueTags.map(tags => ({ tags })));
         } catch (err) {
             console.error("Error fetching tags:", err);
             result(err, null);

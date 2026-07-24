@@ -5,6 +5,7 @@ import fileUpload from 'express-fileupload';
 import { join, sep, extname } from 'path';
 import path from 'path';
 import crypto from 'crypto';
+import compression from 'compression';
 import sharp from 'sharp';
 import ImageDetails from "./ImageDetails.js";
 import { fileURLToPath } from 'url';
@@ -72,6 +73,9 @@ const ALBUM_SCAN_INTERVAL_MS = Number.parseInt(process.env.ALBUM_SCAN_INTERVAL_M
 
 app.set('view engine', 'pug');
 app.set('views', __dirname);
+
+// Apply compression middleware early to compress all responses
+app.use(compression());
 
 app.use(fileUpload({
     createParentPath: true
@@ -208,13 +212,15 @@ const clearImageCache = () => {
 
 /**
  * Calculate size of cache entry in bytes (approximate)
+ * Uses a fast estimate instead of JSON.stringify to avoid expensive serialization on hot paths
  */
 const calculateCacheSize = (value) => {
-  try {
-    return JSON.stringify(value).length;
-  } catch {
-    return 1000; // fallback estimate
+  if (!value) return 0;
+  // Rough estimate: account for object overhead + rough string content size
+  if (Array.isArray(value) && value.images) {
+    return (value.images.length * 500) + 1000; // ~500 bytes per image object + overhead
   }
+  return 1000; // fallback estimate for non-array values
 };
 
 /**
@@ -402,7 +408,7 @@ const savePersistentCache = async () => {
       }
     };
     
-    await fs.writeFile(CACHE_FILE, JSON.stringify(cacheData, null, 2), 'utf8');
+    await fs.writeFile(CACHE_FILE, JSON.stringify(cacheData), 'utf8');
     console.log(`✓ Saved ${imageCache.size} pages and ${albumMetaCache.size} album metadata to persistent cache (${(cacheStats.cacheSizeBytes / 1024 / 1024).toFixed(2)}MB)`);
   } catch (err) {
     console.error('Error saving persistent cache:', err);
@@ -652,7 +658,7 @@ app.post('/api/pdf-thumbnails', asyncHandler(async (req, res) => {
   const thumbnailUrl = `/pdf-thumbnails/${outputFileName}`;
   const thumbnailMap = loadPdfThumbnailMap();
   thumbnailMap[resolved.normalized] = thumbnailUrl;
-  savePdfThumbnailMap(thumbnailMap);
+  await savePdfThumbnailMap(thumbnailMap);
 
   clearImageCache();
 
@@ -672,7 +678,7 @@ app.get('/api/pdf-thumbnails/files', asyncHandler(async (req, res) => {
   }
 
   const allowedExtensions = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']);
-  const allFiles = readdirSync(outputDir)
+  const allFiles = (await fs.readdir(outputDir))
     .filter((fileName) => {
       const extension = extname(fileName).toLowerCase();
       return allowedExtensions.has(extension);
@@ -728,7 +734,7 @@ app.post('/api/pdf-thumbnails/select', asyncHandler(async (req, res) => {
   const thumbnailUrl = `/pdf-thumbnails/${safeThumbnailName}`;
   const thumbnailMap = loadPdfThumbnailMap();
   thumbnailMap[resolvedPdf.normalized] = thumbnailUrl;
-  savePdfThumbnailMap(thumbnailMap);
+  await savePdfThumbnailMap(thumbnailMap);
 
   clearImageCache();
 
@@ -764,7 +770,7 @@ const removePdfThumbnailHandler = asyncHandler(async (req, res) => {
 
   // Remove the thumbnail mapping
   delete thumbnailMap[resolvedPdf.normalized];
-  savePdfThumbnailMap(thumbnailMap);
+  await savePdfThumbnailMap(thumbnailMap);
 
   clearImageCache();
 
@@ -1393,22 +1399,23 @@ const loadPdfThumbnailMap = () => {
   }
 };
 
-const savePdfThumbnailMap = (thumbnailMap) => {
+const savePdfThumbnailMap = async (thumbnailMap) => {
   const mapPath = join(__dirname, PDF_THUMBNAIL_MAP_FILE);
   const mapDir = path.dirname(mapPath);
 
-  if (!existsSync(mapDir)) {
-    mkdirSync(mapDir, { recursive: true });
-  }
-
-  writeFileSync(mapPath, JSON.stringify(thumbnailMap, null, 2), 'utf8');
-
-  // Keep in-memory cache hot after write-through to avoid immediate disk reread.
-  pdfThumbnailMapCache = thumbnailMap && typeof thumbnailMap === 'object' ? thumbnailMap : {};
   try {
-    pdfThumbnailMapCacheMtime = statSync(mapPath).mtimeMs;
-  } catch {
-    pdfThumbnailMapCacheMtime = Date.now();
+    if (!existsSync(mapDir)) {
+      mkdirSync(mapDir, { recursive: true });
+    }
+
+    await fs.writeFile(mapPath, JSON.stringify(thumbnailMap), 'utf8');
+
+    // Keep in-memory cache hot after write-through to avoid immediate disk reread.
+    pdfThumbnailMapCache = thumbnailMap && typeof thumbnailMap === 'object' ? thumbnailMap : {};
+    const stat = await fs.stat(mapPath);
+    pdfThumbnailMapCacheMtime = stat.mtimeMs;
+  } catch (err) {
+    console.error('Error saving PDF thumbnail map:', err);
   }
 };
 
@@ -1512,23 +1519,24 @@ const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) =>
       imageIndex++;
     }
 
-    for (const pageFileEntry of pageFileEntries) {
-      try {
-        const imageDetail = await getImageDetailsForPageFile({
-          dirPath,
-          album,
-          root,
-          albumPathPrefix,
-          fileName: pageFileEntry.fileName,
-          id: pageFileEntry.id,
-          pdfThumbnailMap
-        });
-
-        allImages.push(imageDetail);
-      } catch (err) {
+    // Parallelize fs.stat calls instead of running sequentially
+    const imageDetailsPromises = pageFileEntries.map(pageFileEntry =>
+      getImageDetailsForPageFile({
+        dirPath,
+        album,
+        root,
+        albumPathPrefix,
+        fileName: pageFileEntry.fileName,
+        id: pageFileEntry.id,
+        pdfThumbnailMap
+      }).catch(err => {
         console.error(`Error processing file ${join(dirPath, pageFileEntry.fileName)}:`, err);
-      }
-    }
+        return null;
+      })
+    );
+
+    const imageDetails = await Promise.all(imageDetailsPromises);
+    allImages.push(...imageDetails.filter(detail => detail !== null));
     
     if (VERBOSE_REQUEST_LOGS) {
       console.log(`Found ${imageIndex} total images, returning ${allImages.length} items`);

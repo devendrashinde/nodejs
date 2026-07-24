@@ -5,6 +5,7 @@ import path from 'path';
 import gm from 'gm';
 import { statSync } from 'fs';
 import { promises as fs } from 'fs';
+import crypto from 'crypto';
 import sharp from 'sharp';
 import pkg from 'shelljs';
 import e from 'express';
@@ -134,7 +135,6 @@ class Media {
         }
 
         // Generate thumbnail in separate directory with hashed filename to avoid collisions
-        const crypto = await import('crypto');
         const hash = crypto.createHash('md5').update(image).digest('hex');
         const ext = getFileExtension(image) || 'jpg';
         const thumbFilename = `${hash}.${ext}`;
@@ -198,7 +198,7 @@ class Media {
             });
 
         if (extension === '.png') {
-            pipeline = pipeline.png({ compressionLevel: 9, quality });
+            pipeline = pipeline.png({ compressionLevel: 6, quality });
         } else if (extension === '.webp') {
             pipeline = pipeline.webp({ quality });
         } else {

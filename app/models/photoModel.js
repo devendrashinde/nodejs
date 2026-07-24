@@ -56,11 +56,12 @@ class Photo {
     static async getPhotosByTag(tag, result) {
         try {
             const trimmedTag = tag.trim();
-            // Try exact match first (uses index), fallback to LIKE for partial matches
-            // Using CAST to handle case-insensitive comparison
+            // Handle both comma-separated AND space-separated tags
+            // Normalize by replacing spaces/commas and add boundaries
+            // Pattern: match tag as a complete word (not substring)
             const res = await query(
-                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE LOWER(CONCAT(',', tags, ',')) LIKE LOWER(?) ORDER BY album, name", 
-                [`%,${trimmedTag},%`]
+                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE LOWER(CONCAT(' ', REPLACE(REPLACE(tags, ',', ' '), '  ', ' '), ' ')) LIKE LOWER(CONCAT('% ', ?, ' %')) ORDER BY album, name",
+                [trimmedTag]
             );
             result(null, res);
         } catch (err) {
@@ -69,13 +70,13 @@ class Photo {
         }
     }
 
-    // New method for exact tag match (more efficient, uses index)
+    // New method for exact tag match using FIND_IN_SET (more efficient, uses index)
     static async getPhotosByTagExact(tag, result) {
         try {
             const trimmedTag = tag.trim().toLowerCase();
-            // Find photos where tag is a complete word (not substring)
+            // Normalize tags to comma-separated format, then use FIND_IN_SET for exact match
             const res = await query(
-                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE FIND_IN_SET(?, LOWER(REPLACE(REPLACE(tags, ' ', ','), '  ', ','))) > 0 ORDER BY album, name",
+                "SELECT id, name, tags, album, CONCAT(path, '/', album, '/', name) AS path FROM photos WHERE FIND_IN_SET(?, LOWER(REPLACE(REPLACE(REPLACE(tags, '  ', ','), ' ,', ','), ', ', ','))) > 0 ORDER BY album, name",
                 [trimmedTag]
             );
             result(null, res);

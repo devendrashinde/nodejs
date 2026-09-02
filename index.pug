@@ -221,28 +221,13 @@ html(ng-app="app")
                 i.fas.fa-list.me-2
                 | Playlists
 
-            div.albums-spotlight(ng-if="selectedView === 'albums'")
-              div.albums-spotlight-cover(ng-if="!isLibraryRoot(selectedAlbum)")
-                img.albums-spotlight-image(
-                  ng-if="getAlbumCoverUrl(selectedAlbum)"
-                  ng-src="{{getAlbumCoverUrl(selectedAlbum)}}"
-                  alt="{{selectedAlbum.album || selectedAlbum.name}} cover"
-                )
-                div.albums-spotlight-monogram(ng-if="!getAlbumCoverUrl(selectedAlbum)") {{getAlbumInitials(selectedAlbum)}}
-              div.albums-spotlight-label {{getAlbumContextLabel(selectedAlbum)}}
-              div.albums-spotlight-title {{selectedAlbum.album || 'All Albums'}}
-              div.albums-spotlight-subtitle {{getAlbumSummaryText(selectedAlbum)}}
-              div.albums-spotlight-meta
-                span(ng-if="!isLibraryRoot(selectedAlbum)")
-                  i.fas.fa-music.me-1
-                  | {{getAlbumPhotoCount(selectedAlbum)}} item{{getAlbumPhotoCount(selectedAlbum) === 1 ? '' : 's'}}
-                span(ng-if="isLibraryRoot(selectedAlbum)")
-                  i.fas.fa-folder-open.me-1
-                  | {{getFilteredFolders().length}} collection{{getFilteredFolders().length === 1 ? '' : 's'}}
-                span(ng-if="!isLibraryRoot(selectedAlbum)")
-                  i.fas.fa-layer-group.me-1
-                  | {{getAlbumDepth(selectedAlbum.path)}} level{{getAlbumDepth(selectedAlbum.path) === 1 ? '' : 's'}}
-              div.albums-spotlight-path {{getAlbumDisplayPath(selectedAlbum)}}
+            div.albums-spotlight-compact(ng-if="selectedView === 'albums'")
+              span.albums-spotlight-compact-title {{selectedAlbum.album || selectedAlbum.name || 'All Albums'}}
+              span.albums-spotlight-compact-sep •
+              span.albums-spotlight-compact-meta(ng-if="!isLibraryRoot(selectedAlbum)")
+                | {{getAlbumPhotoCount(selectedAlbum)}} item{{getAlbumPhotoCount(selectedAlbum) === 1 ? '' : 's'}}
+              span.albums-spotlight-compact-meta(ng-if="isLibraryRoot(selectedAlbum)")
+                | {{getFilteredFolders().length}} collection{{getFilteredFolders().length === 1 ? '' : 's'}}
             
             //- Albums search
             div.albums-search(ng-if="selectedView === 'albums'")

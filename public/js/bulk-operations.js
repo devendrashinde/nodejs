@@ -185,13 +185,11 @@ class BulkOperations {
   }
 
   clearSelection() {
-    if (confirm('Clear all selections?')) {
-      this.selectedPhotos.clear();
-      document.querySelectorAll('.photo-checkbox').forEach((cb) => {
-        cb.checked = false;
-      });
-      this.updateToolbarVisibility();
-    }
+    this.selectedPhotos.clear();
+    document.querySelectorAll('.photo-checkbox').forEach((cb) => {
+      cb.checked = false;
+    });
+    this.updateToolbarVisibility();
   }
 
   async bulkAddTags() {
@@ -402,10 +400,7 @@ class BulkOperations {
 
       alert(`Successfully added ${photoIds.length} item(s) to playlist`);
       
-      // Ask to clear selection
-      if (confirm('Clear selection?')) {
-        this.clearSelection();
-      }
+      this.clearSelection();
       
       // Reload playlists in the controller
       const controller = angular.element(document.querySelector('body')).scope();

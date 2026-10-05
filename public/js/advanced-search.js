@@ -19,7 +19,7 @@ class AdvancedSearch {
     const html = `
       <div class="search-panel" style="display: none;">
         <div class="search-header">
-          <h2>🔍 Advanced Search</h2>
+          <h2>Search &amp; Filters</h2>
           <button class="btn-close-search" aria-label="Close search">&times;</button>
         </div>
 
@@ -70,7 +70,7 @@ class AdvancedSearch {
                 </div>
               </details>
 
-              <details>
+              <details open>
                 <summary class="filter-title">📁 File Type</summary>
                 <div class="filter-group">
                   <label><input type="checkbox" name="fileType" value="photos" checked /> 📷 Photos (JPG, PNG, GIF, WebP)</label>
@@ -228,14 +228,14 @@ class AdvancedSearch {
       const response = await fetch(`/api/search?${params.toString()}`);
       const data = await response.json();
 
-      this.pushResultsToGallery(data, criteria.query || '');
+      this.pushResultsToGallery(data, criteria.query || '', criteria);
     } catch (error) {
       console.error('Search error:', error);
       this.showError('Search failed. Please try again.');
     }
   }
 
-  pushResultsToGallery(data, query) {
+  pushResultsToGallery(data, query, criteria) {
     if (!data.results || data.results.length === 0) {
       this.showError('No results found.');
       return;
@@ -247,7 +247,7 @@ class AdvancedSearch {
       const scope = angular.element(controllerEl).scope();
       if (scope && typeof scope.loadSearchResults === 'function') {
         scope.$apply(function() {
-          scope.loadSearchResults(data.results, query);
+          scope.loadSearchResults(data.results, query, criteria);
         });
         this.close();
         return;

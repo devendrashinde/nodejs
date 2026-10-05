@@ -385,22 +385,38 @@ function toggleInfoPanel(instance, current) {
     return;
   }
   
-  // Create info panel
-  var url = current.src;
-  var filename = url.substring(url.lastIndexOf('/') + 1);
+  var $trigger = current.opts && current.opts.$orig && current.opts.$orig.length
+    ? current.opts.$orig
+    : $(current.$trigger || []);
+  var mediaPath = $trigger.attr('data-media-path') || current.src || '';
+  var filename = mediaPath.substring(mediaPath.lastIndexOf('/') + 1);
   var caption = getCurrentCaption(current);
+  var mediaType = $trigger.attr('data-media-type') || '';
   
   var infoHtml = '<div class="fancybox-info-panel">' +
     '<div class="info-header">' +
-    '<i class="fas fa-info-circle"></i> Image Information' +
-    '<button class="info-close">&times;</button>' +
+    '<i class="fas fa-info-circle"></i> Media Details' +
+    '<button class="info-close" type="button" aria-label="Close media details">&times;</button>' +
     '</div>' +
     '<div class="info-content">' +
-    '<div class="info-row"><span class="info-label">Filename:</span> <span class="info-value">' + filename + '</span></div>';
+    '<div class="info-row"><span class="info-label">Filename</span><span class="info-value">' + escapeInfoHtml(filename) + '</span></div>';
   
   if (caption) {
     infoHtml += '<div class="info-row"><span class="info-label">Tags:</span> <span class="info-value info-tags">' + formatTags(caption) + '</span></div>';
   }
+
+  var detailRows = [
+    ['Album', $trigger.attr('data-media-album')],
+    ['Type', mediaType],
+    ['Size', $trigger.attr('data-media-size')],
+    ['Date', $trigger.attr('data-media-date')],
+    ['Path', mediaPath]
+  ];
+  detailRows.forEach(function(detail) {
+    if (detail[1]) {
+      infoHtml += '<div class="info-row"><span class="info-label">' + escapeInfoHtml(detail[0]) + '</span><span class="info-value">' + escapeInfoHtml(detail[1]) + '</span></div>';
+    }
+  });
   
   // Try to get image dimensions
   var $img = current.$content.find('img');
@@ -411,7 +427,10 @@ function toggleInfoPanel(instance, current) {
     }
   }
   
-  infoHtml += '<div class="info-row"><span class="info-label">Position:</span> <span class="info-value">' + (current.index + 1) + ' of ' + instance.group.length + '</span></div>';
+  infoHtml += '<div class="info-row"><span class="info-label">Position</span><span class="info-value">' + (current.index + 1) + ' of ' + instance.group.length + '</span></div>';
+  if (mediaPath && /photo|image/i.test(mediaType)) {
+    infoHtml += '<button class="info-exif-toggle" type="button">Show camera details</button><div class="info-exif-details" hidden></div>';
+  }
   infoHtml += '</div></div>';
   
   instance.$refs.container.append(infoHtml);
@@ -420,6 +439,83 @@ function toggleInfoPanel(instance, current) {
   $('.info-close').on('click', function() {
     $('.fancybox-info-panel').slideUp(200);
   });
+
+  $('.info-exif-toggle').on('click', function() {
+    var $button = $(this);
+    var $details = $panel.find('.info-exif-details');
+    if ($details.attr('data-loaded') === 'true') {
+      $details.prop('hidden', !$details.prop('hidden'));
+      $button.text($details.prop('hidden') ? 'Show camera details' : 'Hide camera details');
+      return;
+    }
+
+    $button.prop('disabled', true).text('Loading camera details...');
+    fetch('/api/photos/' + encodeURIComponent(mediaPath) + '/exif')
+      .then(function(response) {
+        if (!response.ok) throw new Error('Metadata request failed');
+        return response.json();
+      })
+      .then(function(payload) {
+        var exif = payload.exif || {};
+        var groups = [
+          ['Camera', exif.camera],
+          ['Exposure', exif.shooting],
+          ['Image', exif.image],
+          ['Location', exif.location],
+          ['Credits', exif.copyright],
+          ['Software', exif.software]
+        ];
+        var rowCount = 0;
+        groups.forEach(function(group) {
+          var entries = group[1] && typeof group[1] === 'object' ? Object.entries(group[1]) : [];
+          var rows = entries.filter(function(entry) {
+            return entry[1] !== null && entry[1] !== undefined && entry[1] !== '' && entry[0] !== 'mapUrl';
+          });
+          if (!rows.length) return;
+
+          var heading = document.createElement('h6');
+          heading.className = 'info-exif-heading';
+          heading.textContent = group[0];
+          $details[0].appendChild(heading);
+          rows.forEach(function(entry) {
+            var value = entry[1];
+            if (value && typeof value === 'object') {
+              value = value.display || value.iso || JSON.stringify(value);
+            }
+            appendInfoRow($details[0], entry[0], value);
+            rowCount += 1;
+          });
+        });
+
+        if (!rowCount) {
+          $details.text('No camera details are available for this file.');
+        }
+        $details.attr('data-loaded', 'true').prop('hidden', false);
+        $button.prop('disabled', false).text('Hide camera details');
+      })
+      .catch(function() {
+        $details.text('Could not load camera details. Try again.').prop('hidden', false);
+        $button.prop('disabled', false).text('Retry camera details');
+      });
+  });
+}
+
+function escapeInfoHtml(value) {
+  return $('<div>').text(String(value == null ? '' : value)).html();
+}
+
+function appendInfoRow(container, label, value) {
+  var row = document.createElement('div');
+  row.className = 'info-row';
+  var labelElement = document.createElement('span');
+  labelElement.className = 'info-label';
+  labelElement.textContent = label.replace(/([A-Z])/g, ' $1').replace(/^./, function(letter) { return letter.toUpperCase(); });
+  var valueElement = document.createElement('span');
+  valueElement.className = 'info-value';
+  valueElement.textContent = String(value);
+  row.appendChild(labelElement);
+  row.appendChild(valueElement);
+  container.appendChild(row);
 }
 
 function getCurrentCaption(current) {
@@ -454,7 +550,7 @@ function formatTags(tags) {
   tagArray.forEach(function(tag) {
     tag = tag.trim();
     if (tag) {
-      html += '<span class="tag-badge">' + tag + '</span> ';
+      html += '<span class="tag-badge">' + escapeInfoHtml(tag) + '</span> ';
     }
   });
   return html || tags;

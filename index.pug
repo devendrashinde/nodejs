@@ -8,7 +8,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="gallery.css")
     link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
-    link(rel="stylesheet", href="main.css?v=16")
+    link(rel="stylesheet", href="main.css?v=17")
     link(rel="stylesheet", href="css/advanced-features.css")
     link(rel="stylesheet", href="css/music-player.css")
   
@@ -58,6 +58,9 @@ html(ng-app="app")
               i.fas.fa-arrow-left.me-1
               | Back
             | {{selectedAlbum.name}}
+            small.d-block.album-breadcrumb(
+              ng-if="!isLibraryRoot(selectedAlbum) && !selectedAlbum.isPlaylist && !selectedAlbum.isSearchResult"
+            ) {{getAlbumDisplayPath(selectedAlbum)}}
           div.d-flex.align-items-center.ms-auto.gap-2.flex-nowrap
             // Search actions
             div.dropdown
@@ -85,7 +88,7 @@ html(ng-app="app")
                     onclick="window.advancedSearch && window.advancedSearch.toggle(); return false;"
                   )
                     i.fas.fa-sliders.me-2
-                    | Advanced Search
+                    | Search & Filters
 
             // Upload button
             button.btn.btn-outline-success.btn-sm(
@@ -450,17 +453,36 @@ html(ng-app="app")
         // Main Content
         main(ng-class="{'col-sm-8 col-md-8 col-lg-9 col-xl-10': folders.length > 0, 'col-12': folders.length == 0}")
 
+          div.alert.alert-danger.d-flex.align-items-center.justify-content-between.gap-2(
+            ng-if="galleryLoadError"
+            role="alert"
+          )
+            span {{galleryLoadError}}
+            button.btn.btn-sm.btn-outline-danger(type="button" ng-click="retryGalleryLoad()")
+              i.fas.fa-rotate-right.me-1
+              | Retry
+
           div.search-results-summary(ng-if="selectedAlbum.isSearchResult")
-            div
-              strong {{searchResultCount}} results
-              span.ms-2 for: {{searchQuery}}
-            button.btn.btn-sm.btn-outline-secondary(
-              type="button"
-              ng-click="clearSearchResults()"
-              aria-label="Clear search results"
-            )
-              i.fas.fa-times.me-1
-              | Clear
+            div.search-results-copy
+              div
+                strong {{searchResultCount}} results
+                span.ms-2(ng-if="searchQuery") for: {{searchQuery}}
+              div.search-filter-chips(ng-if="activeSearchFilters.length")
+                span.search-filter-chip(ng-repeat="filter in activeSearchFilters track by $index") {{filter}}
+            div.search-results-actions
+              button.btn.btn-sm.btn-outline-primary(
+                type="button"
+                onclick="window.advancedSearch && window.advancedSearch.toggle(); return false;"
+              )
+                i.fas.fa-sliders.me-1
+                | Edit filters
+              button.btn.btn-sm.btn-outline-secondary(
+                type="button"
+                ng-click="clearSearchResults()"
+                aria-label="Clear search results"
+              )
+                i.fas.fa-times.me-1
+                | Clear
 
           section.library-landing(
             ng-if="isLibraryRoot(selectedAlbum)"
@@ -518,12 +540,21 @@ html(ng-app="app")
                 span.library-collection-count {{playlist.item_count || 0}} items
                 i.fas.fa-arrow-right.library-collection-arrow(aria-hidden="true")
 
+            div.alert.alert-danger.d-flex.align-items-center.justify-content-between.gap-2(
+              ng-if="selectedView === 'playlists' && playlistsLoadError"
+              role="alert"
+            )
+              span {{playlistsLoadError}}
+              button.btn.btn-sm.btn-outline-danger(type="button" ng-click="retryPlaylists()")
+                i.fas.fa-rotate-right.me-1
+                | Retry
+
             div.library-empty-state(ng-if="selectedView === 'albums' && !loading && !getRootCollections().length")
               i.fas.fa-folder-open(aria-hidden="true")
               h3 No collections found
               p Try clearing the album filter or scan for new folders.
 
-            div.library-empty-state(ng-if="selectedView === 'playlists' && !playlistsLoading && !getFilteredPlaylists().length")
+            div.library-empty-state(ng-if="selectedView === 'playlists' && !playlistsLoading && !playlistsLoadError && !getFilteredPlaylists().length")
               i.fas.fa-list(aria-hidden="true")
               h3 No playlists yet
               p Create a playlist to collect media you want to revisit.
@@ -539,7 +570,7 @@ html(ng-app="app")
               i.fas.fa-book-open.me-1
               | {{getLibraryTitle()}} — {{getLibraryVisibleCount()}} / {{photos.length}} file{{photos.length !== 1 ? 's' : ''}}
             div.d-flex.align-items-center.flex-wrap.gap-2
-              select.form-select.form-select-sm(style="width: 150px;" ng-model="fileLibrary.filter")
+              select.form-select.form-select-sm(style="width: 150px;" ng-model="fileLibrary.filter" ng-change="saveFileLibraryPreferences()")
                 option(value="all") All types
                 option(value="pdf") PDF
                 option(value="document") Documents
@@ -547,7 +578,7 @@ html(ng-app="app")
                 option(value="text") Text
                 option(value="code") Code
                 option(value="other") Other
-              select.form-select.form-select-sm(style="width: 130px;" ng-model="fileLibrary.sortBy")
+              select.form-select.form-select-sm(style="width: 130px;" ng-model="fileLibrary.sortBy" ng-change="saveFileLibraryPreferences()")
                 option(value="name") Sort: Name
                 option(value="type") Sort: Type
                 option(value="size") Sort: Size
@@ -575,6 +606,7 @@ html(ng-app="app")
               select.form-select.form-select-sm(
                 style="width:130px;"
                 ng-model="gallerySort.by"
+                ng-change="saveGallerySort()"
                 title="Sort gallery"
               )
                 option(value="default") Sort: Default
@@ -589,6 +621,15 @@ html(ng-app="app")
                 i.fas(ng-class="gallerySort.dir === 'asc' ? 'fa-sort-amount-down-alt' : 'fa-sort-amount-up'")
             //- Density controls
             div.btn-group
+              button.btn.btn-sm(
+                type="button"
+                ng-class="bulkSelectMode ? 'btn-primary' : 'btn-outline-secondary'"
+                ng-click="toggleBulkSelectMode()"
+                ng-attr-aria-pressed="{{bulkSelectMode}}"
+                title="{{bulkSelectMode ? 'Finish selecting' : 'Select media for bulk actions'}}"
+              )
+                i.fas(ng-class="bulkSelectMode ? 'fa-check' : 'fa-check-square'")
+                span.ms-1 {{bulkSelectMode ? 'Done' : 'Select'}}
               button.btn.btn-sm(
                 type="button"
                 ng-class="galleryDensity === 'compact' ? 'btn-secondary' : 'btn-outline-secondary'"
@@ -678,6 +719,10 @@ html(ng-app="app")
                   ng-attr-data-width="{{image.isVideo ? '640' : undefined}}"
                   ng-attr-data-height="{{image.isVideo ? '360' : undefined}}"
                   ng-attr-data-media-path="{{image.path}}"
+                  ng-attr-data-media-album="{{image.album || selectedAlbum.name}}"
+                  ng-attr-data-media-type="{{image.fileTypeLabel || (image.isVideo ? 'Video' : (image.isPdf ? 'PDF' : 'Photo'))}}"
+                  ng-attr-data-media-size="{{image.fileSizeFormatted}}"
+                  ng-attr-data-media-date="{{image.fileDate}}"
                 )
                   figure
                     img.card-img-top.img-fluid.gallery-thumb(
@@ -2113,8 +2158,8 @@ html(ng-app="app")
     script(src="js/html-sanitizer.js")
     script(src="js/image-editor.js")
     script(src="js/ng-app.js")    
-    script(src="main.js")
-    script(src="js/controllers/photoController.js?v=12")
+    script(src="main.js?v=2")
+    script(src="js/controllers/photoController.js?v=13")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")
@@ -2130,9 +2175,9 @@ html(ng-app="app")
     script(src="js/services/toastService.js")
     
     //- Advanced Features Components
-    script(src="js/advanced-search.js")
-    script(src="js/exif-display.js")
-    script(src="js/bulk-operations.js")
+    script(src="js/advanced-search.js?v=2")
+    script(src="js/exif-display.js?v=2")
+    script(src="js/bulk-operations.js?v=2")
     script(src="js/social-features.js")
     script(src="js/advanced-features-angular-integration.js")
     

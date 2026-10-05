@@ -1,3 +1,42 @@
+function getActiveSearchFilterLabels(criteria) {
+    if (!criteria) {
+        return [];
+    }
+
+    const labels = [];
+    const tags = Array.isArray(criteria.tags) ? criteria.tags : [];
+    if (tags.length) {
+        labels.push('Tags: ' + tags.join(', ') + ' (' + (criteria.tagMode === 'OR' ? 'any' : 'all') + ')');
+    }
+
+    const dateRange = criteria.dateRange || {};
+    if (dateRange.from || dateRange.to) {
+        labels.push('Date: ' + (dateRange.from || 'Any') + ' to ' + (dateRange.to || 'Any'));
+    }
+
+    const extensions = new Set(criteria.fileTypes || []);
+    const mediaTypes = [
+        { label: 'Photos', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'] },
+        { label: 'Videos', extensions: ['mp4', '3gp', 'avi', 'mov', 'mkv', 'wmv', 'flv'] },
+        { label: 'Music', extensions: ['mp3', 'wav', 'aac', 'flac', 'wma', 'm4a'] },
+        { label: 'Documents', extensions: ['pdf', 'doc', 'docx', 'txt', 'xlsx', 'xls', 'ppt', 'pptx'] }
+    ];
+    const selectedTypes = mediaTypes
+        .filter((mediaType) => mediaType.extensions.some((extension) => extensions.has(extension)))
+        .map((mediaType) => mediaType.label);
+    if (selectedTypes.length) {
+        labels.push('Type: ' + selectedTypes.join(', '));
+    }
+
+    if (criteria.size) {
+        labels.push('Size: ' + criteria.size);
+    }
+    if (criteria.sort && criteria.sort !== 'name-asc') {
+        labels.push('Sort: ' + criteria.sort.replaceAll('-', ' '));
+    }
+
+    return labels;
+}
 
 angular.module('photoController', [])
 
@@ -85,6 +124,63 @@ angular.module('photoController', [])
             }
         };
 
+        const GALLERY_PREFERENCES_KEY = 'photoGallery_preferences';
+        let savedGalleryPreferences = {};
+        try {
+            savedGalleryPreferences = JSON.parse(localStorage.getItem(GALLERY_PREFERENCES_KEY) || '{}');
+        } catch (error) {
+            savedGalleryPreferences = {};
+            console.warn('Unable to read gallery preferences:', error);
+        }
+
+        function saveGalleryPreferences() {
+            try {
+                localStorage.setItem(GALLERY_PREFERENCES_KEY, JSON.stringify({
+                    galleryDensity: $scope.galleryDensity,
+                    gallerySort: $scope.gallerySort,
+                    pdfLibraryView: $scope.pdfLibraryView,
+                    fileLibrary: $scope.fileLibrary
+                }));
+            } catch (error) {
+                console.warn('Unable to save gallery preferences:', error);
+            }
+        }
+
+        function initializeSidebarPreference() {
+            const sidebar = document.getElementById('folderSidebar');
+            if (!sidebar) {
+                return;
+            }
+
+            const saveSidebarState = (collapsed) => {
+                try {
+                    localStorage.setItem('photoGallery_sidebarCollapsed', String(collapsed));
+                } catch (error) {
+                    console.warn('Unable to save sidebar preference:', error);
+                }
+            };
+            sidebar.addEventListener('shown.bs.collapse', function() { saveSidebarState(false); });
+            sidebar.addEventListener('hidden.bs.collapse', function() { saveSidebarState(true); });
+
+            let savedState;
+            try {
+                savedState = localStorage.getItem('photoGallery_sidebarCollapsed');
+            } catch (error) {
+                console.warn('Unable to read sidebar preference:', error);
+                return;
+            }
+
+            const collapse = globalThis.bootstrap?.Collapse;
+            if (savedState !== null && collapse) {
+                const instance = collapse.getOrCreateInstance(sidebar, { toggle: false });
+                if (savedState === 'true') {
+                    instance.hide();
+                } else {
+                    instance.show();
+                }
+            }
+        }
+
         // Toast notification management
         $scope.removeToast = function(toastId) {
             ToastService.remove(toastId);
@@ -104,6 +200,7 @@ angular.module('photoController', [])
         $scope.albums = [];
 		$scope.folders = [];
         $scope.loading = true;
+        $scope.galleryLoadError = '';
 		$scope.noMorePhotos = false;
         $scope.showSearch = false;
         $scope.searchTag = ""; // user input for search
@@ -116,6 +213,7 @@ angular.module('photoController', [])
         $scope.playlists = []; // Array of user playlists
         $scope.allPlaylists = []; // Full list used for membership checks
         $scope.playlistsLoading = false;
+        $scope.playlistsLoadError = '';
         $scope.playlistMediaPathSet = {}; // Fast lookup map: media path => true
         $scope.playlistsForSelectedMedia = []; // Playlists containing clicked media
         $scope.selectedPhotoForPlaylistView = null; // Media item for playlist selector modal
@@ -126,18 +224,30 @@ angular.module('photoController', [])
         $scope.showPlaylistModal = false; // Toggle playlist creation modal
 
         // Gallery display state
-        $scope.galleryDensity = 'comfortable'; // 'compact' | 'comfortable' | 'large'
-        $scope.gallerySort = { by: 'default', dir: 'asc' };
+        $scope.galleryDensity = ['compact', 'comfortable', 'large'].includes(savedGalleryPreferences.galleryDensity)
+            ? savedGalleryPreferences.galleryDensity
+            : 'comfortable';
+        $scope.gallerySort = {
+            by: ['default', 'name', 'date', 'size'].includes(savedGalleryPreferences.gallerySort?.by)
+                ? savedGalleryPreferences.gallerySort.by
+                : 'default',
+            dir: savedGalleryPreferences.gallerySort?.dir === 'desc' ? 'desc' : 'asc'
+        };
         $scope.searchResultCount = 0;
         $scope.searchQuery = '';
+        $scope.activeSearchFilters = [];
         $scope._prevAlbum = null;
 
         // PDF Library view
-        $scope.pdfLibraryView = 'grid'; // 'grid' | 'list'
+        $scope.pdfLibraryView = savedGalleryPreferences.pdfLibraryView === 'list' ? 'list' : 'grid';
         $scope.fileLibrary = {
-            filter: 'all',
-            sortBy: 'name',
-            sortDir: 'asc'
+            filter: ['all', 'pdf', 'document', 'archive', 'text', 'code', 'other'].includes(savedGalleryPreferences.fileLibrary?.filter)
+                ? savedGalleryPreferences.fileLibrary.filter
+                : 'all',
+            sortBy: ['name', 'type', 'size', 'date'].includes(savedGalleryPreferences.fileLibrary?.sortBy)
+                ? savedGalleryPreferences.fileLibrary.sortBy
+                : 'name',
+            sortDir: savedGalleryPreferences.fileLibrary?.sortDir === 'desc' ? 'desc' : 'asc'
         };
         $scope.filePreview = {
             show: false,
@@ -192,6 +302,7 @@ angular.module('photoController', [])
         // Bulk playlist operation flags
         $scope.isBulkPlaylistOperation = false;
         $scope.selectedPhotosForBulkPlaylist = null;
+        $scope.bulkSelectMode = false;
         
         // Media type constants
         const imageTypes = APP_CONSTANTS.IMAGE_TYPES;
@@ -272,7 +383,7 @@ angular.module('photoController', [])
         
         // Recently viewed
         $scope.recentlyViewed = [];
-        $scope.showRecentlyViewed = false;
+        $scope.showRecentlyViewed = true;
         
         // Filter functions for sidebar search
         $scope.getFilteredFolders = function() {
@@ -288,6 +399,7 @@ angular.module('photoController', [])
         // use the service to get all the photo tags
         loadPhotos();
         loadPlaylists(); // Load playlists for display in sidebar
+        $timeout(initializeSidebarPreference, 0);
         
         // Dynamically adjust main content padding when player bar appears/disappears
         $scope.$watch('playlist.length', function(newVal, oldVal) {
@@ -373,6 +485,7 @@ angular.module('photoController', [])
         $scope.clearSearchResults = function() {
             $scope.searchResultCount = 0;
             $scope.searchQuery = '';
+            $scope.activeSearchFilters = [];
             var prev = $scope._prevAlbum;
             $scope._prevAlbum = null;
             if (prev && !prev.isSearchResult) {
@@ -384,10 +497,29 @@ angular.module('photoController', [])
 
         $scope.setGalleryDensity = function(density) {
             $scope.galleryDensity = density;
+            saveGalleryPreferences();
+        };
+
+        $scope.saveGallerySort = function() {
+            saveGalleryPreferences();
         };
 
         $scope.toggleGallerySortDir = function() {
             $scope.gallerySort.dir = $scope.gallerySort.dir === 'asc' ? 'desc' : 'asc';
+            saveGalleryPreferences();
+        };
+
+        $scope.saveFileLibraryPreferences = function() {
+            saveGalleryPreferences();
+        };
+
+        $scope.toggleBulkSelectMode = function() {
+            $scope.bulkSelectMode = !$scope.bulkSelectMode;
+            document.body.classList.toggle('bulk-select-mode', $scope.bulkSelectMode);
+
+            if (!$scope.bulkSelectMode && globalThis.bulkOperations) {
+                globalThis.bulkOperations.clearSelection();
+            }
         };
 
         /**
@@ -396,10 +528,13 @@ angular.module('photoController', [])
          * @param {Array} results  - array of result objects from /api/search
          * @param {string} query   - the user's search query string (used in the header label)
          */
-        $scope.loadSearchResults = function(results, query) {
+        $scope.loadSearchResults = function(results, query, criteria) {
             $scope._prevAlbum = $scope.selectedAlbum;
+            $scope.galleryLoadError = '';
             $scope.searchResultCount = results.length;
             $scope.searchQuery = query || '';
+            $scope.activeSearchFilters = getActiveSearchFilterLabels(criteria);
+
             $scope.photos = [];
             $scope.accumulatedAlbumTags = [];
             $scope.noMorePhotos = true;
@@ -989,6 +1124,7 @@ angular.module('photoController', [])
         $scope.viewFavorites = function() {
             $scope.selectedAlbum = { album: 'favorites', path: 'favorites' };
             $scope.loading = true;
+            $scope.galleryLoadError = '';
             $scope.pageId = 0;
             
             // Get all favorites from database
@@ -1030,6 +1166,7 @@ angular.module('photoController', [])
                     $scope.photos = [];
                     $scope.favoritesCount = 0;
                     $scope.loading = false;
+                    $scope.galleryLoadError = 'Could not load favorites. Check the server connection and retry.';
                 });
         };
 		
@@ -1043,6 +1180,7 @@ angular.module('photoController', [])
         function loadPhotosAndTags(id) {
 			id = id == "Home"? "" : id;
 			$scope.loading = true;
+            $scope.galleryLoadError = '';
 			$scope.noMorePhotos = false;
 
             var tagsPromise = PhotoService.getTagsByAlbum(id);
@@ -1057,9 +1195,23 @@ angular.module('photoController', [])
                 applyAlbumPayload(results[1]);
             }, function(error) {
                 $scope.loading = false;  // Ensure loading is hidden on error
+                $scope.galleryLoadError = 'Could not load this collection. Check the server connection and retry.';
                 ErrorHandlingService.handleError(error, 'Error loading album data');
             });         
         }
+
+        $scope.retryGalleryLoad = function() {
+            $scope.galleryLoadError = '';
+            if ($scope.selectedAlbum && $scope.selectedAlbum.isPlaylist) {
+                $scope.setPlaylist($scope.selectedAlbum);
+            } else if ($scope.selectedAlbum && $scope.selectedAlbum.isSearchResult) {
+                $scope.clearSearchResults();
+            } else if ($scope.selectedAlbum && $scope.selectedAlbum.path === 'favorites') {
+                $scope.viewFavorites();
+            } else {
+                loadPhotosAndTags(($scope.selectedAlbum && $scope.selectedAlbum.path) || '');
+            }
+        };
 
         function normalizeMediaPath(path) {
             if (!path) return '';
@@ -1773,6 +1925,7 @@ angular.module('photoController', [])
 
         $scope.toggleLibrarySortDirection = function() {
             $scope.fileLibrary.sortDir = $scope.fileLibrary.sortDir === 'asc' ? 'desc' : 'asc';
+            saveGalleryPreferences();
         };
 
         $scope.isTextPreviewAvailable = function(image) {
@@ -1814,6 +1967,7 @@ angular.module('photoController', [])
         // Toggle grid / list layout for PDF albums
         $scope.togglePdfView = function() {
             $scope.pdfLibraryView = $scope.pdfLibraryView === 'grid' ? 'list' : 'grid';
+            saveGalleryPreferences();
         };
 
         // Toggle read / unread flag on a PDF card
@@ -2522,11 +2676,13 @@ angular.module('photoController', [])
         // Load playlists from database
         function loadPlaylists() {
             $scope.playlistsLoading = true;
+            $scope.playlistsLoadError = '';
             PhotoService.getPlaylists()
                 .then(function(playlists) {
                     $scope.playlists = playlists || [];
                     $scope.allPlaylists = playlists || [];
                     $scope.playlistsLoading = false;
+                    $scope.playlistsLoadError = '';
                     if (!(playlists || []).length) {
                         $scope.playlistMediaPathSet = {};
                         playlistMembershipInitialized = true;
@@ -2540,9 +2696,14 @@ angular.module('photoController', [])
                     $scope.playlistMediaPathSet = {};
                     playlistMembershipInitialized = false;
                     $scope.playlistsLoading = false;
+                    $scope.playlistsLoadError = 'Could not load playlists. Check the server connection and retry.';
                     applyPlaylistMembershipFlags();
                 });
         }
+
+        $scope.retryPlaylists = function() {
+            loadPlaylists();
+        };
 
         /**
          * Populate AudioPlayerService with audio files from current photos
@@ -2588,7 +2749,13 @@ angular.module('photoController', [])
 
         // Set selected playlist
         $scope.setPlaylist = function(playlist) {
+            $scope.selectedAlbum = {
+                id: playlist.id,
+                name: playlist.name,
+                isPlaylist: true
+            };
             $scope.loading = true;
+            $scope.galleryLoadError = '';
             
             // Clear audio player when switching to a different playlist
             // This prevents audio files from the previous playlist from remaining in the player
@@ -2627,6 +2794,7 @@ angular.module('photoController', [])
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error loading playlist items');
                     $scope.loading = false;
+                    $scope.galleryLoadError = 'Could not load this playlist. Check the server connection and retry.';
                 });
         };
 
@@ -3340,17 +3508,30 @@ angular.module('photoController', [])
 
         // Show EXIF modal for a photo
         $scope.showExifModal = function(image) {
-            if (!image.path) return;
-            
-            const encodedPath = encodeURIComponent(image.path);
-            
-            $http.get(`/api/photos/${encodedPath}/exif`)
-                .then(function successCallback(response) {
-                    // Display EXIF data (can be enhanced with a modal)
-                    alert('EXIF data retrieved. Check console for details.');
-                }, function(error) {
-                    ErrorHandlingService.handleError(error, 'Error fetching EXIF data');
-                    alert('Failed to load EXIF data');
+            if (!image || !image.path) return;
+
+            const modalElement = document.getElementById('exifModal');
+            const modalBody = document.getElementById('exif-modal-body');
+            if (!modalElement || !modalBody || !globalThis.bootstrap || typeof ExifDisplay !== 'function') {
+                ToastService.error('Camera details are unavailable right now.');
+                return;
+            }
+
+            document.getElementById('exifModalLabel').textContent = $scope.getLibraryItemTitle(image) + ' details';
+            modalBody.textContent = 'Loading camera details...';
+            globalThis.bootstrap.Modal.getOrCreateInstance(modalElement).show();
+
+            const display = new ExifDisplay(image.path);
+            display.load()
+                .then(function() {
+                    if (display.exifData && display.exifData.success === false) {
+                        modalBody.textContent = 'No camera details are available for this file.';
+                        return;
+                    }
+                    display.render('exif-modal-body');
+                })
+                .catch(function() {
+                    modalBody.textContent = 'Could not load camera details. Please try again.';
                 });
         };
 

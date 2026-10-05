@@ -12,9 +12,7 @@ class ExifDisplay {
   async load() {
     try {
       const encodedId = encodeURIComponent(this.photoId);
-      console.log(`Loading EXIF for: ${this.photoId} (encoded: ${encodedId})`);
       const url = `/api/photos/${encodedId}/exif`;
-      console.log(`Fetch URL: ${url}`);
       
       const response = await fetch(url);
       
@@ -26,7 +24,6 @@ class ExifDisplay {
       }
       
       this.exifData = await response.json();
-      console.log('EXIF data loaded:', this.exifData);
       return this.exifData;
     } catch (error) {
       console.error('Failed to load EXIF data:', error);
@@ -51,23 +48,14 @@ class ExifDisplay {
     const exif = this.exifData.exif || this.exifData;
     const summary = this.exifData.summary;
     
-    console.log('=== EXIF RENDER DEBUG ===');
-    console.log('this.exifData:', this.exifData);
-    console.log('exif object:', exif);
-    console.log('exif type:', typeof exif);
-    console.log('exif keys:', exif ? Object.keys(exif) : 'exif is null/undefined');
-    
     // Check if exif has any data
     const hasData = exif && typeof exif === 'object' && Object.keys(exif).length > 0;
-    console.log('hasData check result:', hasData);
     
     if (!hasData) {
-      console.error('EXIF check failed. exifData:', this.exifData);
       container.innerHTML = '<p>No EXIF data available for this photo.</p>';
       throw new Error('No EXIF data available');
     }
 
-    console.log('Proceeding to render HTML...');
     let html = '<div class="exif-container" style="padding: 15px; font-size: 13px; line-height: 1.6; color: #333; background: #fff;">';
 
     // Summary section
@@ -75,7 +63,7 @@ class ExifDisplay {
       html += `
         <div class="exif-summary" style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin-bottom: 15px; color: #222; border-left: 4px solid #0066cc;">
           <h3 style="margin: 0 0 8px 0; color: #000; font-size: 16px;">📸 Quick Summary</h3>
-          <p class="summary-text" style="margin: 0; color: #444; font-size: 12px;">${summary}</p>
+          <p class="summary-text" style="margin: 0; color: #444; font-size: 12px;">${this.escapeHtml(summary)}</p>
         </div>
       `;
     }
@@ -146,17 +134,18 @@ class ExifDisplay {
     }
 
     // GPS section
-    if (exif.gpsLatitude || exif.gpsLongitude) {
-      const mapsUrl = `https://maps.google.com/?q=${exif.gpsLatitude},${exif.gpsLongitude}`;
+    const location = exif.location || {};
+    if (location.latitude != null && location.longitude != null) {
+      const mapsUrl = `https://maps.google.com/?q=${encodeURIComponent(`${location.latitude},${location.longitude}`)}`;
       html += `
         <div class="exif-section">
           <h4>📍 GPS Location</h4>
           <table class="exif-table">
-            <tr><td>Latitude</td><td>${exif.gpsLatitude}</td></tr>
-            <tr><td>Longitude</td><td>${exif.gpsLongitude}</td></tr>
-            ${exif.gpsAltitude ? `<tr><td>Altitude</td><td>${exif.gpsAltitude}m</td></tr>` : ''}
+            <tr><td>Latitude</td><td>${this.escapeHtml(location.latitude)}</td></tr>
+            <tr><td>Longitude</td><td>${this.escapeHtml(location.longitude)}</td></tr>
+            ${location.altitude ? `<tr><td>Altitude</td><td>${this.escapeHtml(location.altitude)}m</td></tr>` : ''}
             <tr><td colspan="2">
-              <a href="${mapsUrl}" target="_blank" class="btn-link">🗺️ View on Google Maps</a>
+              <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="btn-link">🗺️ View on Google Maps</a>
             </td></tr>
           </table>
         </div>

@@ -34,6 +34,230 @@ mark.search-highlight {
   font-weight: 600;
 }
 
+.search-results-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.85rem;
+  border-left: 3px solid #277b73;
+  background: #edf5f2;
+  color: #253d43;
+}
+
+.library-landing {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.5rem 0.25rem 2rem;
+}
+
+.library-landing-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.35rem;
+}
+
+.library-eyebrow {
+  margin: 0 0 0.3rem;
+  color: #34756d;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.library-landing h2 {
+  margin: 0;
+  color: #20344a;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.library-landing-copy {
+  margin: 0.4rem 0 0;
+  color: #5e6c70;
+  font-size: 0.92rem;
+}
+
+.library-shortcuts {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+}
+
+.library-collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr));
+  gap: 0.7rem;
+}
+
+.library-collection-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+  min-height: 88px;
+  padding: 0.8rem;
+  border: 1px solid #d7e0df;
+  border-radius: 6px;
+  background: #fff;
+  color: #263b41;
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+
+.library-collection-card:hover,
+.library-collection-card:focus-visible {
+  border-color: #43877d;
+  background: #f3f8f6;
+  transform: translateY(-1px);
+}
+
+.library-collection-card:focus-visible {
+  outline: 3px solid rgba(52, 117, 109, 0.28);
+  outline-offset: 2px;
+}
+
+.library-collection-cover {
+  display: grid;
+  flex: 0 0 52px;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 4px;
+  background: #dce9e6;
+  color: #28635c;
+  font-size: 0.95rem;
+  font-weight: 700;
+  object-fit: cover;
+}
+
+.library-collection-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.2rem;
+}
+
+.library-collection-content strong,
+.library-collection-content small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-collection-content strong {
+  font-size: 0.92rem;
+}
+
+.library-collection-content small {
+  color: #68787a;
+  font-size: 0.76rem;
+}
+
+.library-collection-count {
+  color: #56716e;
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.library-collection-arrow {
+  color: #63827d;
+  font-size: 0.8rem;
+}
+
+.library-empty-state {
+  padding: 2rem 1rem;
+  border: 1px dashed #bdccca;
+  color: #53676a;
+  text-align: center;
+}
+
+.library-empty-state > i {
+  color: #43877d;
+  font-size: 1.5rem;
+}
+
+.library-empty-state h3 {
+  margin: 0.6rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+.library-empty-state p {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.card.media-card {
+  z-index: 1;
+  overflow: visible;
+}
+
+.card.media-card .card-body {
+  border-radius: 0 0 10px 10px;
+}
+
+.media-card-actions .dropdown-toggle::after {
+  display: none;
+}
+
+.media-card-actions .dropdown-menu {
+  z-index: 1055;
+  min-width: 12rem;
+}
+
+.media-card-actions .dropdown-item {
+  min-height: 38px;
+}
+
+@media (max-width: 576px) {
+  .library-landing {
+    padding: 0.9rem 0 1.25rem;
+  }
+
+  .library-landing-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .library-landing h2 {
+    font-size: 1.25rem;
+  }
+
+  .library-landing-copy {
+    font-size: 0.84rem;
+  }
+
+  .library-shortcuts {
+    width: 100%;
+  }
+
+  .library-shortcuts .btn {
+    flex: 1;
+    min-height: 40px;
+  }
+
+  .library-collection-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .library-collection-card {
+    min-height: 76px;
+    padding: 0.65rem;
+  }
+
+  .search-results-summary {
+    align-items: flex-start;
+    font-size: 0.86rem;
+  }
+}
+
 /* ===== Video loading spinner (feature 10) ===== */
 .fancybox-video-spinner {
   position: absolute;
@@ -52,51 +276,54 @@ mark.search-highlight {
 
 .fancybox-video-spinner {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 100;
-  pointer-events: none;
-}
+    .albums-spotlight {
+      padding: 0.62rem 0.72rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(32, 52, 74, 0.18);
+      min-height: 78px;
+    }
 
-.fancybox-video-spinner .spinner-border {
-  width: 3rem;
-  height: 3rem;
-  border-width: 0.3em;
-}
+    .albums-spotlight-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      opacity: 0.9;
+    }
 
-/* ── Audio Tracklist View ─────────────────────────────────── */
-.audio-tracklist-container {
-  padding: 0 8px;
-}
+    .albums-spotlight-title {
+      display: block !important;
+      color: #ffffff !important;
+      margin-top: 0.2rem;
+      font-size: 0.9rem;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-.audio-tracklist-header {
-  border: 1px solid rgba(129, 148, 170, 0.22);
-  border-bottom: 1px solid rgba(129, 148, 170, 0.22);
-  margin-bottom: 0;
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(255, 250, 241, 0.92) 0%, rgba(245, 249, 255, 0.96) 100%);
-  box-shadow: 0 18px 32px rgba(31, 49, 70, 0.08);
-}
+    .albums-spotlight-subtitle {
+      display: none;
+    }
 
-.audio-album-art {
-  width: 84px;
-  height: 84px;
-  background: linear-gradient(135deg, #20344a 0%, #305a7a 100%);
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-  overflow: hidden;
-  box-shadow: 0 14px 28px rgba(32, 52, 74, 0.24);
-}
+    .albums-spotlight-meta {
+      margin-top: 0.32rem;
+      gap: 0.45rem;
+      font-size: 0.7rem;
+    }
 
-.audio-album-cover {
-  width: 100%;
-  height: 100%;
-  display: block;
+    .albums-spotlight-meta span:nth-child(n + 2) {
+      display: none;
+    }
+
+    .albums-spotlight-path {
+      display: none;
+    }
+
+    .albums-spotlight-cover {
+      width: 42px;
+      height: 42px;
+      margin-bottom: 0.45rem;
+      border-radius: 10px;
+    }
   object-fit: cover;
 }
 
@@ -200,6 +427,34 @@ mark.search-highlight {
 
 .audio-track-row.paused-track .track-title .fw-medium {
   color: #6f42c1;
+}
+
+.track-checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: inline-block;
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  margin: 0 2px 0 0;
+  cursor: pointer;
+  align-self: center;
+  opacity: 0.95;
+  transition: transform 0.15s, opacity 0.15s;
+  accent-color: #0d6efd;
+  border: 1px solid #7f93aa;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+.audio-track-row:hover .track-checkbox,
+.track-checkbox:checked {
+  opacity: 1;
+  transform: scale(1.05);
 }
 
 .track-num {
@@ -1794,6 +2049,22 @@ body.dark-mode .toast.toast-info {
   line-height: 1.35;
 }
 
+.albums-spotlight-compact {
+  display: none;
+}
+
+.albums-spotlight-compact-title {
+  font-weight: 700;
+}
+
+.albums-spotlight-compact-sep {
+  opacity: 0.72;
+}
+
+.albums-spotlight-compact-meta {
+  opacity: 0.92;
+}
+
 .recently-viewed-section {
   border: 1px solid rgba(132, 144, 161, 0.22);
   border-radius: 12px;
@@ -2062,7 +2333,31 @@ body.dark-mode .toast.toast-info {
   }
 
   .albums-spotlight {
-    padding: 0.75rem 0.8rem;
+    display: none;
+  }
+
+  .albums-spotlight-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    margin-top: 0.15rem;
+    margin-bottom: 0.42rem;
+    padding: 0.52rem 0.62rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #29445f 0%, #3d6f86 60%, #4f8f7b 100%);
+    color: #f8fbff;
+    font-size: 0.76rem;
+    line-height: 1.15;
+    box-shadow: 0 6px 14px rgba(28, 47, 68, 0.18);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .albums-spotlight-compact-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    max-width: 58%;
   }
 
   .albums-spotlight-cover {

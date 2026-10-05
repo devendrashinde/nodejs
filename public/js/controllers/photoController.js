@@ -702,6 +702,10 @@ angular.module('photoController', [])
         };
 
         $scope.isLibraryRoot = function(album) {
+            if (album && (album.isPlaylist || album.isSearchResult)) {
+                return false;
+            }
+
             var rawPath = album && album.path;
             return !rawPath || rawPath === 'Home' || rawPath === '';
         };
@@ -727,6 +731,12 @@ angular.module('photoController', [])
             }
 
             return path.split('/').filter(Boolean).length;
+        };
+
+        $scope.getRootCollections = function() {
+            return $scope.getFilteredFolders().filter(function(folder) {
+                return folder && !$scope.isLibraryRoot(folder) && $scope.getAlbumDepth(folder.path) <= 1;
+            });
         };
 
         $scope.getAlbumDisplayPath = function(album) {
@@ -758,6 +768,14 @@ angular.module('photoController', [])
                 return 'Browse your media library';
             }
 
+            if (album.isPlaylist) {
+                return ($scope.selectedPlaylistItems.length || 0) + ' items in this playlist';
+            }
+
+            if (album.isSearchResult) {
+                return ($scope.searchResultCount || 0) + ' search results';
+            }
+
             if (album.description) {
                 return album.description;
             }
@@ -771,6 +789,14 @@ angular.module('photoController', [])
         };
 
         $scope.getAlbumContextLabel = function(album) {
+            if (album && album.isPlaylist) {
+                return 'Playlist';
+            }
+
+            if (album && album.isSearchResult) {
+                return 'Search Results';
+            }
+
             if ($scope.isLibraryRoot(album)) {
                 return 'Media Library';
             }

@@ -8,7 +8,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="gallery.css")
     link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
-    link(rel="stylesheet", href="main.css")
+    link(rel="stylesheet", href="main.css?v=16")
     link(rel="stylesheet", href="css/advanced-features.css")
     link(rel="stylesheet", href="css/music-player.css")
   
@@ -59,34 +59,43 @@ html(ng-app="app")
               | Back
             | {{selectedAlbum.name}}
           div.d-flex.align-items-center.ms-auto.gap-2.flex-nowrap
-            // Search buttons (Basic + Advanced)
-            div.btn-group
-              button.btn.btn-outline-primary.btn-sm(
-                type="button" 
-                data-bs-toggle="modal" 
-                data-bs-target="#searchModal"
-                title="Quick search (Ctrl+K)"
+            // Search actions
+            div.dropdown
+              button.btn.btn-outline-primary.btn-sm.dropdown-toggle.position-relative(
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-label="Search photos and media"
+                title="Search photos and media"
               )
                 i.fas.fa-search
-              
-              button.btn.btn-sm.position-relative(
-                type="button"
-                ng-class="searchResultCount > 0 ? 'btn-info' : 'btn-outline-info'"
-                onclick="window.advancedSearch && window.advancedSearch.toggle()"
-                title="Advanced search with filters"
-              )
-                i.fas.fa-search-plus
+                span.d-none.d-md-inline.ms-1 Search
                 span.position-absolute.top-0.start-100.translate-middle.badge.rounded-pill.bg-danger(
                   ng-if="searchResultCount > 0"
                   style="font-size:0.6rem;"
                 ) {{searchResultCount}}
+              ul.dropdown-menu.dropdown-menu-end
+                li
+                  a.dropdown-item(href="#" data-bs-toggle="modal" data-bs-target="#searchModal")
+                    i.fas.fa-search.me-2
+                    | Quick Search
+                li
+                  a.dropdown-item(
+                    href="#"
+                    onclick="window.advancedSearch && window.advancedSearch.toggle(); return false;"
+                  )
+                    i.fas.fa-sliders.me-2
+                    | Advanced Search
 
             // Upload button
             button.btn.btn-outline-success.btn-sm(
               type="button"
               ng-click="selectUploadFile()"
+              aria-label="Upload media"
+              title="Upload media"
             )
-              i.fas.fa-upload.me-1
+              i.fas.fa-upload
+              span.d-none.d-lg-inline.ms-1 Upload
 
             // Cache management dropdown
             div.dropdown
@@ -94,6 +103,7 @@ html(ng-app="app")
                 type="button"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
+                aria-label="Library maintenance tools"
                 title="Cache management"
               )
                 i.fas.fa-database
@@ -124,6 +134,7 @@ html(ng-app="app")
               data-bs-target="#folderSidebar"
               aria-expanded="false"
               aria-controls="folderSidebar"
+              aria-label="Toggle album and playlist navigation"
               title="Toggle albums sidebar"
             )
               i.fas.fa-bars
@@ -133,13 +144,16 @@ html(ng-app="app")
               type="button"
               ng-click="toggleDarkMode()"
               ng-class="{'btn-secondary': isDarkMode}"
+              aria-label="{{isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}}"
               title="{{isDarkMode ? 'Light mode' : 'Dark mode'}}"
             )
               i.fas(ng-class="isDarkMode ? 'fa-sun' : 'fa-moon'")
 
         // Pagination Controls
         // Second row: Pagination + Page Info
-        div.d-flex.justify-content-between.align-items-center.mt-1.w-100
+        div.d-flex.justify-content-between.align-items-center.mt-1.w-100(
+          ng-if="!isLibraryRoot(selectedAlbum)"
+        )
           button.btn.btn-outline-secondary.btn-sm(
             ng-click="prevPage()"
             ng-disabled="pageId === 0 || loading"
@@ -167,7 +181,7 @@ html(ng-app="app")
             i.fas.fa-chevron-right.ms-1
 
         // Third row: Progress Bar
-        div.progress.mt-1(style="height: 4px;")
+        div.progress.mt-1(ng-if="!isLibraryRoot(selectedAlbum)" style="height: 4px;")
           div.progress-bar.bg-primary(
             role="progressbar"
             ng-style="{'width': ((pageId + 1) / totalPages * 100) + '%'}"
@@ -436,8 +450,91 @@ html(ng-app="app")
         // Main Content
         main(ng-class="{'col-sm-8 col-md-8 col-lg-9 col-xl-10': folders.length > 0, 'col-12': folders.length == 0}")
 
+          div.search-results-summary(ng-if="selectedAlbum.isSearchResult")
+            div
+              strong {{searchResultCount}} results
+              span.ms-2 for: {{searchQuery}}
+            button.btn.btn-sm.btn-outline-secondary(
+              type="button"
+              ng-click="clearSearchResults()"
+              aria-label="Clear search results"
+            )
+              i.fas.fa-times.me-1
+              | Clear
+
+          section.library-landing(
+            ng-if="isLibraryRoot(selectedAlbum)"
+            aria-labelledby="libraryLandingTitle"
+          )
+            div.library-landing-heading
+              div
+                p.library-eyebrow {{selectedView === 'playlists' ? 'Your playlists' : 'Your library'}}
+                h2#libraryLandingTitle {{selectedView === 'playlists' ? 'Browse playlists' : 'Browse collections'}}
+                p.library-landing-copy(ng-if="selectedView === 'albums'") Choose an album to explore its photos, videos, documents, or music.
+                p.library-landing-copy(ng-if="selectedView === 'playlists'") Pick a saved playlist to continue listening or browsing.
+              div.library-shortcuts
+                button.btn.btn-sm.btn-outline-danger(type="button" ng-click="viewFavorites()")
+                  i.fas.fa-heart.me-1
+                  | Favorites
+                button.btn.btn-sm.btn-outline-success(type="button" ng-if="selectedView === 'albums'" ng-click="switchView('playlists')")
+                  i.fas.fa-list.me-1
+                  | Playlists
+                button.btn.btn-sm.btn-outline-primary(type="button" ng-if="selectedView === 'playlists'" ng-click="switchView('albums')")
+                  i.fas.fa-folder-open.me-1
+                  | Albums
+
+            div.library-collection-grid(ng-if="selectedView === 'albums' && getRootCollections().length")
+              button.library-collection-card(
+                type="button"
+                ng-repeat="folder in getRootCollections() track by (folder.path || folder.album)"
+                ng-click="setAlbum(folder)"
+                aria-label="Open {{folder.name || folder.album}} collection"
+              )
+                span.library-collection-cover(ng-if="!getAlbumCoverUrl(folder)") {{getAlbumInitials(folder)}}
+                img.library-collection-cover(
+                  ng-if="getAlbumCoverUrl(folder)"
+                  ng-src="{{getAlbumCoverUrl(folder)}}"
+                  alt=""
+                  loading="lazy"
+                )
+                span.library-collection-content
+                  strong {{folder.name || folder.album}}
+                  small {{folder.description || 'Open collection'}}
+                span.library-collection-count(ng-if="getAlbumPhotoCount(folder) > 0") {{getAlbumPhotoCount(folder)}}
+                i.fas.fa-arrow-right.library-collection-arrow(aria-hidden="true")
+
+            div.library-collection-grid(ng-if="selectedView === 'playlists' && getFilteredPlaylists().length")
+              button.library-collection-card(
+                type="button"
+                ng-repeat="playlist in getFilteredPlaylists() track by playlist.id"
+                ng-click="setPlaylist(playlist)"
+                aria-label="Open {{playlist.name}} playlist"
+              )
+                span.library-collection-cover
+                  i.fas.fa-list(aria-hidden="true")
+                span.library-collection-content
+                  strong {{playlist.name}}
+                  small {{playlist.tags || 'Saved playlist'}}
+                span.library-collection-count {{playlist.item_count || 0}} items
+                i.fas.fa-arrow-right.library-collection-arrow(aria-hidden="true")
+
+            div.library-empty-state(ng-if="selectedView === 'albums' && !getRootCollections().length")
+              i.fas.fa-folder-open(aria-hidden="true")
+              h3 No collections found
+              p Try clearing the album filter or scan for new folders.
+
+            div.library-empty-state(ng-if="selectedView === 'playlists' && !getFilteredPlaylists().length")
+              i.fas.fa-list(aria-hidden="true")
+              h3 No playlists yet
+              p Create a playlist to collect media you want to revisit.
+              button.btn.btn-sm.btn-outline-success.mt-3(type="button" ng-click="openCreatePlaylistModal()")
+                i.fas.fa-plus.me-1
+                | New Playlist
+
           //- Document/File Library toolbar — shown when viewing only PDFs and other non-media files
-          div.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3(ng-if="isAllLibraryFiles()")
+          div.d-flex.justify-content-between.align-items-center.flex-wrap.gap-2.mb-3(
+            ng-if="isAllLibraryFiles() && !isLibraryRoot(selectedAlbum)"
+          )
             div.text-muted.small
               i.fas.fa-book-open.me-1
               | {{getLibraryTitle()}} — {{getLibraryVisibleCount()}} / {{photos.length}} file{{photos.length !== 1 ? 's' : ''}}
@@ -470,7 +567,9 @@ html(ng-app="app")
                 span.ms-1 {{pdfLibraryView === 'grid' ? 'List view' : 'Grid view'}}
 
           // Gallery Grid
-          div.d-flex.justify-content-between.align-items-center.mb-2.gap-2(ng-if="!isAllLibraryFiles() && photos.length > 0")
+          div.d-flex.justify-content-between.align-items-center.mb-2.gap-2(
+            ng-if="!isAllLibraryFiles() && photos.length > 0 && !isLibraryRoot(selectedAlbum)"
+          )
             //- Sort controls
             div.d-flex.align-items-center.gap-1
               select.form-select.form-select-sm(
@@ -511,12 +610,14 @@ html(ng-app="app")
                 title="Large"
               )
                 i.fas.fa-th-large
-          div.row.g-3(ng-if="!isAllAudioAlbum() && (!isAllLibraryFiles() || pdfLibraryView === 'grid')")
+          div.row.g-3(
+            ng-if="!isAllAudioAlbum() && (!isAllLibraryFiles() || pdfLibraryView === 'grid') && !isLibraryRoot(selectedAlbum)"
+          )
             div(
               ng-repeat="image in getLibraryDisplayItems()"
               ng-class="{'col-6 col-sm-4 col-md-3 col-lg-2': galleryDensity === 'compact', 'col-sm-6 col-md-4 col-lg-3': galleryDensity === 'comfortable', 'col-sm-6 col-md-6 col-lg-4': galleryDensity === 'large'}"
             )
-              div.card.shadow-sm(style="position: relative;")
+              div.card.shadow-sm.media-card(style="position: relative;")
                 //- Checkbox for bulk operations
                 input.photo-checkbox(
                   type="checkbox"
@@ -613,50 +714,49 @@ html(ng-app="app")
                   small.text-muted.d-block(ng-if="image.isGenericFile" style="font-size:0.75rem;") {{image.fileTypeLabel}} • {{image.fileSizeFormatted || '—'}}
                   small.text-muted.d-block(ng-if="image.isGenericFile && image.fileDate" style="font-size:0.75rem;") Updated {{image.fileDate}}
                   
-                  //- Action buttons for advanced features
-                  //- For photos and videos
-                  div.d-flex.gap-1.mt-2(ng-if="!image.isAudio && !image.isPdf && !image.isGenericFile")
-                    button.btn.btn-sm.btn-outline-info(
-                      type="button"
-                      ng-click="showExifModal(image)"
-                      title="View EXIF data"
-                    )
-                      i.fas.fa-camera.fa-sm
-                    
+                  //- Common photo actions stay visible; less-used actions live in the menu.
+                  div.media-card-actions.d-flex.gap-1.mt-2(ng-if="!image.isAudio && !image.isPdf && !image.isGenericFile")
                     button.btn.btn-sm.btn-outline-danger(
                       type="button"
                       ng-click="toggleFavorite(image)"
                       ng-class="{'active': image.isFavorite}"
-                      title="Favorite"
+                      title="{{image.isFavorite ? 'Remove from favorites' : 'Add to favorites'}}"
+                      aria-label="{{image.isFavorite ? 'Remove from favorites' : 'Add to favorites'}}"
                     )
                       i.fas.fa-heart.fa-sm
-                    
-                    button.btn.btn-sm.btn-outline-success(
-                      type="button"
-                      ng-click="sharePhoto(image)"
-                      title="Share photo"
-                    )
-                      i.fas.fa-share-alt.fa-sm
-
-                    button.btn.btn-sm.btn-outline-primary(
-                      type="button"
-                      ng-if="image.isInPlaylist"
-                      ng-click="openPlaylistsForMedia(image, $event)"
-                      title="View playlists containing this item"
-                    )
-                      i.fas.fa-list.fa-sm
-                    
-                    //- Show "Remove from Playlist" when viewing a playlist
-                    button.btn.btn-sm.btn-outline-warning(
-                      type="button"
-                      ng-click="removePlaylistItem(image.id)"
-                      ng-if="selectedAlbum.isPlaylist"
-                      title="Remove from this playlist"
-                    )
-                      i.fas.fa-times.fa-sm
+                    div.dropdown
+                      button.btn.btn-sm.btn-outline-secondary.dropdown-toggle(
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="More photo actions"
+                        title="More photo actions"
+                      )
+                        i.fas.fa-ellipsis
+                      ul.dropdown-menu
+                        li
+                          button.dropdown-item(type="button" ng-click="showExifModal(image)")
+                            i.fas.fa-camera.me-2
+                            | View details
+                        li
+                          button.dropdown-item(type="button" ng-click="sharePhoto(image)")
+                            i.fas.fa-share-alt.me-2
+                            | Share
+                        li(ng-if="!image.isInPlaylist && !selectedAlbum.isPlaylist")
+                          button.dropdown-item(type="button" ng-click="openAddToPlaylistModal(image)")
+                            i.fas.fa-plus.me-2
+                            | Add to playlist
+                        li(ng-if="image.isInPlaylist")
+                          button.dropdown-item(type="button" ng-click="openPlaylistsForMedia(image, $event)")
+                            i.fas.fa-list.me-2
+                            | View playlists
+                        li(ng-if="selectedAlbum.isPlaylist")
+                          button.dropdown-item(type="button" ng-click="removePlaylistItem(image.id)")
+                            i.fas.fa-times.me-2
+                            | Remove from playlist
                   
                   //- For audio files
-                  div.d-flex.gap-1.mt-2(ng-if="image.isAudio")
+                  div.media-card-actions.d-flex.gap-1.mt-2(ng-if="image.isAudio")
                     button.btn.btn-sm.btn-outline-primary(
                       type="button"
                       ng-click="playAudio(image)"
@@ -672,78 +772,90 @@ html(ng-app="app")
                     )
                       i.fas.fa-heart.fa-sm
                     
-                    button.btn.btn-sm.btn-outline-success(
-                      type="button"
-                      ng-click="sharePhoto(image)"
-                      title="Share"
-                    )
-                      i.fas.fa-share-alt.fa-sm
-
-                    button.btn.btn-sm.btn-outline-primary(
-                      type="button"
-                      ng-if="image.isInPlaylist"
-                      ng-click="openPlaylistsForMedia(image, $event)"
-                      title="View playlists containing this item"
-                    )
-                      i.fas.fa-list.fa-sm
+                    div.dropdown
+                      button.btn.btn-sm.btn-outline-secondary.dropdown-toggle(
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="More audio actions"
+                        title="More audio actions"
+                      )
+                        i.fas.fa-ellipsis
+                      ul.dropdown-menu
+                        li
+                          button.dropdown-item(type="button" ng-click="sharePhoto(image)")
+                            i.fas.fa-share-alt.me-2
+                            | Share
+                        li(ng-if="!image.isInPlaylist && !selectedAlbum.isPlaylist")
+                          button.dropdown-item(type="button" ng-click="openAddToPlaylistModal(image)")
+                            i.fas.fa-plus.me-2
+                            | Add to playlist
+                        li(ng-if="image.isInPlaylist")
+                          button.dropdown-item(type="button" ng-click="openPlaylistsForMedia(image, $event)")
+                            i.fas.fa-list.me-2
+                            | View playlists
+                        li(ng-if="selectedAlbum.isPlaylist")
+                          button.dropdown-item(type="button" ng-click="removePlaylistItem(image.id)")
+                            i.fas.fa-times.me-2
+                            | Remove from playlist
 
                   //- For PDF files
-                  div.d-flex.gap-1.mt-2.flex-wrap(ng-if="image.isPdf")
+                  div.media-card-actions.d-flex.gap-1.mt-2.flex-wrap(ng-if="image.isPdf")
                     button.btn.btn-sm.btn-outline-primary(
                       type="button"
                       ng-click="openPdfInNewTab(image)"
                       title="Open in new tab"
                     )
                       i.fas.fa-external-link-alt.fa-sm
-                    button.btn.btn-sm.btn-outline-info(
-                      type="button"
-                      ng-click="setPdfThumbnail(image)"
-                      title="Set custom thumbnail"
-                    )
-                      i.fas.fa-image.fa-sm
-                    button.btn.btn-sm.btn-outline-secondary(
-                      type="button"
-                      ng-click="selectExistingPdfThumbnail(image)"
-                      title="Select existing thumbnail from server"
-                    )
-                      i.fas.fa-folder-open.fa-sm
-                    button.btn.btn-sm(
-                      type="button"
-                      ng-click="togglePdfRead(image)"
-                      ng-class="image.isRead ? 'btn-success' : 'btn-outline-secondary'"
-                      title="{{image.isRead ? 'Mark as unread' : 'Mark as read'}}"
-                    )
-                      i.fas.fa-check.fa-sm
                     button.btn.btn-sm.btn-outline-danger(
                       type="button"
                       ng-click="toggleFavorite(image)"
                       ng-class="{'active': image.isFavorite}"
-                      title="Favorite"
+                      title="{{image.isFavorite ? 'Remove from favorites' : 'Add to favorites'}}"
+                      aria-label="{{image.isFavorite ? 'Remove from favorites' : 'Add to favorites'}}"
                     )
                       i.fas.fa-heart.fa-sm
-                    button.btn.btn-sm.btn-outline-success(
-                      type="button"
-                      ng-click="sharePhoto(image)"
-                      title="Share"
-                    )
-                      i.fas.fa-share-alt.fa-sm
-                    button.btn.btn-sm.btn-outline-primary(
-                      type="button"
-                      ng-if="image.isInPlaylist"
-                      ng-click="openPlaylistsForMedia(image, $event)"
-                      title="View playlists containing this item"
-                    )
-                      i.fas.fa-list.fa-sm
-                    button.btn.btn-sm.btn-outline-warning(
-                      type="button"
-                      ng-click="removePlaylistItem(image.id)"
-                      ng-if="selectedAlbum.isPlaylist"
-                      title="Remove from this playlist"
-                    )
-                      i.fas.fa-times.fa-sm
+                    div.dropdown
+                      button.btn.btn-sm.btn-outline-secondary.dropdown-toggle(
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="More document actions"
+                        title="More document actions"
+                      )
+                        i.fas.fa-ellipsis
+                      ul.dropdown-menu
+                        li
+                          button.dropdown-item(type="button" ng-click="togglePdfRead(image)")
+                            i.fas.fa-check.me-2
+                            | {{image.isRead ? 'Mark as unread' : 'Mark as read'}}
+                        li
+                          button.dropdown-item(type="button" ng-click="setPdfThumbnail(image)")
+                            i.fas.fa-image.me-2
+                            | Set custom thumbnail
+                        li
+                          button.dropdown-item(type="button" ng-click="selectExistingPdfThumbnail(image)")
+                            i.fas.fa-folder-open.me-2
+                            | Choose existing thumbnail
+                        li
+                          button.dropdown-item(type="button" ng-click="sharePhoto(image)")
+                            i.fas.fa-share-alt.me-2
+                            | Share
+                        li(ng-if="!image.isInPlaylist && !selectedAlbum.isPlaylist")
+                          button.dropdown-item(type="button" ng-click="openAddToPlaylistModal(image)")
+                            i.fas.fa-plus.me-2
+                            | Add to playlist
+                        li(ng-if="image.isInPlaylist")
+                          button.dropdown-item(type="button" ng-click="openPlaylistsForMedia(image, $event)")
+                            i.fas.fa-list.me-2
+                            | View playlists
+                        li(ng-if="selectedAlbum.isPlaylist")
+                          button.dropdown-item(type="button" ng-click="removePlaylistItem(image.id)")
+                            i.fas.fa-times.me-2
+                            | Remove from playlist
 
                   //- For generic files
-                  div.d-flex.gap-1.mt-2.flex-wrap(ng-if="image.isGenericFile")
+                  div.media-card-actions.d-flex.gap-1.mt-2.flex-wrap(ng-if="image.isGenericFile")
                     button.btn.btn-sm.btn-outline-info(
                       type="button"
                       ng-if="isTextPreviewAvailable(image)"
@@ -770,29 +882,37 @@ html(ng-app="app")
                       title="Favorite"
                     )
                       i.fas.fa-heart.fa-sm
-                    button.btn.btn-sm.btn-outline-success(
-                      type="button"
-                      ng-click="sharePhoto(image)"
-                      title="Share"
-                    )
-                      i.fas.fa-share-alt.fa-sm
-                    button.btn.btn-sm.btn-outline-primary(
-                      type="button"
-                      ng-if="image.isInPlaylist"
-                      ng-click="openPlaylistsForMedia(image, $event)"
-                      title="View playlists containing this item"
-                    )
-                      i.fas.fa-list.fa-sm
-                    button.btn.btn-sm.btn-outline-warning(
-                      type="button"
-                      ng-click="removePlaylistItem(image.id)"
-                      ng-if="selectedAlbum.isPlaylist"
-                      title="Remove from this playlist"
-                    )
-                      i.fas.fa-times.fa-sm
+                    div.dropdown
+                      button.btn.btn-sm.btn-outline-secondary.dropdown-toggle(
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="More file actions"
+                        title="More file actions"
+                      )
+                        i.fas.fa-ellipsis
+                      ul.dropdown-menu
+                        li
+                          button.dropdown-item(type="button" ng-click="sharePhoto(image)")
+                            i.fas.fa-share-alt.me-2
+                            | Share
+                        li(ng-if="!image.isInPlaylist && !selectedAlbum.isPlaylist")
+                          button.dropdown-item(type="button" ng-click="openAddToPlaylistModal(image)")
+                            i.fas.fa-plus.me-2
+                            | Add to playlist
+                        li(ng-if="image.isInPlaylist")
+                          button.dropdown-item(type="button" ng-click="openPlaylistsForMedia(image, $event)")
+                            i.fas.fa-list.me-2
+                            | View playlists
+                        li(ng-if="selectedAlbum.isPlaylist")
+                          button.dropdown-item(type="button" ng-click="removePlaylistItem(image.id)")
+                            i.fas.fa-times.me-2
+                            | Remove from playlist
 
           //- Audio Tracklist View — shown automatically when all items are audio
-          div.audio-tracklist-container(ng-if="isAllAudioAlbum()")
+          div.audio-tracklist-container(
+            ng-if="isAllAudioAlbum() && !isLibraryRoot(selectedAlbum)"
+          )
             div.audio-tracklist-header.music-album-hero.d-flex.align-items-center.px-3.py-3.mb-2
               div.audio-album-art.me-3
                 img.audio-album-cover(
@@ -833,6 +953,13 @@ html(ng-app="app")
                 ng-click="playAudio(image)"
                 ng-class="{'now-playing': currentIndex >= 0 && isPlaying && (playlist[currentIndex] || {}).path === image.path, 'paused-track': currentIndex >= 0 && !isPlaying && (playlist[currentIndex] || {}).path === image.path}"
               )
+                //- Checkbox for bulk operations
+                input.photo-checkbox.track-checkbox(
+                  type="checkbox"
+                  ng-attr-data-photo-id="{{image.path}}"
+                  ng-click="$event.stopPropagation()"
+                  title="Select for bulk operations"
+                )
                 //- Track number / waveform indicator
                 div.track-num
                   span.track-number.text-muted(
@@ -882,6 +1009,13 @@ html(ng-app="app")
                     title="Share"
                   )
                     i.fas.fa-share-alt
+                  button.btn.btn-sm.btn-link.text-primary.p-1(
+                    type="button"
+                    ng-if="!image.isInPlaylist && !selectedAlbum.isPlaylist"
+                    ng-click="openAddToPlaylistModal(image)"
+                    title="Add to playlist"
+                  )
+                    i.fas.fa-plus
                   button.btn.btn-sm.btn-link.text-secondary.p-1(
                     type="button"
                     ng-if="image.isInPlaylist"
@@ -898,7 +1032,9 @@ html(ng-app="app")
                     i.fas.fa-times
 
           //- Document/File Library List View
-          div.table-responsive(ng-if="isAllLibraryFiles() && pdfLibraryView === 'list'")
+          div.table-responsive(
+            ng-if="isAllLibraryFiles() && pdfLibraryView === 'list' && !isLibraryRoot(selectedAlbum)"
+          )
             table.table.table-hover.table-sm.align-middle
               thead.table-light
                 tr
@@ -1978,7 +2114,7 @@ html(ng-app="app")
     script(src="js/image-editor.js")
     script(src="js/ng-app.js")    
     script(src="main.js")
-    script(src="js/controllers/photoController.js?v=10")
+    script(src="js/controllers/photoController.js?v=11")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")

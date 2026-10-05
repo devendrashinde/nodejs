@@ -86,37 +86,31 @@ Use this for new deployments or development environments:
 **MySQL 8.0+:**
 
 ```bash
-# Using Docker (easiest)
+# Start the optional database container
 docker-compose -f docker-compose-mysql.yaml up -d
-mysql -h 127.0.0.1 -u root -pphotos < sql/mydb-mysql.sql
+
+# Install the complete v4 schema. This drops and recreates mydb.
+mysql -h 127.0.0.1 -u root -pphotos < sql/install-mysql.sql
 
 # Or using local MySQL
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS mydb CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-mysql -u root -p mydb < sql/mydb-mysql.sql
+mysql -u root -p < sql/install-mysql.sql
 ```
 
 **MariaDB 10.5+:**
 
 ```bash
-# Create database
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS mydb CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
-
-# Import MariaDB-optimized schema
-mysql -u root -p mydb < sql/mydb-mariadb.sql
+# Install the complete v4 schema. This drops and recreates mydb.
+mysql -u root -p < sql/install-mariadb.sql
 
 # Verify
 mysql -u root -p mydb -e "SHOW TABLES; SELECT * FROM schema_version;"
 ```
 
-# Or without Docker
-mysql -u root -p < sql/mydb-mysql.sql
-```
-
 This will:
 - ✅ Drop existing `mydb` database
-- ✅ Create fresh database with all tables
+- ✅ Create the complete v4 database with all tables
 - ✅ Add indexes and views
-- ✅ Insert sample data
+- ✅ Record schema version 4.0
 
 ### Option 2: Upgrade Existing Database
 

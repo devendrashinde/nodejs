@@ -134,16 +134,23 @@ This will start:
 - MySQL 8.0.30 on port 3306 (root password: `photos`)
 - Adminer (database management UI) on port 8080
 
-#### Option B: Manual MySQL Setup
+For a fresh database, install the schema after MySQL is ready. This replaces the `mydb` database:
 
-1. Create a database named `mydb`
-2. Run the SQL scripts in order:
-   ```bash
-   mysql -u root -p mydb < sql/mydb-mysql.sql
-   mysql -u root -p mydb < sql/photos.sql
-   mysql -u root -p mydb < sql/tags.sql
-   mysql -u root -p mydb < sql/users.sql
-   ```
+```bash
+mysql -h 127.0.0.1 -u root -pphotos < sql/install-mysql.sql
+```
+
+#### Option B: Manual Fresh Database Setup
+
+These installers create the complete schema version 4.0. They drop and recreate `mydb`, so use them only for a fresh install or after backing up any existing database.
+
+```bash
+# MySQL 8.0+
+mysql -u root -p < sql/install-mysql.sql
+
+# MariaDB 10.5+
+mysql -u root -p < sql/install-mariadb.sql
+```
 
 ### 6. Database Connection
 

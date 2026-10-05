@@ -8,7 +8,7 @@
 
 ### Prerequisites
 - Node.js 16+ 
-- MySQL 5.7 or MariaDB 10.3+
+- MySQL 8.0+ or MariaDB 10.5+
 - npm or yarn
 
 ### Setup
@@ -37,6 +37,16 @@ mysql -u root -p mydb < sql/migration_v3_to_v4_mysql.sql
 npm start
 # Open http://localhost:8082
 ```
+
+### Optional Windows Podman Database
+
+When Node.js runs on Windows and MySQL runs inside a Podman machine, publish MySQL on port 3306 and configure `DB_HOST=localhost`. To refresh the loopback port forward manually from an elevated PowerShell prompt:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-podman-portproxy.ps1
+```
+
+Pass `-Register` to create a logon task for the current Windows user. The task starts that user's Podman machine and refreshes the localhost-only port forward. This helper is not needed when the app and database run together on the Raspberry Pi.
 
 ---
 

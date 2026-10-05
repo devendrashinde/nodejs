@@ -115,9 +115,11 @@ DB_HOST=localhost           # Database host
 DB_USER=root                # Database user
 DB_PASSWORD=photos          # Database password
 DB_NAME=mydb                # Database name
-DB_CONNECTION_LIMIT=10      # Connection pool size
+DB_CONNECTION_LIMIT=3       # Connection pool size (Pi-friendly default)
 CACHE_CLEAR_INTERVAL=600000 # Cache clear (10 min)
 MAX_FILE_SIZE=104857600     # Max upload (100MB)
+SHARP_CONCURRENCY=1         # Limit image-processing worker threads
+ENABLE_PERF_ENDPOINT=false  # Keep runtime diagnostics disabled in production
 ```
 
 ### File Upload Limits

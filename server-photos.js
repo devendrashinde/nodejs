@@ -2,6 +2,7 @@ import { createReadStream, readdirSync, statSync, existsSync, mkdirSync, readFil
 import { promises as fs } from 'fs';
 import express from 'express';
 import fileUpload from 'express-fileupload';
+import helmet from 'helmet';
 import { join, sep, extname } from 'path';
 import path from 'path';
 import crypto from 'crypto';
@@ -49,6 +50,8 @@ const ITEMS_PER_PAGE = 20;
 // Cache configuration - optimized for static albums
 const MAX_CACHE_SIZE = parseInt(process.env.MAX_CACHE_SIZE) || 500; // maximum cached pages
 const MAX_CACHE_BYTES = parseInt(process.env.MAX_CACHE_BYTES) || (100 * 1024 * 1024); // 100MB max cache size
+const SHARP_CONCURRENCY = Number.parseInt(process.env.SHARP_CONCURRENCY || '1', 10);
+const ENABLE_PERF_ENDPOINT = process.env.ENABLE_PERF_ENDPOINT === 'true';
 const CACHE_FILE = process.env.CACHE_FILE_PATH || './cache/album-cache.json';
 const PDF_THUMBNAIL_MAP_FILE = process.env.PDF_THUMBNAIL_MAP_FILE || './cache/pdf-thumbnail-map.json';
 const PDF_THUMBNAIL_DIR = process.env.PDF_THUMBNAIL_DIR || './temp-pic/pdf-thumbnails';
@@ -76,6 +79,14 @@ const ALBUM_SCAN_INTERVAL_MS = Number.parseInt(process.env.ALBUM_SCAN_INTERVAL_M
 
 app.set('view engine', 'pug');
 app.set('views', __dirname);
+
+sharp.concurrency(Number.isInteger(SHARP_CONCURRENCY) && SHARP_CONCURRENCY > 0 ? SHARP_CONCURRENCY : 1);
+
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: false
+}));
 
 // Apply compression middleware early to compress all responses
 app.use(compression());
@@ -1030,6 +1041,10 @@ app.get('/api/cache/stats', (req, res) => {
 });
 
     app.get('/api/perf', (req, res) => {
+      if (process.env.NODE_ENV === 'production' && !ENABLE_PERF_ENDPOINT) {
+        return res.sendStatus(404);
+      }
+
       const totalHitRate = ((cacheStats.hits / (cacheStats.hits + cacheStats.misses) * 100) || 0).toFixed(1);
       const dbStatus = getDbStatus();
 

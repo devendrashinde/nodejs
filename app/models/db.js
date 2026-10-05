@@ -6,7 +6,7 @@ import { createPool } from 'mysql';
 // Load environment variables from .env file
 dotenv.config();
 
-const DB_CONNECTION_LIMIT = Number.parseInt(process.env.DB_CONNECTION_LIMIT || '', 10) || 10;
+const DB_CONNECTION_LIMIT = Number.parseInt(process.env.DB_CONNECTION_LIMIT || '', 10) || 3;
 const DB_CONNECT_TIMEOUT_MS = Number.parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '', 10) || 5000;
 const DB_ACQUIRE_TIMEOUT_MS = Number.parseInt(process.env.DB_ACQUIRE_TIMEOUT_MS || '', 10) || 10000;
 

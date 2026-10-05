@@ -85,7 +85,7 @@ DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=photos
 DB_NAME=mydb
-DB_CONNECTION_LIMIT=10
+DB_CONNECTION_LIMIT=3
 ```
 
 Optional performance tuning for lower-power devices such as Raspberry Pi:
@@ -95,8 +95,11 @@ VERBOSE_REQUEST_LOGS=false
 CACHE_SAVE_INTERVAL_MS=900000
 CACHE_STATS_INTERVAL_MS=0
 ALBUM_SCAN_INTERVAL_MS=1800000
+DB_CONNECTION_LIMIT=3
 DB_CONNECT_TIMEOUT_MS=5000
 DB_ACQUIRE_TIMEOUT_MS=10000
+SHARP_CONCURRENCY=1
+ENABLE_PERF_ENDPOINT=false
 ```
 
 - `CACHE_STATS_INTERVAL_MS=0` disables periodic cache-stat log writes.
@@ -105,7 +108,7 @@ DB_ACQUIRE_TIMEOUT_MS=10000
 
 Runtime diagnostics:
 
-- `GET /api/perf` returns a lightweight summary of cache state, interval settings, DB health, and timing instrumentation.
+- `GET /api/perf` returns a lightweight summary of cache state, interval settings, DB health, and timing instrumentation. It is disabled in production unless `ENABLE_PERF_ENDPOINT=true` is set.
 
 ### 4. Install System Dependencies
 
@@ -151,11 +154,11 @@ DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=photos
 DB_NAME=mydb
-DB_CONNECTION_LIMIT=10
+DB_CONNECTION_LIMIT=3
 ```
 
 Connection pooling is automatically configured with:
-- 10 concurrent connections
+- 3 concurrent connections by default (configurable with `DB_CONNECTION_LIMIT`)
 - Auto-reconnect on connection loss
 - Graceful shutdown support
 

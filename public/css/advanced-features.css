@@ -601,6 +601,13 @@ details[open] {
   display: block !important;
 }
 
+.photo-checkbox.table-photo-checkbox {
+  position: static !important;
+  width: 18px;
+  height: 18px;
+  margin: 0 auto;
+}
+
 /* ===== COMMENTS STYLES ===== */
 
 .comments-section {

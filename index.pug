@@ -9,7 +9,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
     link(rel="stylesheet", href="main.css?v=18")
-    link(rel="stylesheet", href="css/advanced-features.css?v=2")
+    link(rel="stylesheet", href="css/advanced-features.css?v=3")
     link(rel="stylesheet", href="css/music-player.css")
   
   body#top
@@ -1083,7 +1083,12 @@ html(ng-app="app")
               tbody
                 tr(ng-repeat="image in getLibraryDisplayItems()")
                   td.text-center
-                    i(ng-class="image.fileIconClass || 'fas fa-file text-muted'" style="font-size:1.2rem;")
+                    input.photo-checkbox.table-photo-checkbox(
+                      type="checkbox"
+                      ng-attr-data-photo-id="{{image.path}}"
+                      aria-label="Select {{getLibraryItemTitle(image)}}"
+                      title="Select for bulk operations"
+                    )
                   td
                     span.badge.bg-light.text-dark.border {{image.fileExtension || 'FILE'}}
                   td

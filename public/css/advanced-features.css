@@ -598,15 +598,7 @@ details[open] {
   height: 20px;
   cursor: pointer;
   z-index: 5;
-  display: none !important;
-}
-
-body.bulk-select-mode .photo-checkbox {
   display: block !important;
-}
-
-body.bulk-select-mode .photo-checkbox.track-checkbox {
-  display: inline-block !important;
 }
 
 /* ===== COMMENTS STYLES ===== */

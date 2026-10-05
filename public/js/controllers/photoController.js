@@ -302,7 +302,6 @@ angular.module('photoController', [])
         // Bulk playlist operation flags
         $scope.isBulkPlaylistOperation = false;
         $scope.selectedPhotosForBulkPlaylist = null;
-        $scope.bulkSelectMode = false;
         
         // Media type constants
         const imageTypes = APP_CONSTANTS.IMAGE_TYPES;
@@ -511,15 +510,6 @@ angular.module('photoController', [])
 
         $scope.saveFileLibraryPreferences = function() {
             saveGalleryPreferences();
-        };
-
-        $scope.toggleBulkSelectMode = function() {
-            $scope.bulkSelectMode = !$scope.bulkSelectMode;
-            document.body.classList.toggle('bulk-select-mode', $scope.bulkSelectMode);
-
-            if (!$scope.bulkSelectMode && globalThis.bulkOperations) {
-                globalThis.bulkOperations.clearSelection();
-            }
         };
 
         /**

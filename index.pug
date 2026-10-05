@@ -9,7 +9,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
     link(rel="stylesheet", href="main.css?v=17")
-    link(rel="stylesheet", href="css/advanced-features.css")
+    link(rel="stylesheet", href="css/advanced-features.css?v=2")
     link(rel="stylesheet", href="css/music-player.css")
   
   body#top
@@ -621,15 +621,6 @@ html(ng-app="app")
                 i.fas(ng-class="gallerySort.dir === 'asc' ? 'fa-sort-amount-down-alt' : 'fa-sort-amount-up'")
             //- Density controls
             div.btn-group
-              button.btn.btn-sm(
-                type="button"
-                ng-class="bulkSelectMode ? 'btn-primary' : 'btn-outline-secondary'"
-                ng-click="toggleBulkSelectMode()"
-                ng-attr-aria-pressed="{{bulkSelectMode}}"
-                title="{{bulkSelectMode ? 'Finish selecting' : 'Select media for bulk actions'}}"
-              )
-                i.fas(ng-class="bulkSelectMode ? 'fa-check' : 'fa-check-square'")
-                span.ms-1 {{bulkSelectMode ? 'Done' : 'Select'}}
               button.btn.btn-sm(
                 type="button"
                 ng-class="galleryDensity === 'compact' ? 'btn-secondary' : 'btn-outline-secondary'"
@@ -2179,7 +2170,7 @@ html(ng-app="app")
     script(src="js/image-editor.js")
     script(src="js/ng-app.js")    
     script(src="main.js?v=2")
-    script(src="js/controllers/photoController.js?v=14")
+    script(src="js/controllers/photoController.js?v=15")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")

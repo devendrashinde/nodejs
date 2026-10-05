@@ -228,10 +228,6 @@ mark.search-highlight {
   font-size: 0.86rem;
 }
 
-body.bulk-select-mode .media-card {
-  outline: 1px solid rgba(52, 117, 109, 0.2);
-}
-
 .card.media-card {
   z-index: 1;
   overflow: visible;

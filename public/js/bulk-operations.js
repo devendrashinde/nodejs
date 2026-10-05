@@ -6,6 +6,7 @@
 class BulkOperations {
   constructor() {
     this.selectedPhotos = new Set();
+    this.moveDestinationPath = '';
     this.init();
   }
 
@@ -137,6 +138,13 @@ class BulkOperations {
     if (moveSubmitButton) {
       moveSubmitButton.addEventListener('click', () => this.bulkMove());
     }
+    const moveUpButton = document.getElementById('btn-bulk-move-up');
+    if (moveUpButton) {
+      moveUpButton.addEventListener('click', () => {
+        const parentPath = this.moveDestinationPath.split('/').slice(0, -1).join('/');
+        this.loadBulkMoveFolders(parentPath);
+      });
+    }
     document.getElementById('btn-bulk-select-all').addEventListener('click', () => this.selectAll(true));
     document.getElementById('btn-bulk-clear').addEventListener('click', () => this.clearSelection());
 
@@ -204,50 +212,118 @@ class BulkOperations {
 
   async openBulkMoveModal() {
     const modalElement = document.getElementById('bulkMoveModal');
-    const destinationSelect = document.getElementById('bulk-move-destination');
     const selectedCount = document.getElementById('bulk-move-selected-count');
     const feedback = document.getElementById('bulk-move-feedback');
     const submitButton = document.getElementById('btn-confirm-bulk-move');
-    if (!modalElement || !destinationSelect || !selectedCount || !feedback || !submitButton) return;
+    if (!modalElement || !selectedCount || !feedback || !submitButton) return;
 
+    this.moveDestinationPath = '';
     selectedCount.textContent = `${this.selectedPhotos.size} selected file(s) will be moved. Existing files with the same name will not be overwritten.`;
-    destinationSelect.replaceChildren(new Option('Loading albums...', ''));
-    destinationSelect.disabled = true;
     submitButton.disabled = true;
     feedback.textContent = '';
     feedback.className = 'small';
 
     const modal = window.bootstrap.Modal.getOrCreateInstance(modalElement);
     modal.show();
+    await this.loadBulkMoveFolders('');
+  }
+
+  async loadBulkMoveFolders(parentPath) {
+    const folderList = document.getElementById('bulk-move-folders');
+    const breadcrumb = document.getElementById('bulk-move-breadcrumb');
+    const upButton = document.getElementById('btn-bulk-move-up');
+    const feedback = document.getElementById('bulk-move-feedback');
+    const submitButton = document.getElementById('btn-confirm-bulk-move');
+    if (!folderList || !breadcrumb || !upButton || !feedback || !submitButton) return;
+
+    this.moveDestinationPath = parentPath;
+    folderList.textContent = 'Loading albums...';
+    feedback.textContent = '';
+    feedback.className = 'small text-muted';
+    upButton.disabled = !parentPath;
+    submitButton.disabled = !parentPath || this.selectedPhotos.size === 0;
+    breadcrumb.replaceChildren();
+
+    const crumbPaths = parentPath ? parentPath.split('/') : [];
+    const rootCrumb = document.createElement('button');
+    rootCrumb.type = 'button';
+    rootCrumb.className = 'btn btn-link btn-sm p-0';
+    rootCrumb.textContent = 'data';
+    rootCrumb.addEventListener('click', () => this.loadBulkMoveFolders(''));
+    breadcrumb.appendChild(rootCrumb);
+
+    crumbPaths.forEach((segment, index) => {
+      const separator = document.createElement('span');
+      separator.className = 'mx-1 text-muted';
+      separator.textContent = '/';
+      breadcrumb.appendChild(separator);
+
+      const crumbPath = crumbPaths.slice(0, index + 1).join('/');
+      if (index === crumbPaths.length - 1) {
+        const currentCrumb = document.createElement('span');
+        currentCrumb.className = 'fw-semibold';
+        currentCrumb.textContent = segment;
+        breadcrumb.appendChild(currentCrumb);
+      } else {
+        const crumb = document.createElement('button');
+        crumb.type = 'button';
+        crumb.className = 'btn btn-link btn-sm p-0';
+        crumb.textContent = segment;
+        crumb.addEventListener('click', () => this.loadBulkMoveFolders(crumbPath));
+        breadcrumb.appendChild(crumb);
+      }
+    });
 
     try {
-      const response = await fetch('/api/bulk/move-destinations');
+      const response = await fetch(`/api/bulk/move-destinations?parent=${encodeURIComponent(parentPath)}`);
       const payload = await response.json();
       if (!response.ok || !payload.success) {
         throw new Error(payload.error || 'Could not load albums.');
       }
 
-      destinationSelect.replaceChildren(new Option('Choose an album...', ''));
-      payload.destinations.forEach((destination) => {
-        destinationSelect.add(new Option(destination.label, destination.path));
+      if (this.moveDestinationPath !== parentPath) return;
+      folderList.replaceChildren();
+      payload.folders.forEach((folder) => {
+        const folderButton = document.createElement('button');
+        folderButton.type = 'button';
+        folderButton.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
+        folderButton.setAttribute('aria-label', `Open ${folder.name} sub-albums`);
+
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-folder';
+        icon.setAttribute('aria-hidden', 'true');
+        const name = document.createElement('span');
+        name.className = 'flex-grow-1 text-start';
+        name.textContent = folder.name;
+        const arrow = document.createElement('i');
+        arrow.className = 'fas fa-chevron-right small text-muted';
+        arrow.setAttribute('aria-hidden', 'true');
+        folderButton.append(icon, name, arrow);
+        folderButton.addEventListener('click', () => this.loadBulkMoveFolders(folder.path));
+        folderList.appendChild(folderButton);
       });
-      destinationSelect.disabled = payload.destinations.length === 0;
-      submitButton.disabled = payload.destinations.length === 0;
-      if (!payload.destinations.length) {
-        feedback.textContent = 'No destination albums are available.';
-        feedback.className = 'small text-danger';
+
+      const currentPath = payload.currentPath || '';
+      this.moveDestinationPath = currentPath;
+      upButton.disabled = !currentPath;
+      submitButton.disabled = !currentPath || this.selectedPhotos.size === 0;
+      if (!payload.folders.length) {
+        feedback.textContent = currentPath
+          ? 'No sub-albums here. You can move the selected files into this album.'
+          : 'No destination albums are available.';
+        feedback.className = 'small text-muted';
       }
     } catch (error) {
+      folderList.replaceChildren();
       feedback.textContent = error.message || 'Could not load destination albums.';
       feedback.className = 'small text-danger';
     }
   }
 
   async bulkMove() {
-    const destinationSelect = document.getElementById('bulk-move-destination');
     const feedback = document.getElementById('bulk-move-feedback');
     const submitButton = document.getElementById('btn-confirm-bulk-move');
-    const destinationAlbum = destinationSelect && destinationSelect.value;
+    const destinationAlbum = this.moveDestinationPath;
     if (!destinationAlbum || this.selectedPhotos.size === 0) return;
 
     submitButton.disabled = true;

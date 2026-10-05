@@ -1286,15 +1286,19 @@ html(ng-app="app")
               button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
             div.modal-body
               p#bulk-move-selected-count.text-muted.mb-3
-              label.form-label(for="bulk-move-destination") Destination album
-              select#bulk-move-destination.form-select(aria-describedby="bulk-move-feedback")
-                option(value="") Loading albums...
+              div.d-flex.align-items-center.justify-content-between.mb-2
+                label.form-label.mb-0 Destination album
+                button#btn-bulk-move-up.btn.btn-sm.btn-outline-secondary(type="button" disabled)
+                  i.fas.fa-arrow-up.me-1
+                  | Up one level
+              div#bulk-move-breadcrumb.small.mb-2(aria-label="Destination album path")
+              div#bulk-move-folders.list-group.mb-2(role="list" aria-label="Destination albums")
               p#bulk-move-feedback.small.mt-2.mb-0(role="status" aria-live="polite")
             div.modal-footer
               button.btn.btn-outline-secondary(type="button" data-bs-dismiss="modal") Cancel
               button#btn-confirm-bulk-move.btn.btn-primary(type="button" disabled)
                 i.fas.fa-folder-open.me-1
-                | Move files
+                | Move files here
 
       //- Cache Stats Modal
       div.modal.fade#cacheStatsModal(tabindex="-1" aria-labelledby="cacheStatsLabel" aria-hidden="true")
@@ -2193,7 +2197,7 @@ html(ng-app="app")
     //- Advanced Features Components
     script(src="js/advanced-search.js?v=2")
     script(src="js/exif-display.js?v=2")
-    script(src="js/bulk-operations.js?v=3")
+    script(src="js/bulk-operations.js?v=4")
     script(src="js/social-features.js")
     script(src="js/advanced-features-angular-integration.js")
     

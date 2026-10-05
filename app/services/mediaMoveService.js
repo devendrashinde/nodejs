@@ -65,14 +65,6 @@ const moveWithoutOverwrite = async (sourcePath, destinationPath) => {
         }
     }
 };
-const isWithinRealDataDirectory = (realDataDirectory, candidatePath) => {
-    const relativePath = path.relative(realDataDirectory, candidatePath);
-    return relativePath !== ''
-        && relativePath !== '..'
-        && !relativePath.startsWith(`..${path.sep}`)
-        && !path.isAbsolute(relativePath);
-};
-
 const normalizeRelativeSegments = (value) => {
     if (typeof value !== 'string') {
         throw new MediaMoveError('A valid album path is required.');
@@ -126,40 +118,69 @@ const pathExists = async (candidatePath) => {
     }
 };
 
-export const listMediaMoveDestinations = async () => {
-    const destinations = [];
+const listChildDirectories = async (absoluteDirectory) => {
+    const entries = await fs.readdir(absoluteDirectory, { withFileTypes: true });
+    const childDirectories = [];
 
-    const visitDirectory = async (absoluteDirectory, relativeDirectory, depth) => {
-        if (depth > 16 || destinations.length >= 5000) return;
+    for (const entry of entries) {
+        if (entry.name.startsWith('.') || (!entry.isDirectory() && !entry.isSymbolicLink())) continue;
 
-        let entries;
+        const childPath = path.join(absoluteDirectory, entry.name);
         try {
-            entries = await fs.readdir(absoluteDirectory, { withFileTypes: true });
+            const stats = await fs.stat(childPath);
+            if (stats.isDirectory()) childDirectories.push(entry.name);
         } catch (error) {
-            if (relativeDirectory) return;
+            if (!['ENOENT', 'ENOTDIR', 'ELOOP'].includes(error.code)) throw error;
+        }
+    }
+
+    return childDirectories.sort((left, right) => left.localeCompare(right));
+};
+
+export const listMediaMoveDestinations = async (parentPath = '') => {
+    const parentSegments = parentPath ? normalizeRelativeSegments(parentPath) : [];
+    let absoluteParent = dataDirectory;
+    const visitedRealDirectories = new Set([await fs.realpath(dataDirectory)]);
+
+    for (const segment of parentSegments) {
+        absoluteParent = path.join(absoluteParent, segment);
+        if (!isWithinDataDirectory(absoluteParent)) {
+            throw new MediaMoveError('The album path is outside the data directory.');
+        }
+
+        const stats = await fs.stat(absoluteParent).catch((error) => {
+            if (error.code === 'ENOENT' || error.code === 'ENOTDIR') {
+                throw new MediaMoveError('The selected parent album no longer exists.', 404);
+            }
             throw error;
+        });
+        if (!stats.isDirectory()) {
+            throw new MediaMoveError('The selected parent album is not a directory.');
         }
 
-        for (const entry of entries) {
-            if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-
-            const relativePath = relativeDirectory
-                ? `${relativeDirectory}/${entry.name}`
-                : entry.name;
-            const absolutePath = path.join(absoluteDirectory, entry.name);
-            destinations.push({
-                path: relativePath,
-                label: relativePath.replaceAll('/', ' / ')
-            });
-
-            await visitDirectory(absolutePath, relativePath, depth + 1);
-            if (destinations.length >= 5000) break;
+        const realPath = await fs.realpath(absoluteParent);
+        if (visitedRealDirectories.has(realPath)) {
+            throw new MediaMoveError('The selected album path contains a directory loop.');
         }
+        visitedRealDirectories.add(realPath);
+    }
+
+    const childNames = await listChildDirectories(absoluteParent);
+    const currentPath = parentSegments.join('/');
+    const folders = childNames.map((name) => {
+        const relativePath = currentPath ? `${currentPath}/${name}` : name;
+        return {
+            name,
+            path: relativePath,
+            label: name
+        };
+    });
+
+    return {
+        currentPath,
+        parentPath: parentSegments.slice(0, -1).join('/'),
+        folders
     };
-
-    await visitDirectory(dataDirectory, '', 0);
-    destinations.sort((left, right) => left.label.localeCompare(right.label));
-    return destinations;
 };
 
 const resolveDestinationAlbum = async (destinationAlbum) => {
@@ -170,24 +191,18 @@ const resolveDestinationAlbum = async (destinationAlbum) => {
         throw new MediaMoveError('The destination must be inside the data directory.');
     }
 
-    const stats = await fs.lstat(absolutePath).catch((error) => {
+    const stats = await fs.stat(absolutePath).catch((error) => {
         if (error.code === 'ENOENT') throw new MediaMoveError('The destination album no longer exists.', 404);
         throw error;
     });
-    if (!stats.isDirectory() || stats.isSymbolicLink()) {
+    if (!stats.isDirectory()) {
         throw new MediaMoveError('The destination must be an existing album directory.');
     }
 
-    const realDataPath = await fs.realpath(dataDirectory);
-    const realDestinationPath = await fs.realpath(absolutePath);
-    if (!isWithinRealDataDirectory(realDataPath, realDestinationPath)) {
-        throw new MediaMoveError('The destination must resolve inside the data directory.');
-    }
-
-    return { relativePath, absolutePath, realDataPath };
+    return { relativePath, absolutePath };
 };
 
-const resolveSelectedFile = async (selectedPath, realDataPath) => {
+const resolveSelectedFile = async (selectedPath) => {
     const relativePath = normalizeSelectedMediaPath(selectedPath);
     const absolutePath = path.resolve(dataDirectory, ...relativePath.split('/'));
     if (!isWithinDataDirectory(absolutePath)) {
@@ -203,15 +218,12 @@ const resolveSelectedFile = async (selectedPath, realDataPath) => {
     }
 
     const realPath = await fs.realpath(absolutePath);
-    if (!isWithinRealDataDirectory(realDataPath, realPath)) {
-        throw new MediaMoveError('A selected file resolves outside the data directory.');
-    }
 
     return { relativePath, absolutePath, realPath };
 };
 
 const createMovePlan = async (selectedPath, destination, reservedPaths) => {
-    const source = await resolveSelectedFile(selectedPath, destination.realDataPath);
+    const source = await resolveSelectedFile(selectedPath);
     const fileName = path.posix.basename(source.relativePath);
     const targetPath = path.join(destination.absolutePath, fileName);
     if (source.absolutePath === targetPath) return null;
@@ -253,15 +265,11 @@ const getPhotoEditions = async (connection, photoId) => {
     }
 };
 
-const getEditionMovePlan = async (edition, move, realDataPath, reservedPaths) => {
+const getEditionMovePlan = async (edition, move, reservedPaths) => {
     const editionDirectory = path.isAbsolute(edition.path)
         ? path.resolve(edition.path)
         : path.resolve(serviceDirectory, '../../', edition.path);
     const sourcePath = path.resolve(editionDirectory, edition.filename);
-    if (!isWithinDataDirectory(sourcePath)) {
-        throw new MediaMoveError('An edited version is outside the data directory.', 409);
-    }
-
     const stats = await fs.lstat(sourcePath).catch((error) => {
         if (error.code === 'ENOENT') {
             throw new MediaMoveError('A saved edited version is missing; repair edit history before moving this file.', 409);
@@ -272,8 +280,8 @@ const getEditionMovePlan = async (edition, move, realDataPath, reservedPaths) =>
         throw new MediaMoveError('A saved edited version is not a regular file.', 409);
     }
     const realSourcePath = await fs.realpath(sourcePath);
-    if (!isWithinRealDataDirectory(realDataPath, realSourcePath)) {
-        throw new MediaMoveError('An edited version resolves outside the data directory.', 409);
+    if (path.dirname(realSourcePath) !== path.dirname(move.realSourcePath)) {
+        throw new MediaMoveError('An edited version is not stored beside its original file.', 409);
     }
 
     const targetPath = path.join(move.destinationDirectory, edition.filename);
@@ -297,11 +305,11 @@ const getEditionMovePlan = async (edition, move, realDataPath, reservedPaths) =>
     };
 };
 
-const planPhotoEditions = async (connection, move, realDataPath, reservedPaths) => {
+const planPhotoEditions = async (connection, move, reservedPaths) => {
     const editions = await getPhotoEditions(connection, move.photoId);
     const editionMoves = [];
     for (const edition of editions) {
-        editionMoves.push(await getEditionMovePlan(edition, move, realDataPath, reservedPaths));
+        editionMoves.push(await getEditionMovePlan(edition, move, reservedPaths));
     }
     return editionMoves;
 };
@@ -349,7 +357,7 @@ const lockAndValidatePhotoRows = async (connection, movePlans, destination, rese
             throw new MediaMoveError('The destination already has a database record for this filename.', 409);
         }
 
-        move.editionMoves = await planPhotoEditions(connection, move, destination.realDataPath, reservedPaths);
+        move.editionMoves = await planPhotoEditions(connection, move, reservedPaths);
     }
 };
 

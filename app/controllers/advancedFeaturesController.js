@@ -633,11 +633,17 @@ export const bulkFavorite = async (req, res) => {
 
 export const getBulkMoveDestinations = async (req, res) => {
     try {
-        const destinations = await listMediaMoveDestinations();
-        return res.json({ success: true, destinations });
+        const destinationListing = await listMediaMoveDestinations(String(req.query.parent || ''));
+        return res.json({ success: true, ...destinationListing });
     } catch (error) {
-        console.error('Unable to list media move destinations:', error);
-        return res.status(500).json({ success: false, error: 'Could not load destination albums.' });
+        const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+        if (statusCode >= 500) {
+            console.error('Unable to list media move destinations:', error);
+        }
+        return res.status(statusCode).json({
+            success: false,
+            error: statusCode >= 500 ? 'Could not load destination albums.' : error.message
+        });
     }
 };
 

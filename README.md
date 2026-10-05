@@ -249,7 +249,7 @@ You'll see startup messages:
 - `GET /alltags` - Get all available tags
 
 **Bulk media moves:**
-- `GET /api/bulk/move-destinations` - List existing folders under `data/`
+- `GET /api/bulk/move-destinations?parent=Pictures` - List immediate sub-albums under a folder; omit `parent` to list the library root
 - `POST /api/bulk/move` - Move selected files into an existing folder
 
 The move request body is `{ "photoPaths": ["data/Pictures/photo.jpg"], "destinationAlbum": "Pictures/Events" }`. A request can move at most 250 files; the server rejects path traversal, ambiguous records, and destination filename conflicts rather than overwriting files.

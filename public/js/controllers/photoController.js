@@ -115,6 +115,7 @@ angular.module('photoController', [])
         // Playlist variables
         $scope.playlists = []; // Array of user playlists
         $scope.allPlaylists = []; // Full list used for membership checks
+        $scope.playlistsLoading = false;
         $scope.playlistMediaPathSet = {}; // Fast lookup map: media path => true
         $scope.playlistsForSelectedMedia = []; // Playlists containing clicked media
         $scope.selectedPhotoForPlaylistView = null; // Media item for playlist selector modal
@@ -2520,10 +2521,12 @@ angular.module('photoController', [])
 
         // Load playlists from database
         function loadPlaylists() {
+            $scope.playlistsLoading = true;
             PhotoService.getPlaylists()
                 .then(function(playlists) {
                     $scope.playlists = playlists || [];
                     $scope.allPlaylists = playlists || [];
+                    $scope.playlistsLoading = false;
                     if (!(playlists || []).length) {
                         $scope.playlistMediaPathSet = {};
                         playlistMembershipInitialized = true;
@@ -2536,6 +2539,7 @@ angular.module('photoController', [])
                     $scope.allPlaylists = [];
                     $scope.playlistMediaPathSet = {};
                     playlistMembershipInitialized = false;
+                    $scope.playlistsLoading = false;
                     applyPlaylistMembershipFlags();
                 });
         }

@@ -518,12 +518,12 @@ html(ng-app="app")
                 span.library-collection-count {{playlist.item_count || 0}} items
                 i.fas.fa-arrow-right.library-collection-arrow(aria-hidden="true")
 
-            div.library-empty-state(ng-if="selectedView === 'albums' && !getRootCollections().length")
+            div.library-empty-state(ng-if="selectedView === 'albums' && !loading && !getRootCollections().length")
               i.fas.fa-folder-open(aria-hidden="true")
               h3 No collections found
               p Try clearing the album filter or scan for new folders.
 
-            div.library-empty-state(ng-if="selectedView === 'playlists' && !getFilteredPlaylists().length")
+            div.library-empty-state(ng-if="selectedView === 'playlists' && !playlistsLoading && !getFilteredPlaylists().length")
               i.fas.fa-list(aria-hidden="true")
               h3 No playlists yet
               p Create a playlist to collect media you want to revisit.
@@ -2114,7 +2114,7 @@ html(ng-app="app")
     script(src="js/image-editor.js")
     script(src="js/ng-app.js")    
     script(src="main.js")
-    script(src="js/controllers/photoController.js?v=11")
+    script(src="js/controllers/photoController.js?v=12")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")

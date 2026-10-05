@@ -233,6 +233,10 @@ mark.search-highlight {
   overflow: visible;
 }
 
+.card.media-card:focus-within {
+  z-index: 1100;
+}
+
 .card.media-card .card-body {
   border-radius: 0 0 10px 10px;
 }

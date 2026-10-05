@@ -17,6 +17,7 @@ import SocialFeaturesService from '../services/socialFeaturesService.js';
 import ImageEditingService from '../services/imageEditingService.js';
 import VideoEnhancementService from '../services/videoEnhancementService.js';
 import AutoTaggingService from '../services/autoTaggingService.js';
+import { listMediaMoveDestinations, moveMediaFiles } from '../services/mediaMoveService.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import Photo from '../models/photoModel.js';
@@ -623,9 +624,38 @@ export const bulkFavorite = async (req, res) => {
             total: batch.total,
             action: isFavorite ? 'favorited' : 'unfavorited'
         });
+
     } catch (err) {
         console.error('Error in bulk favorite:', err);
         res.status(500).json({ success: false, error: 'Operation failed', message: err.message });
+    }
+};
+
+export const getBulkMoveDestinations = async (req, res) => {
+    try {
+        const destinations = await listMediaMoveDestinations();
+        return res.json({ success: true, destinations });
+    } catch (error) {
+        console.error('Unable to list media move destinations:', error);
+        return res.status(500).json({ success: false, error: 'Could not load destination albums.' });
+    }
+};
+
+export const bulkMoveMedia = async (req, res) => {
+    const { photoPaths, destinationAlbum } = req.body || {};
+
+    try {
+        const result = await moveMediaFiles(photoPaths, destinationAlbum);
+        return res.json({ success: true, ...result, destinationAlbum });
+    } catch (error) {
+        const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+        if (statusCode >= 500) {
+            console.error('Bulk media move failed:', error);
+        }
+        return res.status(statusCode).json({
+            success: false,
+            error: statusCode >= 500 ? 'Could not move the selected files.' : error.message
+        });
     }
 };
 

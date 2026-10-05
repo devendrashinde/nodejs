@@ -1280,6 +1280,26 @@ html(ng-app="app")
       )
         i.fas.fa-arrow-up
 
+      div.modal.fade#bulkMoveModal(tabindex="-1" aria-labelledby="bulkMoveModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered
+          div.modal-content
+            div.modal-header
+              h5.modal-title#bulkMoveModalLabel
+                i.fas.fa-folder-open.me-2
+                | Move selected media
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              p#bulk-move-selected-count.text-muted.mb-3
+              label.form-label(for="bulk-move-destination") Destination album
+              select#bulk-move-destination.form-select(aria-describedby="bulk-move-feedback")
+                option(value="") Loading albums...
+              p#bulk-move-feedback.small.mt-2.mb-0(role="status" aria-live="polite")
+            div.modal-footer
+              button.btn.btn-outline-secondary(type="button" data-bs-dismiss="modal") Cancel
+              button#btn-confirm-bulk-move.btn.btn-primary(type="button" disabled)
+                i.fas.fa-folder-open.me-1
+                | Move files
+
       //- Cache Stats Modal
       div.modal.fade#cacheStatsModal(tabindex="-1" aria-labelledby="cacheStatsLabel" aria-hidden="true")
         div.modal-dialog.modal-dialog-centered.modal-xl
@@ -2159,7 +2179,7 @@ html(ng-app="app")
     script(src="js/image-editor.js")
     script(src="js/ng-app.js")    
     script(src="main.js?v=2")
-    script(src="js/controllers/photoController.js?v=13")
+    script(src="js/controllers/photoController.js?v=14")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")
@@ -2177,7 +2197,7 @@ html(ng-app="app")
     //- Advanced Features Components
     script(src="js/advanced-search.js?v=2")
     script(src="js/exif-display.js?v=2")
-    script(src="js/bulk-operations.js?v=2")
+    script(src="js/bulk-operations.js?v=3")
     script(src="js/social-features.js")
     script(src="js/advanced-features-angular-integration.js")
     

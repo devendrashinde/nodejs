@@ -19,6 +19,8 @@ import {
     bulkRemoveTags,
     prepareBulkDownload,
     bulkFavorite,
+    getBulkMoveDestinations,
+    bulkMoveMedia,
     addComment,
     ratePhoto,
     toggleFavorite,
@@ -94,6 +96,19 @@ router.post('/bulk/download', prepareBulkDownload);
  * Body: { photoIds: [...], isFavorite: true }
  */
 router.post('/bulk/favorite', bulkFavorite);
+
+/**
+ * List existing folders that can receive moved media.
+ * GET /api/bulk/move-destinations
+ */
+router.get('/bulk/move-destinations', getBulkMoveDestinations);
+
+/**
+ * Move selected media files to an existing album.
+ * POST /api/bulk/move
+ * Body: { photoPaths: [...], destinationAlbum: "Pictures/Events" }
+ */
+router.post('/bulk/move', bulkMoveMedia);
 
 /**
  * Bulk rating operation

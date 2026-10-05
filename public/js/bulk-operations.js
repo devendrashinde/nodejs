@@ -77,6 +77,11 @@ class BulkOperations {
             <button id="btn-bulk-add-to-playlist" class="btn btn-small btn-success">📋 Add to Playlist</button>
           </div>
 
+          <!-- Move Section -->
+          <div class="action-group">
+            <button id="btn-bulk-move" class="btn btn-small btn-primary">Move to Album</button>
+          </div>
+
           <!-- Clear Section -->
           <div class="action-group">
             <button id="btn-bulk-select-all" class="btn btn-small btn-info">✓ Select All</button>
@@ -127,6 +132,11 @@ class BulkOperations {
     document.getElementById('btn-bulk-download').addEventListener('click', () => this.bulkDownload());
     document.getElementById('btn-bulk-delete').addEventListener('click', () => this.bulkDelete());
     document.getElementById('btn-bulk-add-to-playlist').addEventListener('click', () => this.bulkAddToPlaylist());
+    document.getElementById('btn-bulk-move').addEventListener('click', () => this.openBulkMoveModal());
+    const moveSubmitButton = document.getElementById('btn-confirm-bulk-move');
+    if (moveSubmitButton) {
+      moveSubmitButton.addEventListener('click', () => this.bulkMove());
+    }
     document.getElementById('btn-bulk-select-all').addEventListener('click', () => this.selectAll(true));
     document.getElementById('btn-bulk-clear').addEventListener('click', () => this.clearSelection());
 
@@ -190,6 +200,93 @@ class BulkOperations {
       cb.checked = false;
     });
     this.updateToolbarVisibility();
+  }
+
+  async openBulkMoveModal() {
+    const modalElement = document.getElementById('bulkMoveModal');
+    const destinationSelect = document.getElementById('bulk-move-destination');
+    const selectedCount = document.getElementById('bulk-move-selected-count');
+    const feedback = document.getElementById('bulk-move-feedback');
+    const submitButton = document.getElementById('btn-confirm-bulk-move');
+    if (!modalElement || !destinationSelect || !selectedCount || !feedback || !submitButton) return;
+
+    selectedCount.textContent = `${this.selectedPhotos.size} selected file(s) will be moved. Existing files with the same name will not be overwritten.`;
+    destinationSelect.replaceChildren(new Option('Loading albums...', ''));
+    destinationSelect.disabled = true;
+    submitButton.disabled = true;
+    feedback.textContent = '';
+    feedback.className = 'small';
+
+    const modal = window.bootstrap.Modal.getOrCreateInstance(modalElement);
+    modal.show();
+
+    try {
+      const response = await fetch('/api/bulk/move-destinations');
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error || 'Could not load albums.');
+      }
+
+      destinationSelect.replaceChildren(new Option('Choose an album...', ''));
+      payload.destinations.forEach((destination) => {
+        destinationSelect.add(new Option(destination.label, destination.path));
+      });
+      destinationSelect.disabled = payload.destinations.length === 0;
+      submitButton.disabled = payload.destinations.length === 0;
+      if (!payload.destinations.length) {
+        feedback.textContent = 'No destination albums are available.';
+        feedback.className = 'small text-danger';
+      }
+    } catch (error) {
+      feedback.textContent = error.message || 'Could not load destination albums.';
+      feedback.className = 'small text-danger';
+    }
+  }
+
+  async bulkMove() {
+    const destinationSelect = document.getElementById('bulk-move-destination');
+    const feedback = document.getElementById('bulk-move-feedback');
+    const submitButton = document.getElementById('btn-confirm-bulk-move');
+    const destinationAlbum = destinationSelect && destinationSelect.value;
+    if (!destinationAlbum || this.selectedPhotos.size === 0) return;
+
+    submitButton.disabled = true;
+    feedback.textContent = 'Moving selected files...';
+    feedback.className = 'small text-muted';
+
+    try {
+      const response = await fetch('/api/bulk/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          photoPaths: Array.from(this.selectedPhotos),
+          destinationAlbum
+        })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Could not move selected files.');
+      }
+
+      this.clearSelection();
+      feedback.textContent = result.moved
+        ? `Moved ${result.moved} file(s) to ${destinationAlbum.replaceAll('/', ' / ')}.`
+        : 'The selected files are already in that album.';
+      feedback.className = 'small text-success';
+
+      const controllerElement = document.getElementById('controller');
+      const scope = window.angular && controllerElement
+        ? window.angular.element(controllerElement).scope()
+        : null;
+      if (scope && typeof scope.refreshAfterBulkMove === 'function') {
+        scope.$applyAsync(() => scope.refreshAfterBulkMove(result.movedPaths || []));
+      }
+    } catch (error) {
+      feedback.textContent = error.message || 'Could not move selected files.';
+      feedback.className = 'small text-danger';
+    } finally {
+      submitButton.disabled = false;
+    }
   }
 
   async bulkAddTags() {

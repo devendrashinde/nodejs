@@ -1213,6 +1213,36 @@ angular.module('photoController', [])
             }
         };
 
+        $scope.refreshAfterBulkMove = function(movedPaths) {
+            const movedPathSet = new Set((movedPaths || []).map(normalizeMediaPath));
+            $scope.galleryLoadError = '';
+
+            if ($scope.selectedAlbum && $scope.selectedAlbum.isSearchResult) {
+                $scope.photos = $scope.photos.filter(function(photo) {
+                    return !movedPathSet.has(normalizeMediaPath(photo.path));
+                });
+                $scope.totalPhotos = $scope.photos.length;
+                $scope.searchResultCount = $scope.photos.length;
+                $scope.accumulatedAlbumTags = [];
+                $scope.photos.forEach(function(photo) {
+                    $scope.splitTags(photo.tags || photo.tag).forEach(function(tag) {
+                        if (tag) $scope.accumulatedAlbumTags.push(tag);
+                    });
+                });
+                applyFavoriteFlags();
+                populateAudioPlayerPlaylist();
+                return;
+            }
+
+            if ($scope.selectedAlbum && $scope.selectedAlbum.isPlaylist) {
+                $scope.setPlaylist($scope.selectedAlbum);
+            } else if ($scope.selectedAlbum && $scope.selectedAlbum.path === 'favorites') {
+                $scope.viewFavorites();
+            } else {
+                loadPhotosAndTags(($scope.selectedAlbum && $scope.selectedAlbum.path) || '');
+            }
+        };
+
         function normalizeMediaPath(path) {
             if (!path) return '';
             return String(path)

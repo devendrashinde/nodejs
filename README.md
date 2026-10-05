@@ -19,6 +19,7 @@ A modern, feature-rich web-based photo gallery application built with Node.js, E
 - **Photo Tagging**: Add and manage tags for photos with autocomplete support
 - **Secure File Upload**: Upload photos with validation (type, size, filename sanitization)
 - **Optimized Pagination**: Efficient pagination with validation (max 100 items per page)
+- **Bulk Album Moves**: Move selected media into an existing album without overwriting files
 - **Advanced Caching**: Map-based cache with statistics tracking (hits/misses)
 - **Responsive Design**: Mobile-friendly interface using Bootstrap 5
 
@@ -246,6 +247,12 @@ You'll see startup messages:
 
 **Tags:**
 - `GET /alltags` - Get all available tags
+
+**Bulk media moves:**
+- `GET /api/bulk/move-destinations` - List existing folders under `data/`
+- `POST /api/bulk/move` - Move selected files into an existing folder
+
+The move request body is `{ "photoPaths": ["data/Pictures/photo.jpg"], "destinationAlbum": "Pictures/Events" }`. A request can move at most 250 files; the server rejects path traversal, ambiguous records, and destination filename conflicts rather than overwriting files.
 
 ### Thumbnail Generation
 

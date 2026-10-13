@@ -105,7 +105,9 @@
 - Create named playlists
 - Add/remove photos from playlists
 - Sequential playback
-- Playlist management (edit, delete)
+- Playlist management (rename, edit tags, delete)
+- Drag-and-drop reorder: `PUT /playlists/:playlistId/items/order` with `{ itemIds: [...] }` (full order of `playlist_items.id` values)
+- Adding items already in the playlist is skipped, not an error
 - Export playlist metadata
 
 **Files:** `app/models/playlistModel.js`, `app/controllers/playlistController.js`

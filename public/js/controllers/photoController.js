@@ -3104,6 +3104,8 @@ angular.module('photoController', [])
                 id: playlist.id,
                 name: playlist.name,
                 tags: playlist.tags || '',
+                newName: playlist.name,
+                description: playlist.description || '',
                 isEdit: true
             };
             
@@ -3133,17 +3135,33 @@ angular.module('photoController', [])
             }
             
             $scope.loading = true;
+
+            var newName = ($scope.editingPlaylist.newName || '').trim();
+            if (!newName) {
+                $scope.loading = false;
+                ToastService.warning('Playlist name is required');
+                return;
+            }
+            var renamed = newName !== $scope.editingPlaylist.name;
+            var saveRequest = renamed
+                ? PhotoService.updatePlaylist($scope.editingPlaylist.id, {
+                    name: newName,
+                    tags: cleanTags,
+                    description: $scope.editingPlaylist.description || ''
+                })
+                : PhotoService.updatePlaylistTag($scope.editingPlaylist.id, cleanTags);
             
-            PhotoService.updatePlaylistTag($scope.editingPlaylist.id, cleanTags)
+            saveRequest
                 .then(function(response) {
                     $scope.loading = false;
                     $('#editPlaylistTagModal').modal('hide');
-                    alert('Playlist tags updated successfully');
+                    ToastService.success(renamed ? 'Playlist renamed' : 'Playlist tags updated');
                     
                     // Update the playlist in the list
                     for (var i = 0; i < $scope.playlists.length; i++) {
                         if ($scope.playlists[i].id === $scope.editingPlaylist.id) {
                             $scope.playlists[i].tags = cleanTags;
+                            $scope.playlists[i].name = newName;
                             break;
                         }
                     }

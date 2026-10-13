@@ -105,6 +105,12 @@ angular.module('PhotoService', [])
 						return response.data;
 					});
 			},
+			updatePlaylist : function(playlistId, data) {
+				return $http.put('/playlists/' + playlistId, data)
+					.then(function(response) {
+						return response.data;
+					});
+			},
 			updatePlaylistTag : function(playlistId, tags) {
 				return $http.put('/playlists/' + playlistId + '/tags', { tags: tags })
 					.then(function(response) {

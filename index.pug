@@ -8,7 +8,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="gallery.css")
     link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
-    link(rel="stylesheet", href="main.css?v=19")
+    link(rel="stylesheet", href="main.css?v=20")
     link(rel="stylesheet", href="css/advanced-features.css?v=3")
     link(rel="stylesheet", href="css/music-player.css")
   
@@ -2021,9 +2021,12 @@ html(ng-app="app")
             div.modal-header
               h5.modal-title#editPlaylistTagModalLabel
                 i.fas.fa-list.me-2
-                | Edit Playlist Tags
+                | Edit Playlist
               button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
             div.modal-body
+              div.mb-3
+                label.form-label(for="editPlaylistName") Name
+                input#editPlaylistName.form-control(type="text" ng-model="editingPlaylist.newName" maxlength="255")
               div.mb-3(ng-if="editingPlaylist.name")
                 h6.text-muted.mb-2
                   i.fas.fa-list.me-2
@@ -2183,7 +2186,7 @@ html(ng-app="app")
     script(src="js/image-editor.js")
     script(src="js/ng-app.js")    
     script(src="main.js?v=2")
-    script(src="js/controllers/photoController.js?v=18")
+    script(src="js/controllers/photoController.js?v=19")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")
@@ -2203,6 +2206,7 @@ html(ng-app="app")
     script(src="js/exif-display.js?v=2")
     script(src="js/bulk-operations.js?v=5")
     script(src="js/playlist-reorder.js?v=1")
+    script(src="js/a11y.js?v=1")
     script(src="js/social-features.js")
     script(src="js/advanced-features-angular-integration.js")
     

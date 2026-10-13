@@ -3208,3 +3208,58 @@ body.dark-mode .toast.toast-info {
 [data-item-id][draggable="true"] { cursor: grab; }
 
 :focus-visible { outline: 2px solid #0d6efd; outline-offset: 2px; }
+
+/* ===== Dark mode: library landing, sidebar, misc surfaces ===== */
+body.dark-mode .library-eyebrow { color: #6fcfbf; }
+body.dark-mode .library-landing h2 { color: #f0f0f0; }
+body.dark-mode .library-landing-copy { color: #a8b0b3; }
+body.dark-mode .library-collection-card {
+  background: #242424;
+  border-color: #3a3a3a;
+  color: #e6e6e6;
+}
+body.dark-mode .library-collection-card:hover,
+body.dark-mode .library-collection-card:focus-visible {
+  background: #2e3633;
+  border-color: #4fa89b;
+}
+body.dark-mode .library-collection-content strong { color: #f2f2f2; }
+body.dark-mode .library-collection-content small { color: #9aa5a8; }
+body.dark-mode .library-collection-cover { background: #2f3c39; color: #8fd8cb; }
+body.dark-mode .library-collection-count { color: #b5c4c1; }
+body.dark-mode .library-collection-arrow { color: #8aa8a3; }
+body.dark-mode .library-empty-state { border-color: #444; color: #b0b8ba; }
+
+body.dark-mode .albums-sidebar {
+  background: linear-gradient(180deg, #202020 0%, #1a1a1a 100%);
+  border-color: #3a3a3a;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.45);
+}
+body.dark-mode .album-mode-toggle { background: rgba(255, 255, 255, 0.06); }
+body.dark-mode .albums-title,
+body.dark-mode .albums-spotlight-compact-title { color: #e6e6e6; }
+body.dark-mode .albums-spotlight-compact-sep,
+body.dark-mode .albums-spotlight-compact-meta { color: #9aa5a8; }
+body.dark-mode .album-item {
+  background: #262626;
+  border-color: #3a3a3a;
+  color: #e6e6e6;
+  box-shadow: none;
+}
+body.dark-mode .album-item:hover { background: #2f2f2f; border-color: #5b8db3; }
+body.dark-mode .album-item.active {
+  background: linear-gradient(135deg, #1f3a52 0%, #25445f 100%);
+  border-color: #5b8db3;
+  color: #fff;
+}
+body.dark-mode .album-name-text { color: #f0f0f0; }
+body.dark-mode .album-path { color: #a3adb5; }
+body.dark-mode .album-count-badge { background: rgba(255, 255, 255, 0.12); color: #e6e6e6; }
+body.dark-mode .album-cover-thumb { background: #333; box-shadow: none; }
+body.dark-mode .album-avatar { color: #1a1a1a; }
+body.dark-mode .recently-viewed-section { background: #242424; border-color: #3a3a3a; }
+body.dark-mode .recently-viewed-section .list-group-item { background: #2a2a2a; color: #e6e6e6; }
+body.dark-mode .search-filter-chip { background: #2a2a2a; color: #e0e0e0; border-color: #444; }
+body.dark-mode .loading-banner { background: #2a2a2a; color: #e6e6e6; }
+body.dark-mode .keyboard-help-content { background: #2a2a2a; color: #e6e6e6; }
+body.dark-mode .shortcut kbd { background: #3a3a3a; color: #e6e6e6; border-color: #555; }

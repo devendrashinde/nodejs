@@ -1379,7 +1379,23 @@ const getImageDetailsForPageFile = async ({
   return imageDetail;
 };
 
-const getAlbumPreviewData = async ({ dirPath, relativeAlbumPath, pdfThumbnailMap, depth = 0 }) => {
+const ALBUM_PREVIEW_TTL_MS = 30 * 60 * 1000;
+const ALBUM_PREVIEW_MAX_DEPTH = 2;
+const albumPreviewCache = new Map();
+
+// Recursive scans of external drives are slow; share in-flight and recent results per folder.
+const getAlbumPreviewData = (args) => {
+  const key = `${args.dirPath}|${args.depth || 0}`;
+  const hit = albumPreviewCache.get(key);
+  if (hit && Date.now() - hit.at < ALBUM_PREVIEW_TTL_MS) {
+    return hit.promise;
+  }
+  const promise = computeAlbumPreviewData(args);
+  albumPreviewCache.set(key, { at: Date.now(), promise });
+  return promise;
+};
+
+const computeAlbumPreviewData = async ({ dirPath, relativeAlbumPath, pdfThumbnailMap, depth = 0 }) => {
   const preview = {
     coverUrl: null,
     coverType: null,
@@ -1396,7 +1412,7 @@ const getAlbumPreviewData = async ({ dirPath, relativeAlbumPath, pdfThumbnailMap
 
       // Recurse a few levels so folder-only collections still get counts and a cover
       if (await isDirEntry(dirPath, entry)) {
-        if (depth < 3) {
+        if (depth < ALBUM_PREVIEW_MAX_DEPTH) {
           const sub = await getAlbumPreviewData({
             dirPath: join(dirPath, entry.name),
             relativeAlbumPath: `${relativeAlbumPath ? `${relativeAlbumPath}/` : ''}${entry.name}`,

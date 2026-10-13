@@ -22,7 +22,7 @@ angular.module('ToastService', [])
     .factory('ToastService', ['$rootScope', '$timeout', function($rootScope, $timeout) {
         $rootScope.toasts = [];
 
-        function showToast(message, type, duration) {
+        function showToast(message, type, duration, action) {
             type = type || 'info'; // 'success', 'error', 'warning', 'info'
             duration = duration || 3000; // milliseconds
 
@@ -30,6 +30,7 @@ angular.module('ToastService', [])
                 id: Date.now(),
                 message: message,
                 type: type,
+                action: action || null,
                 visible: true
             };
 
@@ -53,8 +54,8 @@ angular.module('ToastService', [])
         }
 
         return {
-            success: function(message, duration) {
-                return showToast(message, 'success', duration || 2500);
+            success: function(message, duration, action) {
+                return showToast(message, 'success', duration || 2500, action);
             },
             error: function(message, duration) {
                 return showToast(message, 'error', duration || 3500);

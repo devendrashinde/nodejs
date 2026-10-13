@@ -8,7 +8,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="gallery.css")
     link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
-    link(rel="stylesheet", href="main.css?v=22")
+    link(rel="stylesheet", href="main.css?v=23")
     link(rel="stylesheet", href="css/advanced-features.css?v=3")
     link(rel="stylesheet", href="css/music-player.css")
   
@@ -28,6 +28,11 @@ html(ng-app="app")
             }"
           )
           div.toast-message {{toast.message}}
+          button.btn.btn-sm.btn-link.toast-action(
+            ng-if="toast.action"
+            type="button"
+            ng-click="toast.action.handler(); removeToast(toast.id)"
+          ) {{toast.action.label}}
           button.toast-close(
             type="button"
             ng-click="removeToast(toast.id)"
@@ -2065,6 +2070,41 @@ html(ng-app="app")
                 i.fas.fa-save.me-1
                 | Update
       
+      //- Keyboard shortcuts Modal
+      div.modal.fade#shortcutsModal(tabindex="-1" aria-labelledby="shortcutsModalLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered
+          div.modal-content
+            div.modal-header
+              h5.modal-title#shortcutsModalLabel
+                i.fas.fa-keyboard.me-2
+                | Keyboard shortcuts
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              h6.text-muted Gallery
+              dl.row.mb-3
+                dt.col-4: kbd /
+                dd.col-8 Open search (also Ctrl+K)
+                dt.col-4: kbd ?
+                dd.col-8 Show this help
+                dt.col-4: kbd Shift + click
+                dd.col-8 Select a range of items
+                dt.col-4: kbd Esc
+                dd.col-8 Close dialogs
+              h6.text-muted Viewer
+              dl.row.mb-0
+                dt.col-4: kbd ← →
+                dd.col-8 Previous / next
+                dt.col-4: kbd F
+                dd.col-8 Fullscreen
+                dt.col-4: kbd Z
+                dd.col-8 Toggle zoom
+                dt.col-4: kbd I
+                dd.col-8 Toggle info
+                dt.col-4: kbd T
+                dd.col-8 Toggle thumbnails
+                dt.col-4: kbd H
+                dd.col-8 Viewer shortcuts
+
       //- File upload Modal
       div.modal.fade#uploadModal(tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true")
         div.modal-dialog.modal-dialog-centered
@@ -2186,7 +2226,7 @@ html(ng-app="app")
     script(src="js/image-editor.js?v=2")
     script(src="js/ng-app.js")    
     script(src="main.js?v=3")
-    script(src="js/controllers/photoController.js?v=20")
+    script(src="js/controllers/photoController.js?v=21")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")
@@ -2199,7 +2239,7 @@ html(ng-app="app")
     script(src="js/services/taggingService.js")
     script(src="js/services/audioPlayerService.js")
     script(src="js/services/transliterationService.js")
-    script(src="js/services/toastService.js?v=2")
+    script(src="js/services/toastService.js?v=3")
     
     //- Advanced Features Components
     script(src="js/advanced-search.js?v=2")

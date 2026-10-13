@@ -1449,9 +1449,7 @@ angular.module('photoController', [])
                     e.preventDefault();
                     $('#searchModal').modal('show');
                 } else if (e.key === '?') {
-                    $scope.$applyAsync(function() {
-                        ToastService.info('Shortcuts: / or Ctrl+K search, Shift+click range select, Esc close', 6000);
-                    });
+                    $('#shortcutsModal').modal('show');
                 }
             }
         });
@@ -3254,10 +3252,6 @@ angular.module('photoController', [])
                 return;
             }
             
-            if (!confirm('Remove item from playlist?')) {
-                return;
-            }
-            
             // Templates pass the photo id; the API expects the playlist_items row id.
             var match = ($scope.selectedPlaylistItems || []).find(function(it) {
                 return String(it.id) === String(itemId);
@@ -3266,12 +3260,30 @@ angular.module('photoController', [])
                 itemId = match.item_id;
             }
 
+            var removedPath = match && match.path;
+            var removedPlaylist = $scope.selectedAlbum;
+
             $scope.loading = true;
             
             PhotoService.removePlaylistItem($scope.selectedAlbum.id, itemId)
                 .then(function(response) {
                     $scope.loading = false;
-                    ToastService.success('Removed from playlist');
+                    ToastService.success('Removed from playlist', 6000, removedPath ? {
+                        label: 'Undo',
+                        handler: function() {
+                            PhotoService.addPlaylistItems(removedPlaylist.id, [removedPath])
+                                .then(function() {
+                                    ToastService.info('Restored at the end of the playlist');
+                                    loadPlaylists();
+                                    if ($scope.selectedAlbum && $scope.selectedAlbum.id === removedPlaylist.id) {
+                                        $scope.setPlaylist(removedPlaylist);
+                                    }
+                                })
+                                .catch(function() {
+                                    ToastService.error('Could not restore item');
+                                });
+                        }
+                    } : undefined);
                     loadPlaylists();
                     
                     // Reload playlist items

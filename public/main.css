@@ -3278,3 +3278,13 @@ body.dark-mode .card .card-body .text-danger,
 body.dark-mode .card .card-body .btn .fa-heart.text-danger { color: #ff6b7a; }
 body.dark-mode .card .card-body .btn.active,
 body.dark-mode .card .card-body .btn.active i { color: #ff6b7a; }
+
+/* Toast undo action */
+.toast .toast-action { color: inherit; font-weight: 700; text-decoration: underline; padding: 0 0.4rem; white-space: nowrap; }
+
+/* Larger touch targets on small screens */
+@media (max-width: 768px) {
+  .btn-sm, .dropdown-item, .album-item-body, .library-collection-card { min-height: 44px; }
+  .photo-checkbox { width: 28px !important; height: 28px !important; }
+  .media-card-actions .btn, .card-body .d-flex.gap-1 button { min-width: 44px; min-height: 44px; }
+}

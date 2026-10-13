@@ -273,6 +273,24 @@ export function getPlaylistItems(req, res) {
   });
 }
 
+// Reorder playlist items
+export function reorderPlaylistItems(req, res) {
+  const itemIds = req.body && req.body.itemIds;
+  if (!Array.isArray(itemIds) || itemIds.length === 0) {
+    return res.status(400).send({ error: true, message: 'Please provide an array of item IDs' });
+  }
+
+  Playlist.reorderItems(req.params.playlistId, itemIds, function(err, result) {
+    if (err) {
+      if (err.status === 400) {
+        return res.status(400).send(err);
+      }
+      return res.status(500).send(err);
+    }
+    res.json({ message: 'Playlist reordered', success: true, count: result });
+  });
+}
+
 // Remove item from playlist
 export function removePlaylistItem(req, res) {
   if (!req.params.playlistId) {

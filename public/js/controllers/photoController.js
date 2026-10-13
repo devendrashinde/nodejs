@@ -1441,6 +1441,19 @@ angular.module('photoController', [])
             if (e.key === 'Escape' && $('#searchModal').hasClass('show')) {
                 $('#searchModal').modal('hide');
             }
+            // '/' opens search, '?' lists shortcuts (ignored while typing)
+            var tag = (e.target && e.target.tagName || '').toLowerCase();
+            var typing = tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable);
+            if (!typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                if (e.key === '/') {
+                    e.preventDefault();
+                    $('#searchModal').modal('show');
+                } else if (e.key === '?') {
+                    $scope.$applyAsync(function() {
+                        ToastService.info('Shortcuts: / or Ctrl+K search, Shift+click range select, Esc close', 6000);
+                    });
+                }
+            }
         });
 
         // =========== CACHE MANAGEMENT FUNCTIONS ===========
@@ -2932,7 +2945,7 @@ angular.module('photoController', [])
             var playlist = $scope.playlists.find(function(p) { return p.name === playlistName; });
             
             if (!playlist) {
-                alert('Playlist "' + playlistName + '" not found');
+                ToastService.error('Playlist "' + playlistName + '" not found');
                 return;
             }
             
@@ -2952,14 +2965,21 @@ angular.module('photoController', [])
                 itemCount = 1;
             } else {
                 $scope.loading = false;
-                alert('No photos to add');
+                ToastService.warning('No photos to add');
                 return;
             }
             
             PhotoService.addPlaylistItems(playlist.id, photoPaths)
                 .then(function(response) {
                     $scope.loading = false;
-                    alert('Added ' + itemCount + ' item(s) to playlist: ' + playlistName);
+                    var added = response && typeof response.itemsAdded === 'number' ? response.itemsAdded : itemCount;
+                    var dupes = Math.max(0, itemCount - added);
+                    var toastMsg = added + ' added to "' + playlistName + '"' + (dupes ? ', ' + dupes + ' already in playlist' : '');
+                    if (added === 0) {
+                        ToastService.info(toastMsg);
+                    } else {
+                        ToastService.success(toastMsg);
+                    }
                     $('#addToPlaylistModal').modal('hide');
                     refreshPlaylistMembershipMap();
                     
@@ -2985,7 +3005,7 @@ angular.module('photoController', [])
         // Create new playlist
         $scope.createNewPlaylist = function() {
             if (!$scope.editingPlaylist.name || !$scope.editingPlaylist.name.trim()) {
-                alert('Playlist name is required');
+                ToastService.warning('Playlist name is required');
                 return;
             }
 
@@ -3004,7 +3024,7 @@ angular.module('photoController', [])
                     var newPlaylistName = $scope.editingPlaylist.name.trim();
                     
                     if (!newPlaylistId) {
-                        alert('Playlist created but ID not returned');
+                        ToastService.warning('Playlist created but ID not returned');
                         $('#createPlaylistModal').modal('hide');
                         loadPlaylists();
                         return;
@@ -3027,7 +3047,7 @@ angular.module('photoController', [])
                         PhotoService.addPlaylistItems(newPlaylistId, itemsToAdd)
                             .then(function(response) {
                                 $scope.loading = false;
-                                alert('Playlist created and ' + itemsToAdd.length + ' item(s) added successfully!');
+                                ToastService.success('Playlist created and ' + itemsToAdd.length + ' item(s) added');
                                 
                                 // Hide the add to playlist modal since we're done
                                 $('#addToPlaylistModal').modal('hide');
@@ -3047,12 +3067,12 @@ angular.module('photoController', [])
                             })
                             .catch(function(error) {
                                 $scope.loading = false;
-                                alert('Playlist created but failed to add items: ' + (error.data?.message || 'Unknown error'));
+                                ToastService.error('Playlist created but failed to add items: ' + (error.data?.message || 'Unknown error'));
                                 ErrorHandlingService.handleError(error, 'Error adding items to new playlist');
                                 loadPlaylists();
                             });
                     } else {
-                        alert('Playlist created successfully');
+                        ToastService.success('Playlist created');
                         // Reload playlists
                         loadPlaylists();
                     }
@@ -3182,6 +3202,33 @@ angular.module('photoController', [])
                 });
         };
 
+        // Move a playlist item before another one (drag-and-drop) and persist the order
+        $scope.reorderPlaylistItem = function(draggedItemId, targetItemId) {
+            if (!$scope.selectedAlbum || !$scope.selectedAlbum.isPlaylist || String(draggedItemId) === String(targetItemId)) {
+                return;
+            }
+            var list = $scope.photos.slice();
+            var from = list.findIndex(function(p) { return String(p.item_id) === String(draggedItemId); });
+            var to = list.findIndex(function(p) { return String(p.item_id) === String(targetItemId); });
+            if (from === -1 || to === -1) {
+                return;
+            }
+            list.splice(to, 0, list.splice(from, 1)[0]);
+            $scope.photos = list;
+
+            var playlist = $scope.selectedAlbum;
+            PhotoService.reorderPlaylistItems(playlist.id, list.map(function(p) { return p.item_id; }))
+                .then(function() {
+                    ToastService.success('Playlist order saved');
+                    populateAudioPlayerPlaylist();
+                })
+                .catch(function(error) {
+                    ErrorHandlingService.handleError(error, 'Error saving playlist order');
+                    ToastService.error('Failed to save playlist order');
+                    $scope.setPlaylist(playlist);
+                });
+        };
+
         // Remove item from playlist
         $scope.removePlaylistItem = function(itemId) {
             if (!$scope.selectedAlbum || !$scope.selectedAlbum.id) {
@@ -3206,6 +3253,7 @@ angular.module('photoController', [])
             PhotoService.removePlaylistItem($scope.selectedAlbum.id, itemId)
                 .then(function(response) {
                     $scope.loading = false;
+                    ToastService.success('Removed from playlist');
                     loadPlaylists();
                     
                     // Reload playlist items
@@ -3214,7 +3262,7 @@ angular.module('photoController', [])
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error removing playlist item');
                     $scope.loading = false;
-                    alert('Failed to remove item from playlist');
+                    ToastService.error('Failed to remove item from playlist');
                 });
         };
 

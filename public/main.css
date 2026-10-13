@@ -3204,3 +3204,5 @@ body.dark-mode .toast.toast-info {
     font-size: 13px;
   }
 }
+.playlist-dragging { opacity: 0.4; }
+[data-item-id][draggable="true"] { cursor: grab; }

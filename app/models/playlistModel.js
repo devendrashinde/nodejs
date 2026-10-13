@@ -181,6 +181,27 @@ class Playlist {
         }
     }
 
+    // Reorder items: itemIds is the full desired order of playlist_items.id values
+    static async reorderItems(playlistId, itemIds, result) {
+        try {
+            const rows = await query("SELECT id FROM playlist_items WHERE playlist_id = ?", [playlistId]);
+            const valid = new Set(rows.map(r => r.id));
+            const ordered = itemIds.map(Number);
+            if (ordered.some(id => !valid.has(id)) || new Set(ordered).size !== ordered.length) {
+                return result({ error: true, message: 'Invalid item IDs for this playlist', status: 400 }, null);
+            }
+
+            for (let i = 0; i < ordered.length; i++) {
+                await query("UPDATE playlist_items SET position = ? WHERE id = ? AND playlist_id = ?", [i, ordered[i], playlistId]);
+            }
+            await query("UPDATE playlists SET updated_at = CURRENT_TIMESTAMP WHERE id = ?", [playlistId]);
+            result(null, ordered.length);
+        } catch (err) {
+            console.error("Error reordering playlist items:", err);
+            result(err, null);
+        }
+    }
+
     // Remove item from playlist
     static async removeItem(playlistId, itemId, result) {
         try {

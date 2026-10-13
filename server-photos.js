@@ -11,7 +11,7 @@ import sharp from 'sharp';
 import ImageDetails from "./ImageDetails.js";
 import { fileURLToPath } from 'url';
 import { createPhoto, getPhotos, getTags, getPhoto, updatePhotoTag, removePhoto, getAlbumTags, createPhotoAlbum, getPhotoAlbum, getPhotoAlbums, updateAlbumTag, removeAlbum, getAlbumsByTag } from './app/controllers/photoController.js';
-import { createPlaylist, getPlaylists, getPlaylist, getPlaylistsByTag, updatePlaylist, updatePlaylistTag, addPlaylistItems, getPlaylistItems, removePlaylistItem, removePlaylist, getPlaylistTags } from './app/controllers/playlistController.js';
+import { createPlaylist, getPlaylists, getPlaylist, getPlaylistsByTag, updatePlaylist, updatePlaylistTag, addPlaylistItems, getPlaylistItems, removePlaylistItem, reorderPlaylistItems, removePlaylist, getPlaylistTags } from './app/controllers/playlistController.js';
 import { getDbStatus } from './app/models/db.js';
 import media from './app/services/media.js';
 import pkg from 'body-parser';
@@ -1163,6 +1163,9 @@ app.route('/playlists/:playlistId/items')
     .get(getPlaylistItems)
     .post(addPlaylistItems);
 
+app.route('/playlists/:playlistId/items/order')
+    .put(reorderPlaylistItems);
+
 app.route('/playlists/:playlistId/items/:itemId')
     .delete(removePlaylistItem);
 
@@ -1361,7 +1364,7 @@ const getImageDetailsForPageFile = async ({
   return imageDetail;
 };
 
-const getAlbumPreviewData = async ({ dirPath, relativeAlbumPath, pdfThumbnailMap }) => {
+const getAlbumPreviewData = async ({ dirPath, relativeAlbumPath, pdfThumbnailMap, depth = 0 }) => {
   const preview = {
     coverUrl: null,
     coverType: null,
@@ -1372,7 +1375,29 @@ const getAlbumPreviewData = async ({ dirPath, relativeAlbumPath, pdfThumbnailMap
     const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
     for (const entry of entries) {
-      if (!entry || entry.name.startsWith('.') || !entry.isFile()) {
+      if (!entry || entry.name.startsWith('.')) {
+        continue;
+      }
+
+      // Recurse a few levels so folder-only collections still get counts and a cover
+      if (entry.isDirectory()) {
+        if (depth < 3) {
+          const sub = await getAlbumPreviewData({
+            dirPath: join(dirPath, entry.name),
+            relativeAlbumPath: `${relativeAlbumPath ? `${relativeAlbumPath}/` : ''}${entry.name}`,
+            pdfThumbnailMap,
+            depth: depth + 1
+          });
+          preview.itemCount += sub.itemCount;
+          if (!preview.coverUrl && sub.coverUrl) {
+            preview.coverUrl = sub.coverUrl;
+            preview.coverType = sub.coverType;
+          }
+        }
+        continue;
+      }
+
+      if (!entry.isFile()) {
         continue;
       }
 

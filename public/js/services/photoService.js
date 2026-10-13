@@ -117,6 +117,12 @@ angular.module('PhotoService', [])
 						return response.data;
 					});
 			},
+			reorderPlaylistItems : function(playlistId, itemIds) {
+				return $http.put('/playlists/' + playlistId + '/items/order', { itemIds: itemIds })
+					.then(function(response) {
+						return response.data;
+					});
+			},
 			removePlaylistItem : function(playlistId, itemId) {
 				return $http.delete('/playlists/' + playlistId + '/items/' + itemId)
 					.then(function(response) {

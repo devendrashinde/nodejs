@@ -8,7 +8,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="gallery.css")
     link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
-    link(rel="stylesheet", href="main.css?v=18")
+    link(rel="stylesheet", href="main.css?v=19")
     link(rel="stylesheet", href="css/advanced-features.css?v=3")
     link(rel="stylesheet", href="css/music-player.css")
   
@@ -647,6 +647,8 @@ html(ng-app="app")
           )
             div(
               ng-repeat="image in getLibraryDisplayItems()"
+              ng-attr-draggable="{{selectedAlbum.isPlaylist && gallerySort.by === 'default' ? 'true' : undefined}}"
+              ng-attr-data-item-id="{{selectedAlbum.isPlaylist ? image.item_id : undefined}}"
               ng-class="{'col-6 col-sm-4 col-md-3 col-lg-2': galleryDensity === 'compact', 'col-sm-6 col-md-4 col-lg-3': galleryDensity === 'comfortable', 'col-sm-6 col-md-6 col-lg-4': galleryDensity === 'large'}"
             )
               div.card.shadow-sm.media-card(style="position: relative;")
@@ -986,6 +988,8 @@ html(ng-app="app")
             div.audio-tracklist
               div.audio-track-row(
                 ng-repeat="image in getLibraryDisplayItems()"
+                ng-attr-draggable="{{selectedAlbum.isPlaylist && gallerySort.by === 'default' ? 'true' : undefined}}"
+                ng-attr-data-item-id="{{selectedAlbum.isPlaylist ? image.item_id : undefined}}"
                 ng-click="playAudio(image)"
                 ng-class="{'now-playing': currentIndex >= 0 && isPlaying && (playlist[currentIndex] || {}).path === image.path, 'paused-track': currentIndex >= 0 && !isPlaying && (playlist[currentIndex] || {}).path === image.path}"
               )
@@ -2179,7 +2183,7 @@ html(ng-app="app")
     script(src="js/image-editor.js")
     script(src="js/ng-app.js")    
     script(src="main.js?v=2")
-    script(src="js/controllers/photoController.js?v=16")
+    script(src="js/controllers/photoController.js?v=18")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")
@@ -2197,7 +2201,8 @@ html(ng-app="app")
     //- Advanced Features Components
     script(src="js/advanced-search.js?v=2")
     script(src="js/exif-display.js?v=2")
-    script(src="js/bulk-operations.js?v=4")
+    script(src="js/bulk-operations.js?v=5")
+    script(src="js/playlist-reorder.js?v=1")
     script(src="js/social-features.js")
     script(src="js/advanced-features-angular-integration.js")
     

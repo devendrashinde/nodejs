@@ -161,6 +161,33 @@ class BulkOperations {
   }
 
   setupPhotoSelectionDelegation() {
+    // Shift-click selects the range between the last clicked checkbox and this one
+    let lastClicked = null;
+    document.addEventListener('click', (e) => {
+      if (!e.target.classList || !e.target.classList.contains('photo-checkbox')) {
+        return;
+      }
+      const boxes = Array.from(document.querySelectorAll('.photo-checkbox'));
+      if (e.shiftKey && lastClicked && lastClicked !== e.target) {
+        const a = boxes.indexOf(lastClicked);
+        const b = boxes.indexOf(e.target);
+        if (a !== -1 && b !== -1) {
+          const [from, to] = a < b ? [a, b] : [b, a];
+          for (let i = from; i <= to; i++) {
+            boxes[i].checked = e.target.checked;
+            const id = boxes[i].dataset.photoId;
+            if (e.target.checked) {
+              this.selectedPhotos.add(id);
+            } else {
+              this.selectedPhotos.delete(id);
+            }
+          }
+          this.updateToolbarVisibility();
+        }
+      }
+      lastClicked = e.target;
+    });
+
     // This uses event delegation to handle photo selection checkboxes
     document.addEventListener('change', (e) => {
       if (e.target.classList.contains('photo-checkbox')) {

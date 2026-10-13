@@ -1078,9 +1078,14 @@ angular.module('photoController', [])
             }
             
             const path = $scope.selectedAlbum.path;
+
+            // Playlists, favorites and search results have no folder parent; Back returns to All Albums
+            if ($scope.selectedAlbum.isPlaylist || $scope.selectedAlbum.isSearchResult || path === 'favorites') {
+                return { album: 'All Albums', path: '', isRoot: true };
+            }
             
-            // No parent for empty path, 'Home', or favorites
-            if (!path || path === 'Home' || path === '' || path === 'favorites') {
+            // No parent for empty path or 'Home'
+            if (!path || path === 'Home' || path === '') {
                 return null;
             }
             

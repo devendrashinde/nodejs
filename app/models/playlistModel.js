@@ -117,14 +117,31 @@ class Playlist {
                 "SELECT MAX(position) as maxPos FROM playlist_items WHERE playlist_id = ?",
                 [playlistId]
             );
-            let position = (maxRes[0]?.maxPos || -1) + 1;
+            let position = (maxRes[0]?.maxPos ?? -1) + 1;
 
-            // Insert items
-            const values = photoIds.map(photoId => [playlistId, photoId, position++]);
-            const res = await query(
-                "INSERT INTO playlist_items (playlist_id, photo_id, position) VALUES ?",
-                [values]
+            // Skip photos already in the playlist and duplicates within the request
+            const existing = await query(
+                "SELECT photo_id FROM playlist_items WHERE playlist_id = ?",
+                [playlistId]
             );
+            const seen = new Set(existing.map(r => String(r.photo_id)));
+            const newIds = [];
+            for (const photoId of photoIds) {
+                const key = String(photoId);
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    newIds.push(photoId);
+                }
+            }
+
+            let res = { affectedRows: 0 };
+            if (newIds.length > 0) {
+                const values = newIds.map(photoId => [playlistId, photoId, position++]);
+                res = await query(
+                    "INSERT INTO playlist_items (playlist_id, photo_id, position) VALUES ?",
+                    [values]
+                );
+            }
 
             // Update item count
             await query(

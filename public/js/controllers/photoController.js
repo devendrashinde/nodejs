@@ -3193,6 +3193,14 @@ angular.module('photoController', [])
                 return;
             }
             
+            // Templates pass the photo id; the API expects the playlist_items row id.
+            var match = ($scope.selectedPlaylistItems || []).find(function(it) {
+                return String(it.id) === String(itemId);
+            });
+            if (match && match.item_id) {
+                itemId = match.item_id;
+            }
+
             $scope.loading = true;
             
             PhotoService.removePlaylistItem($scope.selectedAlbum.id, itemId)

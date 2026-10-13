@@ -3263,3 +3263,18 @@ body.dark-mode .search-filter-chip { background: #2a2a2a; color: #e0e0e0; border
 body.dark-mode .loading-banner { background: #2a2a2a; color: #e6e6e6; }
 body.dark-mode .keyboard-help-content { background: #2a2a2a; color: #e6e6e6; }
 body.dark-mode .shortcut kbd { background: #3a3a3a; color: #e6e6e6; border-color: #555; }
+
+/* Dark mode: gallery/media cards */
+body.dark-mode .card-body { background: #2a2a2a; color: #e0e0e0; }
+body.dark-mode .card .card-body .text-dark,
+body.dark-mode .card-title a { color: #f0f0f0 !important; }
+body.dark-mode .card-img-top { background-color: #1f1f1f; }
+body.dark-mode .card .card-body .btn,
+body.dark-mode .card .card-body .btn-link,
+body.dark-mode .card .card-body i { color: #b8c0c4; }
+body.dark-mode .card .card-body .btn:hover,
+body.dark-mode .card .card-body .btn-link:hover { color: #fff; }
+body.dark-mode .card .card-body .text-danger,
+body.dark-mode .card .card-body .btn .fa-heart.text-danger { color: #ff6b7a; }
+body.dark-mode .card .card-body .btn.active,
+body.dark-mode .card .card-body .btn.active i { color: #ff6b7a; }

@@ -311,7 +311,7 @@ function initFancybox() {
             // Open image editor
             openImageEditor(photoPath, photo.id);
           } else {
-            alert('Photo ID not found. Unable to open editor.');
+            appAlert('Photo ID not found. Unable to open editor.');
           }
         }
       });

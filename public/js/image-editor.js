@@ -34,7 +34,7 @@ class ImageEditor {
       return true;
     } catch (error) {
       console.error('Editor init error:', error);
-      alert('Failed to initialize image editor: ' + error.message);
+      appAlert('Failed to initialize image editor: ' + error.message);
       return false;
     }
   }
@@ -47,7 +47,7 @@ class ImageEditor {
       const modalElement = document.getElementById('imageEditorModal');
       if (!modalElement) {
         console.error('Image editor modal element not found');
-        alert('Error: Image editor modal not found in DOM');
+        appAlert('Error: Image editor modal not found in DOM');
         return;
       }
       
@@ -93,7 +93,7 @@ class ImageEditor {
       console.log('Image editor modal shown');
     } catch (error) {
       console.error('Error showing editor:', error);
-      alert('Failed to open image editor: ' + error.message);
+      appAlert('Failed to open image editor: ' + error.message);
     }
   }
 
@@ -211,7 +211,7 @@ class ImageEditor {
       const height = parseInt(document.getElementById('cropHeight').value);
 
       if (!width || !height) {
-        alert('Please enter crop width and height');
+        appAlert('Please enter crop width and height');
         return;
       }
 
@@ -230,7 +230,7 @@ class ImageEditor {
       if (!response.ok) throw new Error('Crop failed');
 
       const result = await response.json();
-      alert('✓ Image cropped successfully! New version created.');
+      appAlert('✓ Image cropped successfully! New version created.');
       
       // Reload versions and update preview
       await this.init();
@@ -241,7 +241,7 @@ class ImageEditor {
     } catch (error) {
       console.error('Crop error:', error);
       this.hideProgress();
-      alert('Failed to crop image: ' + error.message);
+      appAlert('Failed to crop image: ' + error.message);
     }
   }
 
@@ -265,7 +265,7 @@ class ImageEditor {
       if (!response.ok) throw new Error('Rotation failed');
 
       const result = await response.json();
-      alert(`✓ Image rotated ${degrees}° successfully! New version created.`);
+      appAlert(`✓ Image rotated ${degrees}° successfully! New version created.`);
       
       // Reload versions and update preview
       await this.init();
@@ -276,7 +276,7 @@ class ImageEditor {
     } catch (error) {
       console.error('Rotate error:', error);
       this.hideProgress();
-      alert('Failed to rotate image: ' + error.message);
+      appAlert('Failed to rotate image: ' + error.message);
     }
   }
 
@@ -290,7 +290,7 @@ class ImageEditor {
       const fit = document.getElementById('resizeFit').value || 'inside';
 
       if (!width || !height) {
-        alert('Please enter resize dimensions');
+        appAlert('Please enter resize dimensions');
         return;
       }
 
@@ -309,7 +309,7 @@ class ImageEditor {
       if (!response.ok) throw new Error('Resize failed');
 
       const result = await response.json();
-      alert(`✓ Image resized to ${width}x${height} successfully! New version created.`);
+      appAlert(`✓ Image resized to ${width}x${height} successfully! New version created.`);
       
       // Reload versions and update preview
       await this.init();
@@ -320,7 +320,7 @@ class ImageEditor {
     } catch (error) {
       console.error('Resize error:', error);
       this.hideProgress();
-      alert('Failed to resize image: ' + error.message);
+      appAlert('Failed to resize image: ' + error.message);
     }
   }
 
@@ -346,7 +346,7 @@ class ImageEditor {
       if (!response.ok) throw new Error('Flip failed');
 
       const result = await response.json();
-      alert(`✓ Image flipped ${directionText} successfully! New version created.`);
+      appAlert(`✓ Image flipped ${directionText} successfully! New version created.`);
       
       // Reload versions and update preview
       await this.init();
@@ -357,7 +357,7 @@ class ImageEditor {
     } catch (error) {
       console.error('Flip error:', error);
       this.hideProgress();
-      alert('Failed to flip image: ' + error.message);
+      appAlert('Failed to flip image: ' + error.message);
     }
   }
 
@@ -381,7 +381,7 @@ class ImageEditor {
       if (!response.ok) throw new Error('Restore failed');
 
       const result = await response.json();
-      alert(`✓ Restored to version ${versionNumber}`);
+      appAlert(`✓ Restored to version ${versionNumber}`);
       
       // Reload versions and update preview
       await this.init();
@@ -392,7 +392,7 @@ class ImageEditor {
     } catch (error) {
       console.error('Restore error:', error);
       this.hideProgress();
-      alert('Failed to restore version: ' + error.message);
+      appAlert('Failed to restore version: ' + error.message);
     }
   }
 
@@ -413,7 +413,7 @@ class ImageEditor {
 
       if (!response.ok) throw new Error('Delete failed');
 
-      alert(`✓ Version ${versionNumber} deleted`);
+      appAlert(`✓ Version ${versionNumber} deleted`);
       
       // Reload versions
       await this.init();
@@ -423,7 +423,7 @@ class ImageEditor {
     } catch (error) {
       console.error('Delete error:', error);
       this.hideProgress();
-      alert('Failed to delete version: ' + error.message);
+      appAlert('Failed to delete version: ' + error.message);
     }
   }
 

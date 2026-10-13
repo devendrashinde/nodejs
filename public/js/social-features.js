@@ -86,7 +86,7 @@ class SocialFeatures {
     const userName = document.getElementById('commenter-name').value.trim() || 'Anonymous';
 
     if (!text) {
-      alert('Please write a comment');
+      appAlert('Please write a comment');
       return;
     }
 
@@ -97,7 +97,7 @@ class SocialFeatures {
         this.displayComments(data.comments || []);
       });
     } catch (error) {
-      alert('Failed to post comment');
+      appAlert('Failed to post comment');
     }
   }
 
@@ -206,7 +206,7 @@ class SocialFeatures {
         this.displayRatingStats(data);
       });
     } catch (error) {
-      alert('Failed to save rating');
+      appAlert('Failed to save rating');
     }
   }
 
@@ -286,7 +286,7 @@ class SocialFeatures {
         button.textContent = isFavorite ? '❤️ Favorited' : '🤍 Favorite';
         button.classList.toggle('is-favorite', isFavorite);
       } catch (error) {
-        alert('Failed to update favorite');
+        appAlert('Failed to update favorite');
       }
     });
 
@@ -321,7 +321,7 @@ class SocialFeatures {
         this.showShareModal(url);
       }
     } catch (error) {
-      alert('Failed to create share link');
+      appAlert('Failed to create share link');
     }
   }
 
@@ -356,7 +356,7 @@ class SocialFeatures {
     document.getElementById('btn-copy-link').addEventListener('click', () => {
       document.getElementById('share-url-input').select();
       document.execCommand('copy');
-      alert('Link copied to clipboard!');
+      appAlert('Link copied to clipboard!');
     });
   }
 

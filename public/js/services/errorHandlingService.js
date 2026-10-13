@@ -52,7 +52,7 @@ angular.module('ErrorHandlingService', [])
              */
             showError: function(message, title) {
                 // Could be enhanced to use a toast notification system
-                alert((title ? title + '\n\n' : '') + message);
+                appAlert((title ? title + '\n\n' : '') + message);
             },
             
             /**

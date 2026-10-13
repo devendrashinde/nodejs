@@ -397,7 +397,7 @@ class BulkOperations {
     const tags = tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean);
 
     if (!tags.length) {
-      alert('Please enter tags');
+      appAlert('Please enter tags');
       return;
     }
 
@@ -417,7 +417,7 @@ class BulkOperations {
     const tags = tagsInput.value.split(',').map((t) => t.trim()).filter(Boolean);
 
     if (!tags.length) {
-      alert('Please enter tags to remove');
+      appAlert('Please enter tags to remove');
       return;
     }
 
@@ -434,7 +434,7 @@ class BulkOperations {
 
   async bulkAutoTag() {
     if (this.selectedPhotos.size === 0) {
-      alert('No photos selected');
+      appAlert('No photos selected');
       return;
     }
 
@@ -477,7 +477,7 @@ class BulkOperations {
 
     } catch (error) {
       console.error('Auto-tag error:', error);
-      alert('Failed to auto-tag photos');
+      appAlert('Failed to auto-tag photos');
       this.hideProgress();
     }
   }
@@ -507,7 +507,7 @@ class BulkOperations {
 
   async bulkDownload() {
     if (this.selectedPhotos.size === 0) {
-      alert('No photos selected');
+      appAlert('No photos selected');
       return;
     }
 
@@ -533,11 +533,11 @@ class BulkOperations {
       a.remove();
 
       this.hideProgress();
-      alert('Download started!');
+      appAlert('Download started!');
     } catch (error) {
       console.error('Download error:', error);
       this.hideProgress();
-      alert('Download failed');
+      appAlert('Download failed');
     }
   }
 
@@ -554,7 +554,7 @@ class BulkOperations {
 
   async bulkAddToPlaylist() {
     if (this.selectedPhotos.size === 0) {
-      alert('Please select at least one photo');
+      appAlert('Please select at least one photo');
       return;
     }
 
@@ -562,7 +562,7 @@ class BulkOperations {
     const scope = angular.element(document.querySelector('#controller')).scope();
     if (!scope) {
       console.error('Angular scope not found');
-      alert('Failed to open playlist selector');
+      appAlert('Failed to open playlist selector');
       return;
     }
 
@@ -580,7 +580,7 @@ class BulkOperations {
       modal.show();
     } else {
       console.error('Add to Playlist modal not found');
-      alert('Playlist modal not available');
+      appAlert('Playlist modal not available');
     }
   }
 
@@ -594,11 +594,11 @@ class BulkOperations {
 
       if (!response.ok) {
         const error = await response.json();
-        alert(`Failed to add items: ${error.message || 'Unknown error'}`);
+        appAlert(`Failed to add items: ${error.message || 'Unknown error'}`);
         return;
       }
 
-      alert(`Successfully added ${photoIds.length} item(s) to playlist`);
+      appAlert(`Successfully added ${photoIds.length} item(s) to playlist`);
       
       this.clearSelection();
       
@@ -615,7 +615,7 @@ class BulkOperations {
 
     } catch (error) {
       console.error('Error adding items to playlist:', error);
-      alert('Failed to add items to playlist');
+      appAlert('Failed to add items to playlist');
     }
   }
 
@@ -642,12 +642,12 @@ class BulkOperations {
         
         this.clearSelection();
       } else {
-        alert(`✗ Operation failed: ${result.message}`);
+        appAlert(`✗ Operation failed: ${result.message}`);
       }
     } catch (error) {
       console.error('Bulk operation error:', error);
       this.hideProgress();
-      alert('Operation failed');
+      appAlert('Operation failed');
     }
   }
 

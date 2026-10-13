@@ -1512,9 +1512,9 @@ angular.module('photoController', [])
                 .then(function(response) {
                     const data = response.data;
                     if (data.newAlbumsFound > 0) {
-                        alert(`Found ${data.newAlbumsFound} new album(s):\n${data.albums.join('\n')}\n\nTotal albums tracked: ${data.totalAlbumsTracked}`);
+                        appAlert(`Found ${data.newAlbumsFound} new album(s):\n${data.albums.join('\n')}\n\nTotal albums tracked: ${data.totalAlbumsTracked}`);
                     } else {
-                        alert('No new albums found.\n\nTotal albums tracked: ' + data.totalAlbumsTracked);
+                        appAlert('No new albums found.\n\nTotal albums tracked: ' + data.totalAlbumsTracked);
                     }
                 })
                 .catch(function(error) {
@@ -1528,7 +1528,7 @@ angular.module('photoController', [])
         $scope.clearCurrentAlbumCache = function() {
             const album = $scope.selectedAlbum.album || $scope.selectedAlbum.path;
             if (!album || album === 'Home') {
-                alert('No specific album selected');
+                appAlert('No specific album selected');
                 return;
             }
             
@@ -1536,7 +1536,7 @@ angular.module('photoController', [])
                 $http.post('/api/cache/invalidate', { album: album })
                     .then(function successCallback(response) {
                         if (response.data.success) {
-                            alert(`✓ Cleared ${response.data.albumEntriesRemoved} cache entries for: ${$scope.selectedAlbum.name}`);
+                            appAlert(`✓ Cleared ${response.data.albumEntriesRemoved} cache entries for: ${$scope.selectedAlbum.name}`);
                             // Reload cache stats
                             $scope.loadCacheStats();
                         }
@@ -1552,7 +1552,7 @@ angular.module('photoController', [])
         $scope.clearCurrentPlaylistCache = function() {
             const playlistId = $scope.selectedAlbum.id;
             if (!playlistId || !$scope.selectedAlbum.isPlaylist) {
-                alert('No playlist selected');
+                appAlert('No playlist selected');
                 return;
             }
             
@@ -1560,7 +1560,7 @@ angular.module('photoController', [])
                 $http.post('/api/cache/invalidate', { playlist: playlistId })
                     .then(function successCallback(response) {
                         if (response.data.success) {
-                            alert(`✓ Cleared cache for playlist: ${$scope.selectedAlbum.name}`);
+                            appAlert(`✓ Cleared cache for playlist: ${$scope.selectedAlbum.name}`);
                             // Reload cache stats
                             $scope.loadCacheStats();
                         }
@@ -1579,7 +1579,7 @@ angular.module('photoController', [])
                     .then(function successCallback(response) {
                         if (response.data.success) {
                             const totalRemoved = response.data.albumEntriesRemoved + response.data.playlistEntriesRemoved;
-                            alert(`✓ Cleared entire cache (${totalRemoved} entries)`);
+                            appAlert(`✓ Cleared entire cache (${totalRemoved} entries)`);
                             // Reload cache stats
                             $scope.loadCacheStats();
                         }
@@ -2120,7 +2120,7 @@ angular.module('photoController', [])
                     })
                     .catch(function(error) {
                         ErrorHandlingService.handleError(error, 'Error setting PDF thumbnail');
-                        alert('Failed to set PDF thumbnail');
+                        appAlert('Failed to set PDF thumbnail');
                     });
             };
 
@@ -2163,7 +2163,7 @@ angular.module('photoController', [])
                 })
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error loading PDF thumbnail files');
-                    alert('Failed to load thumbnail files');
+                    appAlert('Failed to load thumbnail files');
                 })
                 .finally(function() {
                     $scope.pdfThumbnailPicker.loading = false;
@@ -2217,7 +2217,7 @@ angular.module('photoController', [])
                 })
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error applying existing PDF thumbnail');
-                    alert('Failed to apply selected thumbnail');
+                    appAlert('Failed to apply selected thumbnail');
                 })
                 .finally(function() {
                     $scope.pdfThumbnailPicker.selectingName = '';
@@ -2250,7 +2250,7 @@ angular.module('photoController', [])
                 })
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error removing PDF thumbnail');
-                    alert('Failed to remove thumbnail');
+                    appAlert('Failed to remove thumbnail');
                 })
                 .finally(function() {
                     $scope.pdfThumbnailPicker.removing = false;
@@ -2510,13 +2510,13 @@ angular.module('photoController', [])
             // Use TaggingService for tag validation
             var validation = TaggingService.validateTags(tags);
             if (!validation.valid) {
-                alert('Tag validation failed: ' + validation.message);
+                appAlert('Tag validation failed: ' + validation.message);
                 return;
             }
             
             var cleanTags = (tags || '').trim();
             if (!cleanTags) {
-                alert('Please enter at least one tag or description');
+                appAlert('Please enter at least one tag or description');
                 return;
             }
             
@@ -2535,7 +2535,7 @@ angular.module('photoController', [])
                             $scope.selectedOption = null;
                     }, function(error) {
                         ErrorHandlingService.handleError(error, 'Error updating image tag');
-                        alert('Update tag failed!');
+                        appAlert('Update tag failed!');
                         $scope.loading = false;
                     });
         };
@@ -2561,7 +2561,7 @@ angular.module('photoController', [])
         // Edit album tags
         $scope.editAlbumTag = function(album) {
             if (!album.album) {
-                alert('Album name not found');
+                appAlert('Album name not found');
                 return;
             }
             
@@ -2579,14 +2579,14 @@ angular.module('photoController', [])
                 var modal = new bootstrap.Modal(modalEl);
                 modal.show();
             } else {
-                alert('Album tag modal not found. Please add the modal to the template.');
+                appAlert('Album tag modal not found. Please add the modal to the template.');
             }
         };
 
         // Update album tags
         $scope.updateAlbumTagText = function() {
             if (!$scope.editingAlbum || !$scope.editingAlbum.album) {
-                alert('Album name not found');
+                appAlert('Album name not found');
                 return;
             }
 
@@ -2595,7 +2595,7 @@ angular.module('photoController', [])
             // Validate tags using TaggingService
             var validation = TaggingService.validateTags(cleanTags);
             if (!validation.valid) {
-                alert('Tag validation failed: ' + validation.message);
+                appAlert('Tag validation failed: ' + validation.message);
                 return;
             }
             var albumName = $scope.editingAlbum.album;
@@ -2636,7 +2636,7 @@ angular.module('photoController', [])
                 .then(function(response) {
                     $scope.loading = false;
                     $('#editAlbumTagModal').modal('hide');
-                    alert('Album tags updated successfully');
+                    appAlert('Album tags updated successfully');
                     
                     // Update the folder in the list with the ID from database
                     for (var i = 0; i < $scope.folders.length; i++) {
@@ -2663,7 +2663,7 @@ angular.module('photoController', [])
                     } else {
                         errorMsg += 'Check console for details.';
                     }
-                    alert(errorMsg);
+                    appAlert(errorMsg);
                 });
         };
 
@@ -3089,14 +3089,14 @@ angular.module('photoController', [])
                     } else {
                         errorMsg += 'Check console for details.';
                     }
-                    alert(errorMsg);
+                    appAlert(errorMsg);
                 });
         };
 
         // Update playlist tags
         $scope.editPlaylistTag = function(playlist) {
             if (!playlist.name) {
-                alert('Playlist name not found');
+                appAlert('Playlist name not found');
                 return;
             }
             
@@ -3114,14 +3114,14 @@ angular.module('photoController', [])
                 var modal = new bootstrap.Modal(modalEl);
                 modal.show();
             } else {
-                alert('Edit playlist modal not found. Please add the modal to the template.');
+                appAlert('Edit playlist modal not found. Please add the modal to the template.');
             }
         };
 
         // Update playlist tags
         $scope.updatePlaylistTagText = function() {
             if (!$scope.editingPlaylist || !$scope.editingPlaylist.id) {
-                alert('Playlist ID not found');
+                appAlert('Playlist ID not found');
                 return;
             }
 
@@ -3130,7 +3130,7 @@ angular.module('photoController', [])
             // Validate tags using TaggingService
             var validation = TaggingService.validateTags(cleanTags);
             if (!validation.valid) {
-                alert('Tag validation failed: ' + validation.message);
+                appAlert('Tag validation failed: ' + validation.message);
                 return;
             }
             
@@ -3181,7 +3181,7 @@ angular.module('photoController', [])
                     } else {
                         errorMsg += 'Check console for details.';
                     }
-                    alert(errorMsg);
+                    appAlert(errorMsg);
                 });
         };
 
@@ -3208,7 +3208,7 @@ angular.module('photoController', [])
             PhotoService.removePlaylist(playlist.id)
                 .then(function(response) {
                     $scope.loading = false;
-                    alert('Playlist deleted successfully');
+                    appAlert('Playlist deleted successfully');
                     
                     // Reload playlists
                     loadPlaylists();
@@ -3216,7 +3216,7 @@ angular.module('photoController', [])
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error deleting playlist');
                     $scope.loading = false;
-                    alert('Failed to delete playlist');
+                    appAlert('Failed to delete playlist');
                 });
         };
 
@@ -3250,7 +3250,7 @@ angular.module('photoController', [])
         // Remove item from playlist
         $scope.removePlaylistItem = function(itemId) {
             if (!$scope.selectedAlbum || !$scope.selectedAlbum.id) {
-                alert('No playlist selected');
+                appAlert('No playlist selected');
                 return;
             }
             
@@ -3295,7 +3295,7 @@ angular.module('photoController', [])
                 .catch(function(error) {
                     ErrorHandlingService.handleError(error, 'Error searching playlists by tag');
                     $scope.loading = false;
-                    alert('Failed to search playlists by tag');
+                    appAlert('Failed to search playlists by tag');
                 });
         };
 
@@ -3548,7 +3548,7 @@ angular.module('photoController', [])
                             $('#uploadModal').modal('hide');
                     }, function(error) {
                         ErrorHandlingService.handleError(error, 'Error uploading file');
-                        alert('Upload failed!');
+                        appAlert('Upload failed!');
                     });
         };
 

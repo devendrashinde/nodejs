@@ -85,7 +85,7 @@ angular.element(document).ready(function() {
           })
           .catch((error) => {
             console.error('Favorite toggle error:', error);
-            alert('Failed to update favorite status');
+            appAlert('Failed to update favorite status');
           });
       } else {
         console.warn('Social features not loaded');
@@ -102,7 +102,7 @@ angular.element(document).ready(function() {
         window.socialFeatures.createShareLink(image.path)
           .catch((error) => {
             console.error('Share link error:', error);
-            alert('Failed to create share link');
+            appAlert('Failed to create share link');
           });
       } else {
         console.warn('Social features not loaded');
@@ -124,7 +124,7 @@ angular.element(document).ready(function() {
           })
           .catch((error) => {
             console.error('Rating error:', error);
-            alert('Failed to save rating');
+            appAlert('Failed to save rating');
           });
       } else {
         console.warn('Social features not loaded');
@@ -145,7 +145,7 @@ angular.element(document).ready(function() {
           })
           .catch((error) => {
             console.error('Comment error:', error);
-            alert('Failed to add comment');
+            appAlert('Failed to add comment');
           });
       } else {
         console.warn('Social features not loaded');

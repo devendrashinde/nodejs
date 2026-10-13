@@ -433,6 +433,21 @@ const savePersistentCache = async () => {
  * Lightweight scan for new albums (folders) in data directory
  * Only reads directory names, doesn't scan contents
  */
+// data/ entries are often symlinks to external drives; Dirent.isDirectory() is false for those.
+const isDirEntry = async (parentDir, entry) => {
+  if (entry.isDirectory()) {
+    return true;
+  }
+  if (!entry.isSymbolicLink()) {
+    return false;
+  }
+  try {
+    return (await fs.stat(join(parentDir, entry.name))).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
 const scanForNewAlbums = async () => {
   try {
     const knownAlbums = new Set(albumMetaCache.keys());
@@ -442,7 +457,7 @@ const scanForNewAlbums = async () => {
     const entries = await fs.readdir(dataDir, { withFileTypes: true });
     
     for (const entry of entries) {
-      if (entry.isDirectory()) {
+      if (await isDirEntry(dataDir, entry)) {
         const albumName = entry.name;
         
         // Check if this is a new album
@@ -463,7 +478,7 @@ const scanForNewAlbums = async () => {
           const subEntries = await fs.readdir(subPath, { withFileTypes: true });
           
           for (const subEntry of subEntries) {
-            if (subEntry.isDirectory()) {
+            if (await isDirEntry(subPath, subEntry)) {
               const nestedAlbumName = `${albumName}/${subEntry.name}`;
               
               if (!knownAlbums.has(nestedAlbumName)) {
@@ -1380,7 +1395,7 @@ const getAlbumPreviewData = async ({ dirPath, relativeAlbumPath, pdfThumbnailMap
       }
 
       // Recurse a few levels so folder-only collections still get counts and a cover
-      if (entry.isDirectory()) {
+      if (await isDirEntry(dirPath, entry)) {
         if (depth < 3) {
           const sub = await getAlbumPreviewData({
             dirPath: join(dirPath, entry.name),
@@ -1593,7 +1608,7 @@ const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) =>
               continue;
             }
 
-            if (entry.isDirectory()) {
+            if (await isDirEntry(dataDir, entry)) {
               id++;
               topLevelAlbumPromises.push(createAlbumImageDetail({
                 id,
@@ -1623,7 +1638,7 @@ const getImagesFromDir = async (dirPath, album, page, onlyDir, numberOfItems) =>
 
       id++;
 
-      if (entry.isDirectory()) {
+      if (await isDirEntry(dirPath, entry)) {
         const albumName = (albumPathPrefix ? `${albumPathPrefix}/` : '') + file;
         allImages.push(await createAlbumImageDetail({
           id,

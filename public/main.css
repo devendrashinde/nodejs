@@ -1842,11 +1842,49 @@ body.dark-mode .toast.toast-info {
   border-radius: 18px;
   padding: 14px;
   height: calc(100vh - 140px);
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
   box-shadow: 0 18px 34px rgba(23, 35, 52, 0.08);
+}
+
+.albums-sidebar > :not(.albums-list):not(.playlists-list) {
+  flex-shrink: 0;
+}
+
+.sidebar-shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sidebar-all-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-icon-btn {
+  flex: 0 0 32px;
+  width: 32px;
+}
+
+.gallery-content {
+  min-width: 0;
+}
+
+@media (min-width: 576px) {
+  .gallery-layout > #folderSidebar {
+    flex: 0 0 280px;
+    width: 280px;
+    max-width: 280px;
+  }
+
+  .gallery-layout > .gallery-content {
+    flex: 1;
+    width: auto;
+    max-width: calc(100% - 280px);
+  }
 }
 
 .albums-header {
@@ -1966,14 +2004,30 @@ body.dark-mode .toast.toast-info {
   outline: none;
 }
 
-.albums-list {
-  flex: 1;
+.albums-list,
+.playlists-list {
+  flex: 1 1 0;
   overflow-y: auto;
-  min-height: 200px;
+  overflow-x: hidden;
+  min-height: 0;
+  max-height: none;
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.35rem;
   padding-top: 0.2rem;
+}
+
+.albums-list > .list-group-item,
+.playlists-list > .list-group-item {
+  flex-shrink: 0;
+}
+
+.playlist-copy {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
 }
 
 .albums-list .list-group-item,
@@ -2257,22 +2311,22 @@ body.dark-mode .toast.toast-info {
 .album-item-shell {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
-  padding: 0.8rem;
+  gap: 0.35rem;
+  padding: 0.5rem;
 }
 
 .album-item-body {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex: 1;
   min-width: 0;
   cursor: pointer;
 }
 
 .album-avatar {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
@@ -2287,8 +2341,8 @@ body.dark-mode .toast.toast-info {
 }
 
 .album-cover-thumb {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 12px;
   flex-shrink: 0;
   box-shadow: 0 4px 10px rgba(23, 48, 73, 0.16);
@@ -2312,15 +2366,14 @@ body.dark-mode .toast.toast-info {
 }
 
 .album-name-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-weight: 600;
   color: #1b2f41;
   white-space: normal;
   line-height: 1.2;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: block;
 }
 
 .album-path {
@@ -2336,6 +2389,7 @@ body.dark-mode .toast.toast-info {
 }
 
 .album-count-badge {
+  flex-shrink: 0;
   margin-left: auto;
   border-radius: 999px;
   padding: 0.24rem 0.48rem !important;
@@ -2377,7 +2431,7 @@ body.dark-mode .toast.toast-info {
 /* Responsive design */
 @media (max-width: 768px) {
   .albums-sidebar {
-    height: auto;
+    height: min(66dvh, 520px);
     max-height: min(66vh, 520px);
     padding: 12px;
   }
@@ -2429,18 +2483,18 @@ body.dark-mode .toast.toast-info {
   }
 
   .album-item-shell {
-    padding: 0.7rem;
+    padding: 0.5rem;
     gap: 0.45rem;
   }
 
   .album-avatar {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
   }
 
   .album-cover-thumb {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
   }
 
   .audio-tracklist-header {
@@ -2497,15 +2551,12 @@ body.dark-mode .toast.toast-info {
 
 @media (max-width: 480px) {
   .albums-sidebar {
+    height: min(62dvh, 480px);
     max-height: min(62vh, 480px);
   }
 
   .album-item-shell {
-    padding: 0.62rem;
-  }
-
-  .album-name-text {
-    -webkit-line-clamp: 1;
+    padding: 0.5rem;
   }
 
   .album-path {

@@ -17,6 +17,7 @@ import media from './app/services/media.js';
 import pkg from 'body-parser';
 import dotenv from 'dotenv';
 import logger from './app/config/logger.js';
+import mediaMaintenanceRoutes from './app/routes/mediaMaintenanceRoutes.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -97,6 +98,15 @@ app.use(fileUpload({
 
 app.use(urlencoded({ extended: true }));
 app.use(json());
+app.use('/api/maintenance/missing-media', mediaMaintenanceRoutes(() => {
+  imageCache.clear();
+  albumMetaCache.clear();
+  playlistCache.clear();
+  playlistMetaCache.clear();
+  cacheStats.albumCacheSize = 0;
+  cacheStats.playlistCacheSize = 0;
+  cacheStats.cacheSizeBytes = 0;
+}));
 
 // Handle favicon.ico requests - prevent 404 errors
 const normalizeAlbumRequestPath = (album) => {

@@ -6,6 +6,25 @@
 
 ## Gallery & Browsing
 
+### Sidebar Navigation
+- Album and playlist lists use the remaining sidebar height and scroll independently of the search and navigation controls.
+- The compact shortcut row includes **All**, a heart button for **Favorites**, and a clock button for **Recently Viewed**. Hover labels and accessible names identify the icon buttons.
+- Recently viewed albums open in a separate scrollable dialog, so history never takes space from the album or playlist list. Select an album to open it, or use **Clear History** to clear recent history.
+- Desktop uses a stable-width sidebar with compact rows and wrapping album names. On small screens, use the header navigation toggle to display the sidebar.
+
+### Missing Media Record Cleanup
+- Open the database maintenance menu in the gallery header, then **Missing Media Records**.
+- **Scan Database** reports database records whose files are missing under `data/`, including nested albums and all media types. It does not modify records or files.
+- Select individual missing entries or **Select All Missing**, then **Remove Selected** and confirm permanent database cleanup. Associated playlist memberships, favorites, and edit-history records are removed too; no media, edited-version files, thumbnails, or albums are deleted.
+- Inaccessible paths, invalid locations, and broken album links are reported as **Blocked** and cannot be deleted. Ensure external drives and linked album storage are online before scanning and cleaning up.
+- Each record's location and file absence are checked again immediately before deletion. Restored files and changed records are skipped. Cleanup uses transactions in batches of up to 250; a failed batch rolls back, while earlier successful batches remain committed.
+- Reports expire after 30 minutes or a server restart; scan again if a report expires. The report table displays 100 records per page, and selection can span pages.
+- Back up the database before permanent cleanup. This tool uses the app's existing access model; restrict access to trusted users.
+
+**API:** `POST /api/maintenance/missing-media/scan` with JSON `{}` returns `scanId`, counts, and `entries`. `POST /api/maintenance/missing-media/clear` requires JSON `{ "scanId": "...", "ids": [123], "confirm": true }` and returns `deleted`, `deletedIds`, and `skipped`. Only missing IDs from that report are accepted. No schema or environment changes are required.
+
+**Focused safety checks:** `node --test scripts/media-maintenance.test.js` uses temporary filesystem fixtures and a mock database; it never modifies gallery records.
+
 ### Basic Gallery View ✅
 - Browse photos in organized albums
 - Tag-based filtering and search
@@ -118,6 +137,8 @@
 - Favorite-specific view
 - Quick favorite toggle
 - Favorite count tracking
+- Bulk **Favorite** and **Unfavorite** persist the selected media paths and refresh the gallery hearts and count. Removing favorites while viewing Favorites also refreshes that view.
+- Bulk Favorites accepts 1-1000 selected media paths per request; invalid paths are rejected before writing. Repeated additions do not create duplicate favorites.
 
 **Files:** `app/models/favoriteModel.js`, `sql/favorites.sql`  
 **Migration:** `scripts/migrate-favorites.js`

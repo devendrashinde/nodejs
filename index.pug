@@ -8,7 +8,7 @@ html(ng-app="app")
     link(rel="stylesheet", href="gallery.css")
     link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css")
     link(rel="stylesheet", href="jquery.fancybox.min.css")
-    link(rel="stylesheet", href="main.css?v=23")
+    link(rel="stylesheet", href="main.css?v=24")
     link(rel="stylesheet", href="css/advanced-features.css?v=3")
     link(rel="stylesheet", href="css/music-player.css")
   
@@ -127,6 +127,10 @@ html(ng-app="app")
                     i.fas.fa-sync.me-2
                     | Scan for New Albums
                 li
+                  a.dropdown-item(href="#" data-bs-toggle="modal" data-bs-target="#missingMediaModal")
+                    i.fas.fa-file-circle-question.me-2
+                    | Missing Media Records
+                li
                   a.dropdown-item(href="#" ng-click="clearCurrentAlbumCache()")
                     i.fas.fa-eraser.me-2
                     | Clear Current Album
@@ -201,7 +205,7 @@ html(ng-app="app")
       div#advanced-search-container
 
       // Sidebar + Content
-      div.row
+      div.row.gallery-layout
         // Sidebar for Folders
         aside#folderSidebar.col-sm-4.col-md-4.col-lg-3.col-xl-2.mb-3.collapse.d-sm-block
           div.albums-sidebar
@@ -225,24 +229,6 @@ html(ng-app="app")
                   i.fas.fa-list.me-1
                   | Playlists
               
-              //- Albums title with back button
-              div.albums-title-row(ng-if="selectedView === 'albums'")
-                h6.albums-title
-                  i.fas.fa-folder-open.me-2
-                  | Albums
-                button.btn.btn-sm.btn-outline-secondary.back-button(
-                  ng-if="selectedView === 'albums'"
-                  ng-click="goToParentAlbum()" 
-                  ng-disabled="!getParentAlbum()"
-                  title="Back to parent album"
-                )
-                  i.fas.fa-arrow-left.me-1
-                  | Back
-                  
-              h6.albums-title(ng-if="selectedView === 'playlists'" style="margin-top: 0.5rem; margin-bottom: 0;")
-                i.fas.fa-list.me-2
-                | Playlists
-
             div.albums-spotlight-compact(ng-if="selectedView === 'albums'")
               span.albums-spotlight-compact-title {{selectedAlbum.album || selectedAlbum.name || 'All Albums'}}
               span.albums-spotlight-compact-sep •
@@ -298,80 +284,38 @@ html(ng-app="app")
                 i.fas.fa-plus.me-1
                 | New Playlist
             
-            //- All Albums button (Albums view)
-            button.btn.btn-sm.btn-outline-primary.w-100(
-              ng-if="selectedView === 'albums'"
-              ng-click="setAlbum({album: '', path: ''})"
-              ng-class="{'active': selectedAlbum.album == '' || !selectedAlbum.album}"
-              style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-bottom: 4px;"
-            )
-              i.fas.fa-th.me-1
-              | All Albums
-              span.badge.bg-primary.float-end {{getFilteredFolders().length}}
-            
-            //- All Playlists button (Playlists view)
-            button.btn.btn-sm.btn-outline-primary.w-100(
-              ng-if="selectedView === 'playlists'"
-              ng-click="setAlbum({album: '', path: ''})"
-              ng-class="{'active': selectedAlbum.album == '' || !selectedAlbum.album}"
-              style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-bottom: 4px;"
-            )
-              i.fas.fa-list.me-1
-              | All Playlists
-              span.badge.bg-primary.float-end {{getFilteredPlaylists().length}}
-            
-            //- Favorites button
-            button.btn.btn-sm.btn-outline-danger.w-100(
-              ng-click="viewFavorites()"
-              ng-class="{'active': selectedAlbum.album == 'favorites'}"
-              style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-bottom: 4px;"
-              title="View all favorite media"
-            )
-              i.bi.bi-heart-fill.me-1
-              | Favorites
-              span.badge.bg-danger.float-end {{favoritesCount}}
-            
-            //- Recently Viewed Section (hidden by default)
-            div.recently-viewed-section(ng-if="recentlyViewed.length > 0 && showRecentlyViewed")
-              div.d-flex.justify-content-between.align-items-center
-                h6(style="font-size: 0.75rem; margin: 0;")
-                  i.fas.fa-clock.me-1
-                  | Recent
-                div.d-flex.gap-1
-                  button.btn.btn-link.p-0(
-                    ng-click="clearRecentlyViewed()"
-                    title="Clear recently viewed"
-                    style="font-size: 0.6rem; text-decoration: none; padding: 2px !important;"
-                  )
-                    i.fas.fa-trash
-                  button.btn.btn-link.p-0(
-                    ng-click="toggleRecentlyViewed()"
-                    title="Hide recently viewed"
-                    style="font-size: 0.6rem; text-decoration: none; padding: 2px !important;"
-                  )
-                    i.fas.fa-times
-              
-              ul.list-group.list-group-flush
-                li.list-group-item.list-group-item-action.recent-item(
-                  ng-repeat="item in recentlyViewed"
-                  ng-click="viewRecentAlbum(item)"
-                  title="{{item.name}} - {{formatRecentTime(item.timestamp)}}"
-                )
-                  div.d-flex.justify-content-between.align-items-center
-                    div.text-truncate
-                      i.fas.fa-folder.text-muted
-                      span {{item.name}}
-                    span.badge.bg-secondary(style="font-size: 0.6rem;" ng-if="item.photoCount") {{item.photoCount}}
-            
-            //- Toggle Recently Viewed (shown when there are items and list is hidden)
-            button.btn.btn-sm.btn-outline-secondary.w-100(
-              ng-if="recentlyViewed.length > 0 && !showRecentlyViewed"
-              ng-click="toggleRecentlyViewed()"
-              style="font-size: 0.75rem; padding: 0.3rem 0.5rem; margin-bottom: 4px;"
-              title="Show recently viewed albums"
-            )
-              i.fas.fa-clock.me-1
-              | Show Recent ({{recentlyViewed.length}})
+            div.sidebar-shortcuts(role="group" aria-label="Library shortcuts")
+              button.btn.btn-sm.btn-outline-secondary.sidebar-icon-btn(
+                ng-if="selectedView === 'albums' && !!getParentAlbum()"
+                ng-click="goToParentAlbum()"
+                title="Back to parent album"
+                aria-label="Back to parent album"
+              )
+                i.fas.fa-arrow-left
+              button.btn.btn-sm.btn-outline-primary.sidebar-all-btn(
+                ng-click="setAlbum({album: '', path: ''})"
+                ng-class="{'active': selectedAlbum.album == '' || !selectedAlbum.album}"
+                title="{{selectedView === 'albums' ? 'All albums' : 'All playlists'}}"
+              )
+                i.fas.fa-th.me-1
+                | All
+                span.badge.ms-1 {{selectedView === 'albums' ? getFilteredFolders().length : getFilteredPlaylists().length}}
+              button.btn.btn-sm.btn-outline-danger.sidebar-icon-btn(
+                ng-click="viewFavorites()"
+                ng-class="{'active': selectedAlbum.album == 'favorites'}"
+                title="Favorites ({{favoritesCount}})"
+                aria-label="Favorites ({{favoritesCount}})"
+              )
+                i.fas.fa-heart
+              button.btn.btn-sm.btn-outline-secondary.sidebar-icon-btn(
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#recentAlbumsModal"
+                title="Recently viewed ({{recentlyViewed.length}})"
+                aria-label="Recently viewed ({{recentlyViewed.length}})"
+                ng-disabled="!recentlyViewed.length"
+              )
+                i.fas.fa-clock
             
             //- Albums list (filtered)
             ul.list-group.list-group-flush.albums-list(ng-if="selectedView === 'albums'")
@@ -411,10 +355,10 @@ html(ng-app="app")
                 ng-repeat="playlist in getFilteredPlaylists()"
                 ng-class="{'active': playlist.id == selectedAlbum.id}"
                 title="{{playlist.name}} - {{playlist.item_count}} items"
-                style="position: relative; padding-right: 80px;"
+                style="position: relative;"
               )
-                div.d-flex.justify-content-between.align-items-center
-                  div(ng-click="setPlaylist(playlist)" style="flex-grow: 1; cursor: pointer;")
+                div.d-flex.justify-content-between.align-items-center.gap-2
+                  div.playlist-copy(ng-click="setPlaylist(playlist)")
                     div.playlist-name
                       i.fas.fa-list.me-2
                       span {{playlist.name}}
@@ -456,7 +400,7 @@ html(ng-app="app")
               | No playlists found
 
         // Main Content
-        main(ng-class="{'col-sm-8 col-md-8 col-lg-9 col-xl-10': folders.length > 0, 'col-12': folders.length == 0}")
+        main.gallery-content(ng-class="{'col-sm-8 col-md-8 col-lg-9 col-xl-10': folders.length > 0, 'col-12': folders.length == 0}")
 
           div.alert.alert-danger.d-flex.align-items-center.justify-content-between.gap-2(
             ng-if="galleryLoadError"
@@ -1308,6 +1252,83 @@ html(ng-app="app")
               button#btn-confirm-bulk-move.btn.btn-primary(type="button" disabled)
                 i.fas.fa-folder-open.me-1
                 | Move files here
+
+      div.modal.fade#recentAlbumsModal(tabindex="-1" aria-labelledby="recentAlbumsLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered.modal-dialog-scrollable
+          div.modal-content
+            div.modal-header
+              h5.modal-title#recentAlbumsLabel Recently Viewed
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+            div.modal-body
+              div.list-group
+                button.list-group-item.list-group-item-action.d-flex.align-items-center.gap-2(
+                  type="button"
+                  ng-repeat="item in recentlyViewed"
+                  ng-click="viewRecentAlbum(item)"
+                  data-bs-dismiss="modal"
+                  title="{{item.name}}"
+                )
+                  i.fas.fa-folder.text-muted
+                  span.flex-grow-1(style="min-width:0;overflow-wrap:anywhere;")
+                    strong.d-block {{item.name}}
+                    small.text-muted {{formatRecentTime(item.timestamp)}}
+                  span.badge.bg-secondary(ng-if="item.photoCount") {{item.photoCount}}
+              p.text-muted.mb-0(ng-if="!recentlyViewed.length") No recently viewed albums.
+            div.modal-footer
+              button.btn.btn-outline-danger(type="button" ng-click="clearRecentlyViewed()" ng-disabled="!recentlyViewed.length")
+                i.fas.fa-trash.me-1
+                | Clear History
+              button.btn.btn-outline-secondary(type="button" data-bs-dismiss="modal") Close
+
+      div.modal.fade#missingMediaModal(tabindex="-1" aria-labelledby="missingMediaLabel" aria-hidden="true")
+        div.modal-dialog.modal-dialog-centered.modal-xl.modal-dialog-scrollable
+          div.modal-content
+            div.modal-header
+              h5.modal-title#missingMediaLabel Missing Media Records
+              button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close" ng-disabled="mediaMaintenance.busy")
+            div.modal-body
+              div.d-flex.flex-wrap.gap-2.align-items-center.mb-3
+                button.btn.btn-outline-primary(type="button" ng-click="scanMissingMedia()" ng-disabled="mediaMaintenance.busy")
+                  i.fas.fa-search.me-2
+                  | {{mediaMaintenance.busy ? 'Working...' : 'Scan Database'}}
+                span.small(ng-if="mediaMaintenance.report") Checked {{mediaMaintenance.report.scanned}} records. Missing: {{mediaMaintenance.report.missing}}. Blocked: {{mediaMaintenance.report.blocked}}.
+              div.alert.alert-danger(role="alert" ng-if="mediaMaintenance.error") {{mediaMaintenance.error}}
+              div.alert.alert-success(role="status" ng-if="mediaMaintenance.message") {{mediaMaintenance.message}}
+              div(ng-if="mediaMaintenance.report")
+                p.text-muted(ng-if="!mediaMaintenance.report.entries.length") No missing or blocked media records.
+                div.d-flex.flex-wrap.gap-2.mb-2(ng-if="mediaMaintenance.report.missing")
+                  button.btn.btn-sm.btn-outline-secondary(type="button" ng-click="selectMissingMedia(true)" ng-disabled="mediaMaintenance.busy") Select All Missing
+                  button.btn.btn-sm.btn-outline-secondary(type="button" ng-click="selectMissingMedia(false)" ng-disabled="mediaMaintenance.busy") Deselect All
+                div.table-responsive(ng-if="mediaMaintenance.report.entries.length")
+                  table.table.table-sm.align-middle
+                    thead
+                      tr
+                        th(scope="col") Select
+                        th(scope="col") ID
+                        th(scope="col") Media Path
+                        th(scope="col") Status
+                    tbody
+                      tr(ng-repeat="entry in mediaMaintenance.report.entries | limitTo:100:mediaMaintenance.page*100 track by entry.id")
+                        td
+                          input.form-check-input(type="checkbox" ng-model="entry.selected" ng-disabled="mediaMaintenance.busy || entry.status !== 'missing'" aria-label="Select record {{entry.id}}")
+                        td {{entry.id}}
+                        td(style="overflow-wrap:anywhere;min-width:160px;max-width:600px;") {{entry.mediaPath}}
+                        td
+                          span(ng-class="{'text-danger': entry.status === 'missing', 'text-warning': entry.status === 'blocked'}") {{entry.status === 'missing' ? 'Missing' : 'Blocked'}}
+                          small.d-block {{entry.reason}}
+                div.d-flex.justify-content-between.align-items-center(ng-if="mediaMaintenance.report.entries.length > 100")
+                  button.btn.btn-sm.btn-outline-secondary(type="button" ng-click="mediaMaintenance.page = mediaMaintenance.page - 1" ng-disabled="mediaMaintenance.busy || mediaMaintenance.page === 0")
+                    i.fas.fa-chevron-left.me-1
+                    | Previous
+                  span.small Page {{mediaMaintenance.page + 1}}
+                  button.btn.btn-sm.btn-outline-secondary(type="button" ng-click="mediaMaintenance.page = mediaMaintenance.page + 1" ng-disabled="mediaMaintenance.busy || (mediaMaintenance.page + 1) * 100 >= mediaMaintenance.report.entries.length")
+                    | Next
+                    i.fas.fa-chevron-right.ms-1
+            div.modal-footer
+              button.btn.btn-outline-secondary(type="button" data-bs-dismiss="modal" ng-disabled="mediaMaintenance.busy") Close
+              button.btn.btn-danger(type="button" ng-click="clearMissingMedia()" ng-disabled="mediaMaintenance.busy || !selectedMissingMedia().length")
+                i.fas.fa-trash.me-2
+                | Remove Selected ({{selectedMissingMedia().length}})
 
       //- Cache Stats Modal
       div.modal.fade#cacheStatsModal(tabindex="-1" aria-labelledby="cacheStatsLabel" aria-hidden="true")
@@ -2226,7 +2247,7 @@ html(ng-app="app")
     script(src="js/image-editor.js?v=2")
     script(src="js/ng-app.js")    
     script(src="main.js?v=3")
-    script(src="js/controllers/photoController.js?v=22")
+    script(src="js/controllers/photoController.js?v=23")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")
@@ -2244,7 +2265,7 @@ html(ng-app="app")
     //- Advanced Features Components
     script(src="js/advanced-search.js?v=2")
     script(src="js/exif-display.js?v=2")
-    script(src="js/bulk-operations.js?v=6")
+    script(src="js/bulk-operations.js?v=7")
     script(src="js/playlist-reorder.js?v=1")
     script(src="js/a11y.js?v=1")
     script(src="js/social-features.js?v=2")

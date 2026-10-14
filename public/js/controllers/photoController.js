@@ -1510,6 +1510,72 @@ angular.module('photoController', [])
         /**
          * Scan for new albums manually
          */
+        $scope.mediaMaintenance = { busy: false, report: null, message: '', error: '', page: 0 };
+
+        $scope.scanMissingMedia = function() {
+            const state = $scope.mediaMaintenance;
+            if (state.busy) return;
+            state.busy = true;
+            state.report = null;
+            state.error = '';
+            state.message = '';
+            state.page = 0;
+            return $http.post('/api/maintenance/missing-media/scan', {})
+                .then(function(response) {
+                    state.report = response.data;
+                })
+                .catch(function(error) {
+                    state.error = error.data && error.data.error || 'Unable to scan missing media.';
+                })
+                .finally(function() { state.busy = false; });
+        };
+
+        $scope.selectedMissingMedia = function() {
+            const report = $scope.mediaMaintenance.report;
+            return report ? report.entries.filter(function(entry) { return entry.status === 'missing' && entry.selected; }) : [];
+        };
+
+        $scope.selectMissingMedia = function(selected) {
+            const report = $scope.mediaMaintenance.report;
+            if (report) report.entries.forEach(function(entry) { entry.selected = selected && entry.status === 'missing'; });
+        };
+
+        $scope.clearMissingMedia = function() {
+            const state = $scope.mediaMaintenance;
+            const selected = $scope.selectedMissingMedia();
+            if (state.busy || !selected.length) return;
+            if (!confirm('Permanently remove ' + selected.length + ' missing media database entries and their playlist, favorite, and edit-history records? No files will be deleted.')) return;
+            state.busy = true;
+            state.error = '';
+            let deleted = 0;
+            let skipped = 0;
+            const ids = selected.map(function(entry) { return entry.id; });
+            function nextBatch() {
+                if (!ids.length) return $q.resolve();
+                return $http.post('/api/maintenance/missing-media/clear', { scanId: state.report.scanId, ids: ids.splice(0, 250), confirm: true })
+                    .then(function(response) {
+                        deleted += response.data.deleted;
+                        skipped += response.data.skipped.length;
+                        const removedIds = new Set(response.data.deletedIds);
+                        state.report.entries = state.report.entries.filter(function(entry) { return !removedIds.has(entry.id); });
+                        response.data.skipped.forEach(function(item) {
+                            const entry = state.report.entries.find(function(candidate) { return candidate.id === item.id; });
+                            if (entry) { entry.selected = false; entry.status = 'blocked'; entry.reason = item.reason; }
+                        });
+                        state.report.missing = state.report.entries.filter(function(entry) { return entry.status === 'missing'; }).length;
+                        state.report.blocked = state.report.entries.filter(function(entry) { return entry.status === 'blocked'; }).length;
+                        state.message = 'Removed ' + deleted + ' entries. Skipped ' + skipped + '.';
+                        state.page = 0;
+                        return nextBatch();
+                    });
+            }
+            return nextBatch()
+                .catch(function(error) {
+                    state.error = (error.data && error.data.error || 'Cleanup failed.') + ' Previous batches removed ' + deleted + ' entries.';
+                })
+                .finally(function() { state.busy = false; });
+        };
+
         $scope.scanForNewAlbums = function() {
             $http.get('/api/cache/scan-albums')
                 .then(function(response) {

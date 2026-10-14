@@ -610,16 +610,19 @@ export const prepareBulkDownload = async (req, res) => {
 export const bulkFavorite = async (req, res) => {
     try {
         const { photoIds, isFavorite = true } = req.body;
+        if (typeof isFavorite !== 'boolean') {
+            return res.status(400).json({ success: false, message: 'isFavorite must be a boolean.' });
+        }
         // Use authenticated user, session user, or default guest user
         const userId = req.user?.id || req.session?.userId || 'guest';
 
-        const batch = isFavorite 
+        const batch = await (isFavorite
             ? BulkOperationsService.bulkFavorite(photoIds, userId)
-            : BulkOperationsService.bulkUnfavorite(photoIds, userId);
+            : BulkOperationsService.bulkUnfavorite(photoIds, userId));
 
         res.json({
             success: true,
-            message: `${isFavorite ? 'Added' : 'Removed'} ${photoIds.length} photo(s) ${isFavorite ? 'to' : 'from'} favorites`,
+            message: `${isFavorite ? 'Added' : 'Removed'} ${batch.total} photo(s) ${isFavorite ? 'to' : 'from'} favorites`,
             batchId: batch.id,
             total: batch.total,
             action: isFavorite ? 'favorited' : 'unfavorited'
@@ -627,7 +630,7 @@ export const bulkFavorite = async (req, res) => {
 
     } catch (err) {
         console.error('Error in bulk favorite:', err);
-        res.status(500).json({ success: false, error: 'Operation failed', message: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: 'Operation failed', message: err.message });
     }
 };
 

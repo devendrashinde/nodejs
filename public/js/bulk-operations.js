@@ -639,6 +639,21 @@ class BulkOperations {
         if (endpoint.includes('tags')) {
           this.updatePhotosInPlace(result.results);
         }
+
+        if (endpoint === '/api/bulk/favorite') {
+          const controller = globalThis.angular?.element(document.querySelector('#controller')).scope();
+          if (controller?.loadUserFavorites) {
+            try {
+              await controller.loadUserFavorites();
+              if (controller.selectedAlbum?.album === 'favorites' && payload.isFavorite === false) {
+                controller.$applyAsync(() => controller.viewFavorites());
+              }
+            } catch (error) {
+              console.error('Favorites saved, but refreshing the gallery failed:', error);
+              appAlert('Favorites saved. Reload the gallery to refresh the Favorites view.');
+            }
+          }
+        }
         
         this.clearSelection();
       } else {

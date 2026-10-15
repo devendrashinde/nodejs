@@ -92,12 +92,18 @@
 **Files:** `app/services/exifService.js`
 
 ### Auto-Tagging ✅
-- Automatic tag generation based on filename
-- GraphicsMagick-powered image analysis
-- Intelligent tag suggestions
-- Manual tag approval workflow
+- Select up to 100 files and use **AI Auto-Tag** in the bulk toolbar. JPEG, PNG, BMP, and GIF images are supported; other media types are reported as skipped.
+- Local TensorFlow.js MobileNet classification is combined with filename, folder, and optional EXIF/date tags. The first supported image loads model weights from the internet; later predictions reuse the model in memory.
+- The default AI confidence threshold remains 50%. Images without confident predictions can still receive metadata tags; if neither source provides tags, they are reported as **No tags found** rather than saved.
+- Existing tags are merged and preserved. Files without a `photos` record receive a new record when tags are saved.
+- Completion reports saved, failed, skipped, and no-tag counts with failure details. Model failures are not reported as successful tagging. Successful saves remain if another file fails.
+- MobileNet recognizes ImageNet object categories; it is not OCR or a person-identification model. CPU inference can take time on large batches.
 
-**Files:** `app/services/autoTagService.js` (if exists), or in `photoController.js`
+**API:** `GET /api/photos/autotag/batch` accepts `photoIds` as an encoded JSON array (legacy comma-separated selections remain supported). `POST` to the same route accepts `{ "photoIds": ["data/album/image.jpg"], "options": {} }`. Both stream progress and completion via SSE. Optional `confidenceThreshold` is 0-1 and `maxTags` is 1-100. Single-image tagging remains available at `POST /api/photos/autotag`.
+
+**Focused checks:** `node --test scripts/auto-tagging.test.js` tests inference input, confidence filtering, error handling, tensor cleanup, and mixed batch outcomes without downloading a model or changing gallery tags.
+
+**Files:** `app/services/autoTaggingService.js`, `app/controllers/advancedFeaturesController.js`, `public/js/bulk-operations.js`
 
 ### Video Support ✅
 - Video file preview (thumbnail from first frame)

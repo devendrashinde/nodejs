@@ -961,13 +961,26 @@ export const getFavoritesByAlbum = async (req, res) => {
  * Auto-tag a single photo using ML
  * @route POST /api/photos/autotag
  */
+const normalizeAutoTagPaths = (values) => {
+    if (!Array.isArray(values) || !values.length || values.length > 100) {
+        throw Object.assign(new Error('Select between 1 and 100 image files.'), { statusCode: 400 });
+    }
+    const paths = values.map(value => {
+        if (typeof value !== 'string') throw Object.assign(new Error('Image paths must be strings.'), { statusCode: 400 });
+        const normalized = value.replaceAll('\\', '/');
+        const segments = normalized.split('/');
+        if (segments[0] !== 'data' || segments.length < 2 || segments.some(segment => !segment || segment === '.' || segment === '..' || segment.includes(':') || segment.includes('\0'))) {
+            throw Object.assign(new Error('Images must be inside data/.'), { statusCode: 400 });
+        }
+        return normalized;
+    });
+    return [...new Set(paths)];
+};
+
 export const autoTagPhoto = async (req, res) => {
     try {
-        const { photoPath, options } = req.body;
-
-        if (!photoPath) {
-            return res.status(400).json({ success: false, error: 'Photo path required' });
-        }
+        const [photoPath] = normalizeAutoTagPaths([req.body.photoPath]);
+        const { options } = req.body;
 
         const result = await AutoTaggingService.autoTagPhoto(photoPath, options);
         
@@ -1011,7 +1024,7 @@ export const autoTagPhoto = async (req, res) => {
         }
     } catch (err) {
         console.error('Error auto-tagging photo:', err);
-        res.status(500).json({ success: false, error: 'Auto-tagging failed', message: err.message });
+        res.status(err.statusCode || 500).json({ success: false, error: 'Auto-tagging failed', message: err.message });
     }
 };
 
@@ -1026,7 +1039,12 @@ export const batchAutoTag = async (req, res) => {
         
         if (req.method === 'GET') {
             // Parse query parameters for SSE
-            photoIds = req.query.photoIds ? req.query.photoIds.split(',') : [];
+            const encodedPaths = req.query.photoIds || '';
+            try {
+                photoIds = encodedPaths.startsWith('[') ? JSON.parse(encodedPaths) : encodedPaths.split(',');
+            } catch {
+                return res.status(400).json({ success: false, error: 'Invalid image selection.' });
+            }
             options = {};
         } else {
             // Use body for POST requests
@@ -1034,16 +1052,25 @@ export const batchAutoTag = async (req, res) => {
             options = req.body.options;
         }
 
-        if (!Array.isArray(photoIds) || photoIds.length === 0) {
-            return res.status(400).json({ success: false, error: 'Photo IDs required' });
+        photoIds = normalizeAutoTagPaths(photoIds);
+        if (options != null && (typeof options !== 'object' || Array.isArray(options))) {
+            return res.status(400).json({ success: false, error: 'Invalid tagging options.' });
+        }
+        options = options || {};
+        const threshold = options.confidenceThreshold ?? 0.5;
+        const maxTags = options.maxTags ?? 10;
+        if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1 || !Number.isInteger(maxTags) || maxTags < 1 || maxTags > 100) {
+            return res.status(400).json({ success: false, error: 'Invalid confidence threshold or maximum tag count.' });
         }
 
         // Set up SSE for progress updates
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
+            'Cache-Control': 'no-cache, no-transform',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no'
         });
+        res.flushHeaders();
 
         const results = await AutoTaggingService.batchAutoTag(
             photoIds,
@@ -1056,6 +1083,7 @@ export const batchAutoTag = async (req, res) => {
                     total: progress.total,
                     filename: progress.photo.split('/').pop()
                 })}\n\n`);
+                res.flush?.();
             }
         );
 
@@ -1063,7 +1091,7 @@ export const batchAutoTag = async (req, res) => {
         const uiUpdateResults = [];
         
         for (const [photoPath, tags] of Object.entries(results.tags)) {
-            if (tags.length > 0) {
+            try {
                 const pathParts = photoPath.split('/');
                 const fileName = pathParts[pathParts.length - 1];
                 const album = pathParts[pathParts.length - 2];
@@ -1074,20 +1102,22 @@ export const batchAutoTag = async (req, res) => {
                     [fileName, album, path]
                 );
 
+                let newTagsString;
                 if (photos.length > 0) {
                     const existingTags = photos[0].tags ? photos[0].tags.split(',').map(t => t.trim()) : [];
                     const allTags = [...new Set([...existingTags, ...tags])];
-                    const newTagsString = allTags.join(', ');
+                    newTagsString = allTags.join(', ');
                     
                     await Photo.updateTagById(photos[0].id, newTagsString);
                     
-                    // Add to UI update results
-                    uiUpdateResults.push({
-                        success: true,
-                        path: photoPath,
-                        newTags: newTagsString
-                    });
+                } else {
+                    newTagsString = tags.join(', ');
+                    await query('INSERT INTO photos (name, album, path, tags) VALUES (?, ?, ?, ?)', [fileName, album, path, newTagsString]);
                 }
+                uiUpdateResults.push({ success: true, path: photoPath, newTags: newTagsString });
+            } catch (error) {
+                results.failed++;
+                results.errors.push({ path: photoPath, error: `Could not save tags: ${error.message}`, skipped: false });
             }
         }
 
@@ -1095,6 +1125,11 @@ export const batchAutoTag = async (req, res) => {
         res.write(`data: ${JSON.stringify({ 
             type: 'complete', 
             total: photoIds.length, 
+            saved: uiUpdateResults.length,
+            failed: results.failed,
+            skipped: results.skipped,
+            noTags: results.noTags,
+            errors: results.errors,
             results: uiUpdateResults 
         })}\n\n`);
         res.end();
@@ -1102,7 +1137,7 @@ export const batchAutoTag = async (req, res) => {
     } catch (err) {
         console.error('Error in batch auto-tagging:', err);
         if (!res.headersSent) {
-            res.status(500).json({ success: false, error: 'Batch auto-tagging failed', message: err.message });
+            res.status(err.statusCode || 500).json({ success: false, error: 'Batch auto-tagging failed', message: err.message });
         } else {
             res.write(`data: ${JSON.stringify({ type: 'error', message: err.message })}\n\n`);
             res.end();

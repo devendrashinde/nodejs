@@ -137,6 +137,7 @@ router.post('/photos/autotag', autoTagPhoto);
  * Returns: Server-Sent Events (SSE) stream with progress
  */
 router.get('/photos/autotag/batch', batchAutoTag);
+router.post('/photos/autotag/batch', batchAutoTag);
 
 // ============================================
 // Social Features Routes

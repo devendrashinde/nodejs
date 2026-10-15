@@ -438,6 +438,15 @@ class BulkOperations {
       return;
     }
 
+    if (this.selectedPhotos.size > 100) {
+      appAlert('Select up to 100 images per auto-tag batch.');
+      return;
+    }
+    if (this.autoTagEventSource) {
+      appAlert('An auto-tag batch is already running.');
+      return;
+    }
+
     if (!confirm(`Use AI to auto-tag ${this.selectedPhotos.size} photos? This may take a few minutes.`)) {
       return;
     }
@@ -447,7 +456,9 @@ class BulkOperations {
     progressText.textContent = 'Initializing AI model...';
 
     try {
-      const eventSource = new EventSource(`/api/photos/autotag/batch?photoIds=${Array.from(this.selectedPhotos).join(',')}`);
+      const parameters = new URLSearchParams({ photoIds: JSON.stringify(Array.from(this.selectedPhotos)) });
+      const eventSource = new EventSource(`/api/photos/autotag/batch?${parameters}`);
+      this.autoTagEventSource = eventSource;
       
       eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -455,28 +466,35 @@ class BulkOperations {
         if (data.type === 'progress') {
           progressText.textContent = `Processing: ${data.current}/${data.total} - ${data.filename}`;
         } else if (data.type === 'complete') {
-          progressText.textContent = `✓ Auto-tagged ${data.total} photos`;
+          const summary = `Saved tags for ${data.saved ?? data.results.length} of ${data.total} files. Failed: ${data.failed || 0}. Skipped: ${data.skipped || 0}. No tags found: ${data.noTags || 0}.`;
+          progressText.textContent = summary;
           eventSource.close();
-          
-          setTimeout(() => {
-            this.hideProgress();
-            this.updatePhotosInPlace(data.results);
-          }, 1500);
+          this.autoTagEventSource = null;
+          this.hideProgress();
+          this.updatePhotosInPlace(data.results);
+          const details = (data.errors || []).slice(0, 3).map(item => `${item.path}: ${item.error}`).join('\n');
+          appAlert(details ? `${summary}\n\n${details}` : summary);
         } else if (data.type === 'error') {
           progressText.textContent = `Error: ${data.message}`;
           eventSource.close();
-          setTimeout(() => this.hideProgress(), 3000);
+          this.autoTagEventSource = null;
+          this.hideProgress();
+          appAlert(`Auto-tagging failed: ${data.message}`);
         }
       };
 
       eventSource.onerror = () => {
-        progressText.textContent = 'Connection error';
+        progressText.textContent = 'Auto-tag connection lost';
         eventSource.close();
-        setTimeout(() => this.hideProgress(), 3000);
+        this.autoTagEventSource = null;
+        this.hideProgress();
+        appAlert('Auto-tag connection lost. Reload the gallery to check any tags already saved.');
       };
 
     } catch (error) {
       console.error('Auto-tag error:', error);
+      this.autoTagEventSource?.close();
+      this.autoTagEventSource = null;
       appAlert('Failed to auto-tag photos');
       this.hideProgress();
     }

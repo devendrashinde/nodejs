@@ -45,7 +45,7 @@ class AutoTaggingService {
      * Auto-tag a single photo using ML + EXIF + filename analysis
      * @param {string} photoPath - Full path to photo
      * @param {object} options - Tagging options
-     * @returns {object} Generated tags and metadata
+    * @returns {Promise<object>} Generated tags and metadata
      */
     async autoTagPhoto(photoPath, options = {}) {
         const {
@@ -68,7 +68,7 @@ class AutoTaggingService {
             const ext = path.extname(photoPath).toLowerCase();
             const imageExts = ['.jpg', '.jpeg', '.png', '.bmp', '.gif'];
             if (!imageExts.includes(ext)) {
-                return { success: false, error: 'Not an image file', tags: [] };
+                return { success: false, skipped: true, error: 'Unsupported image type', tags: [] };
             }
 
             const allTags = new Set();
@@ -113,7 +113,7 @@ class AutoTaggingService {
      * @param {string} imagePath - Path to image
      * @param {number} threshold - Confidence threshold
      * @param {number} maxPredictions - Max number of predictions
-     * @returns {Array} Detected object tags
+    * @returns {Promise<Array>} Detected object tags
      */
     async detectObjectsInImage(imagePath, threshold = 0.5, maxPredictions = 5) {
         try {
@@ -136,14 +136,12 @@ class AutoTaggingService {
             });
             
             const tensor = tf.tensor3d(imageData, [224, 224, 3]);
-            const normalized = tensor.div(255.0).expandDims(0);
-
-            // Get predictions
-            const predictions = await this.model.classify(normalized);
-
-            // Clean up tensors
-            tensor.dispose();
-            normalized.dispose();
+            let predictions;
+            try {
+                predictions = await this.model.classify(tensor, maxPredictions);
+            } finally {
+                tensor.dispose();
+            }
 
             // Filter by confidence and extract class names
             return predictions
@@ -153,7 +151,7 @@ class AutoTaggingService {
 
         } catch (err) {
             console.error('Error detecting objects:', err);
-            return [];
+            throw err;
         }
     }
 
@@ -297,18 +295,18 @@ class AutoTaggingService {
      * @param {Array} photoPaths - Array of photo paths
      * @param {object} options - Tagging options
      * @param {function} progressCallback - Called with progress updates
-     * @returns {object} Results summary
+    * @returns {Promise<object>} Results summary
      */
     async batchAutoTag(photoPaths, options = {}, progressCallback = null) {
         const results = {
             total: photoPaths.length,
             success: 0,
             failed: 0,
+            skipped: 0,
+            noTags: 0,
+            errors: [],
             tags: {}
         };
-
-        // Ensure model is loaded once before batch
-        await this.initialize();
 
         for (let i = 0; i < photoPaths.length; i++) {
             const photoPath = photoPaths[i];
@@ -324,11 +322,15 @@ class AutoTaggingService {
 
             const result = await this.autoTagPhoto(photoPath, options);
             
-            if (result.success) {
+            if (result.success && result.tags.length > 0) {
                 results.success++;
                 results.tags[photoPath] = result.tags;
+            } else if (result.success) {
+                results.noTags++;
             } else {
-                results.failed++;
+                if (result.skipped) results.skipped++;
+                else results.failed++;
+                results.errors.push({ path: photoPath, error: result.error, skipped: Boolean(result.skipped) });
             }
 
             // Small delay to prevent CPU overload

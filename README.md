@@ -143,7 +143,7 @@ mysql -h 127.0.0.1 -u root -pphotos < sql/install-mysql.sql
 
 #### Option B: Manual Fresh Database Setup
 
-These installers create the complete schema version 4.0. They drop and recreate `mydb`, so use them only for a fresh install or after backing up any existing database.
+These installers create the complete schema version 4.1, including local face grouping. They drop and recreate `mydb`, so use them only for a fresh install or after backing up any existing database.
 
 ```bash
 # MySQL 8.0+
@@ -152,6 +152,18 @@ mysql -u root -p < sql/install-mysql.sql
 # MariaDB 10.5+
 mysql -u root -p < sql/install-mariadb.sql
 ```
+
+For an existing v4 database, back it up and run the matching additive migration:
+
+```bash
+# MySQL 8.0+
+mysql -u root -p mydb < sql/migration_v4_to_v4.1_face_grouping_mysql.sql
+
+# MariaDB 10.5+
+mysql -u root -p mydb < sql/migration_v4_to_v4.1_face_grouping_mariadb.sql
+```
+
+Face detection runs locally in the browser. Face descriptors and confirmed person assignments are stored in the database; original photos remain in `data/`.
 
 ### 6. Database Connection
 

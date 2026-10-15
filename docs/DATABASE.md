@@ -224,6 +224,7 @@ ALTER TABLE photos ADD COLUMN (
 | v2 | v2.1 | Image editing | 2024 | `migration_v2_to_v2.1_image_editing.sql` |
 | v2 | v3 | Playlists | 2024 | `migration_v2_to_v3.sql` (MariaDB variant) |
 | v3 | v4 | Advanced features | 2024 | `migration_v3_to_v4_*.sql` |
+| v4 | v4.1 | Local face grouping | 2026 | `migration_v4_to_v4.1_face_grouping_*.sql` |
 
 ### Migration Files Location
 
@@ -237,6 +238,8 @@ sql/
 ├── migration_v2_to_v3_mariadb.sql
 ├── migration_v3_to_v4_mysql.sql
 ├── migration_v3_to_v4_mariadb.sql
+├── migration_v4_to_v4.1_face_grouping_mysql.sql
+├── migration_v4_to_v4.1_face_grouping_mariadb.sql
 └── DEPLOYMENT.md
 ```
 
@@ -255,6 +258,8 @@ mysql -u root -p mydb < sql/migration_vX_to_vY_mariadb.sql
 # Verify
 mysql -u root -p mydb -e "SHOW TABLES;"
 ```
+
+For face grouping on an existing v4 database, back up first, then run the matching MySQL or MariaDB `v4_to_v4.1_face_grouping` migration. It adds `people`, `face_scans`, `photo_faces`, and `person_photo_tags` without changing existing photo records.
 
 ### Creating New Migrations
 

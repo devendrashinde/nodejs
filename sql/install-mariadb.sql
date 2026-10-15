@@ -161,6 +161,49 @@ CREATE TABLE `tasks` (
   COMMENT='Background task queue';
 
 -- ============================================
+-- Local Face Grouping
+-- ============================================
+CREATE TABLE `people` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_people_name` (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `face_scans` (
+  `photo_id` int(11) NOT NULL,
+  `face_count` smallint(5) unsigned NOT NULL DEFAULT 0,
+  `scanned_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`photo_id`),
+  CONSTRAINT `fk_face_scans_photo` FOREIGN KEY (`photo_id`) REFERENCES `photos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `photo_faces` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `photo_id` int(11) NOT NULL,
+  `face_index` smallint(5) unsigned NOT NULL,
+  `embedding` mediumblob NOT NULL,
+  `box` mediumtext NOT NULL,
+  `confidence` decimal(6,5) NOT NULL,
+  `person_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_photo_face_index` (`photo_id`, `face_index`),
+  KEY `idx_photo_faces_person` (`person_id`),
+  CONSTRAINT `fk_photo_faces_photo` FOREIGN KEY (`photo_id`) REFERENCES `photos` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_photo_faces_person` FOREIGN KEY (`person_id`) REFERENCES `people` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `person_photo_tags` (
+  `person_id` int(11) NOT NULL,
+  `photo_id` int(11) NOT NULL,
+  `tag` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  PRIMARY KEY (`person_id`, `photo_id`),
+  CONSTRAINT `fk_person_photo_tags_person` FOREIGN KEY (`person_id`) REFERENCES `people` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_person_photo_tags_photo` FOREIGN KEY (`photo_id`) REFERENCES `photos` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- ============================================
 -- Schema Version
 -- ============================================
 CREATE TABLE `schema_version` (
@@ -173,7 +216,7 @@ CREATE TABLE `schema_version` (
   COMMENT='Database schema version history';
 
 INSERT INTO `schema_version` (`version`, `description`) VALUES
-('4.0', 'Fresh install: photos, albums, playlists, playlist_items, favorites, tags, users, tasks');
+('4.1', 'Fresh install: includes local face grouping and person tags');
 
 -- ============================================
 -- Views

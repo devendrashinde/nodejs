@@ -6,11 +6,9 @@ The `sql/` folder contains updated schema files optimized for Photo Gallery v2.0
 
 ### Main Files
 
-1. **[mydb-mysql.sql](mydb-mysql.sql)** - Complete database setup (RECOMMENDED)
-   - Creates entire database from scratch
-   - Includes all tables, indexes, and views
-   - MySQL 8.0+ compatible
-   - Use this for fresh installations
+1. **[install-mysql.sql](install-mysql.sql)** - Complete MySQL 8.0+ fresh install (RECOMMENDED)
+   - Creates the v4.1 schema, including local face grouping
+   - Drops and recreates `mydb`; use only for a fresh install
 
 2. **[photos.sql](photos.sql)** - Photos table only
    - For updating existing photos table
@@ -24,10 +22,9 @@ The `sql/` folder contains updated schema files optimized for Photo Gallery v2.0
    - For authentication system
    - Includes role-based access
 
-5. **[mydb-mariadb.sql](mydb-mariadb.sql)** - MariaDB optimized schema
-   - Use for MariaDB 10.5+ deployments
-   - MariaDB-compatible syntax (current_timestamp())
-   - Same features as MySQL version
+5. **[install-mariadb.sql](install-mariadb.sql)** - Complete MariaDB 10.5+ fresh install
+   - Creates the v4.1 schema, including local face grouping
+   - Drops and recreates `mydb`; use only for a fresh install
 
 6. **[migration_v1_to_v2.sql](migration_v1_to_v2.sql)** - MySQL migration script
    - Upgrades existing v1.0 database to v2.0
@@ -36,6 +33,12 @@ The `sql/` folder contains updated schema files optimized for Photo Gallery v2.0
 7. **[migration_v1_to_v2_mariadb.sql](migration_v1_to_v2_mariadb.sql)** - MariaDB migration script
    - Upgrades existing v1.0 MariaDB database to v2.0
    - MariaDB-compatible migration
+
+8. **[migration_v4_to_v4.1_face_grouping_mysql.sql](migration_v4_to_v4.1_face_grouping_mysql.sql)** - MySQL face-grouping migration
+   - Adds local face scan, descriptor, person, and tag-provenance tables
+
+9. **[migration_v4_to_v4.1_face_grouping_mariadb.sql](migration_v4_to_v4.1_face_grouping_mariadb.sql)** - MariaDB face-grouping migration
+   - MariaDB-compatible equivalent of the v4.1 migration
 
 ---
 
@@ -89,7 +92,7 @@ Use this for new deployments or development environments:
 # Start the optional database container
 docker-compose -f docker-compose-mysql.yaml up -d
 
-# Install the complete v4 schema. This drops and recreates mydb.
+# Install the complete v4.1 schema. This drops and recreates mydb.
 mysql -h 127.0.0.1 -u root -pphotos < sql/install-mysql.sql
 
 # Or using local MySQL
@@ -99,7 +102,7 @@ mysql -u root -p < sql/install-mysql.sql
 **MariaDB 10.5+:**
 
 ```bash
-# Install the complete v4 schema. This drops and recreates mydb.
+# Install the complete v4.1 schema. This drops and recreates mydb.
 mysql -u root -p < sql/install-mariadb.sql
 
 # Verify
@@ -108,9 +111,11 @@ mysql -u root -p mydb -e "SHOW TABLES; SELECT * FROM schema_version;"
 
 This will:
 - ✅ Drop existing `mydb` database
-- ✅ Create the complete v4 database with all tables
+- ✅ Create the complete v4.1 database with all tables
 - ✅ Add indexes and views
-- ✅ Record schema version 4.0
+- ✅ Record schema version 4.1
+
+For an existing v4 database, back it up and use the additive `migration_v4_to_v4.1_face_grouping_mysql.sql` or `migration_v4_to_v4.1_face_grouping_mariadb.sql` migration instead. The older `mydb-*.sql` files are legacy schema snapshots and should not be used to upgrade an existing database.
 
 ### Option 2: Upgrade Existing Database
 

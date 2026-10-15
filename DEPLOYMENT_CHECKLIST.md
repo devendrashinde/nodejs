@@ -291,6 +291,17 @@ curl http://localhost:8080/playlists
 
 ## 🐛 Issues & Resolution
 
+## Face Grouping v4.1
+
+- [ ] Back up the current database before migration.
+- [ ] Run `sql/migration_v4_to_v4.1_face_grouping_mysql.sql` for MySQL or `sql/migration_v4_to_v4.1_face_grouping_mariadb.sql` for MariaDB.
+- [ ] Verify `people`, `face_scans`, `photo_faces`, and `person_photo_tags` exist.
+- [ ] Run `npm install` so the local Human model bundle is available.
+- [ ] Open `/people`, scan a small batch, review groups, assign one name, and confirm that the name is searchable from the gallery.
+- [ ] Open a tagged photo's action menu, use it as a face reference, choose the matching face, review a candidate, and confirm only that candidate receives the tag.
+- [ ] Confirm that splitting a group removes only person tags added by grouping.
+- [ ] Confirm browser requests for model weights use `/face-models/` and no external model service.
+
 ### If Playlists Not Appearing
 
 **Troubleshooting:**

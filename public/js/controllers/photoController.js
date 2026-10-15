@@ -1399,6 +1399,42 @@ angular.module('photoController', [])
             $('#searchModal').modal('hide');
         };
 
+        $scope.getPeopleScannerUrl = function(album) {
+            var albumPath = album && album.path;
+            var returnPath = getPeopleReturnAlbumPath(album);
+            var url = '/people?album=' + encodeURIComponent(albumPath || '');
+            return returnPath ? url + '&returnAlbum=' + encodeURIComponent(returnPath) : url;
+        };
+
+        $scope.getPeopleReferenceUrl = function(photo, album) {
+            var returnPath = getPeopleReturnAlbumPath(album);
+            var url = '/people?referencePhotoId=' + encodeURIComponent(photo.id);
+            return returnPath ? url + '&returnAlbum=' + encodeURIComponent(returnPath) : url;
+        };
+
+        function getPeopleReturnAlbumPath(album) {
+            var sourceAlbum = album && album.isSearchResult ? $scope._prevAlbum : album;
+            if (!sourceAlbum || sourceAlbum.isPlaylist || sourceAlbum.isSearchResult || $scope.isLibraryRoot(sourceAlbum) || sourceAlbum.path === 'favorites') {
+                return '';
+            }
+            return sourceAlbum.path || '';
+        };
+
+        var initialSearchTerm = $location.search().q;
+        if (typeof initialSearchTerm === 'string' && initialSearchTerm.trim()) {
+            $scope.searchTag = initialSearchTerm.trim();
+            $timeout(function() {
+                $scope.search();
+            }, 0);
+        }
+
+        var initialAlbumPath = new URLSearchParams(globalThis.location.search).get('albumPath');
+        if (typeof initialAlbumPath === 'string' && initialAlbumPath.trim()) {
+            $timeout(function() {
+                $scope.setAlbumByPath(initialAlbumPath);
+            }, 0);
+        }
+
 
         // Handle search modal events
         $('#searchModal').on('shown.bs.modal', function () {

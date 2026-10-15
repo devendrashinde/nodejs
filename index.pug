@@ -95,6 +95,15 @@ html(ng-app="app")
                     i.fas.fa-sliders.me-2
                     | Search & Filters
 
+            a.btn.btn-outline-info.btn-sm(
+              ng-if="!isLibraryRoot(selectedAlbum) && !selectedAlbum.isPlaylist && !selectedAlbum.isSearchResult && selectedAlbum.path !== 'favorites'"
+              ng-href="{{getPeopleScannerUrl(selectedAlbum)}}"
+              aria-label="Scan unprocessed faces in this album"
+              title="Scan unprocessed faces in this album"
+            )
+              i.fas.fa-users
+              span.d-none.d-xl-inline.ms-1 Scan Faces
+
             // Upload button
             button.btn.btn-outline-success.btn-sm(
               type="button"
@@ -130,6 +139,10 @@ html(ng-app="app")
                   a.dropdown-item(href="#" data-bs-toggle="modal" data-bs-target="#missingMediaModal")
                     i.fas.fa-file-circle-question.me-2
                     | Missing Media Records
+                li
+                  a.dropdown-item(href="/people")
+                    i.fas.fa-users.me-2
+                    | People
                 li
                   a.dropdown-item(href="#" ng-click="clearCurrentAlbumCache()")
                     i.fas.fa-eraser.me-2
@@ -725,6 +738,10 @@ html(ng-app="app")
                           button.dropdown-item(type="button" ng-click="showExifModal(image)")
                             i.fas.fa-camera.me-2
                             | View details
+                        li(ng-if="image.isPhoto && image.id")
+                          a.dropdown-item(ng-href="{{getPeopleReferenceUrl(image, selectedAlbum)}}")
+                            i.fas.fa-user-check.me-2
+                            | Use as face reference
                         li
                           button.dropdown-item(type="button" ng-click="sharePhoto(image)")
                             i.fas.fa-share-alt.me-2
@@ -2247,7 +2264,7 @@ html(ng-app="app")
     script(src="js/image-editor.js?v=2")
     script(src="js/ng-app.js")    
     script(src="main.js?v=3")
-    script(src="js/controllers/photoController.js?v=23")
+    script(src="js/controllers/photoController.js?v=26")
     script(src="js/directives/modalDirective.js")
     script(src="js/directives/fileModelDirective.js")
     script(src="js/directives/shrinkHeaderDirective.js")

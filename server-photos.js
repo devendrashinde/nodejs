@@ -130,6 +130,7 @@ const ADVANCED_FEATURE_API_PATTERNS = [
   /^\/search(?:\/|$)/,
   /^\/bulk(?:\/|$)/,
   /^\/favorites(?:\/|$)/,
+  /^\/people(?:\/|$)/,
   /^\/filters(?:\/|$)/,
   /^\/videos(?:\/|$)/,
   /^\/albums\/share(?:\/|$)/,
@@ -186,6 +187,14 @@ app.use('/api', (req, res, next) => {
   Promise.resolve(loadAdvancedFeaturesRoutes())
     .then((advancedFeaturesRoutes) => advancedFeaturesRoutes(req, res, next))
     .catch(next);
+});
+
+app.use('/face-models', express.static(join(__dirname, 'node_modules', '@vladmandic', 'human', 'models'), {
+  fallthrough: false,
+  maxAge: '1d'
+}));
+app.get('/face-runtime.js', (req, res) => {
+  res.sendFile(join(__dirname, 'node_modules', '@vladmandic', 'human', 'dist', 'human.js'));
 });
 
 // Mount image editing routes if available (optional for backward compatibility)
@@ -840,6 +849,10 @@ app.get('/thumbs?:id', thumbnailHandler);
 // Root path - Main gallery interface
 app.get('/', (req, res) => {
     res.render('index', { title: 'Our Photo Gallery', images: {} })
+});
+
+app.get('/people', (req, res) => {
+  res.render('people', { title: 'People' });
 });
 
 // Alias for backward compatibility

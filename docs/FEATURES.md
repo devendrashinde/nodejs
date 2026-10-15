@@ -105,6 +105,21 @@
 
 **Files:** `app/services/autoTaggingService.js`, `app/controllers/advancedFeaturesController.js`, `public/js/bulk-operations.js`
 
+### Face Grouping ✅
+- Open **People** from the gallery's cache-management menu and scan unprocessed photos. Detection and embedding inference run in the browser using local model assets; only compact face descriptors and bounding boxes are stored in MySQL.
+- Review suggested groups, adjust the similarity threshold, and assign groups to a new or existing person. Assigning another group to an existing name merges them; unassigning a face returns it to suggestions.
+- Suggestion clustering processes up to 500 unassigned faces at a time to keep comparison responsive; assigning groups advances through larger libraries.
+- Open People from a selected album with **Scan Faces** to process only that album's unprocessed photos, including photos beyond the current gallery page. The People page's default scan still covers all unprocessed photos.
+- From a tagged photo's action menu, choose **Use as face reference**, select the existing person tag and the correct face, then review similar unassigned faces under **Possible matches**. Confirmed matches receive that tag; ambiguous candidates are not auto-assigned. Unscanned reference photos can be scanned individually.
+- Returning from an album-scoped scan or photo reference restores the originating album in the gallery.
+- Confirmed person names are added to photo tags and work with existing gallery tag search. Tags that existed before assignment are preserved when faces are unassigned.
+- Face groups are suggestions, not identity guarantees. Review group membership before assigning names. No face crops or original images are copied to the database or sent to a remote model service.
+- Existing databases must run `sql/migration_v4_to_v4.1_face_grouping_mysql.sql` or the MariaDB variant before using the People page. Fresh installs include the v4.1 schema.
+
+**Focused checks:** `node --test scripts/face-grouping.test.js` covers descriptor validation, cosine similarity, centroid grouping, threshold splits, and reference-match ambiguity rejection.
+
+**Files:** `app/services/faceClusteringService.js`, `app/services/faceLibraryService.js`, `app/controllers/peopleController.js`, `public/js/people.js`
+
 ### Video Support ✅
 - Video file preview (thumbnail from first frame)
 - Video metadata extraction

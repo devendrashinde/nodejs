@@ -12,6 +12,16 @@
 
 import express from 'express';
 import {
+    assignFacesRoute,
+    assignFaceReferenceRoute,
+    getFaceSuggestionsRoute,
+    getFaceReferenceRoute,
+    getUnscannedPhotosRoute,
+    saveFaceScansRoute,
+    unassignFaceRoute,
+    unassignPersonRoute
+} from '../controllers/peopleController.js';
+import {
     getPhotoExif,
     advancedSearch,
     getSearchSuggestions,
@@ -138,6 +148,19 @@ router.post('/photos/autotag', autoTagPhoto);
  */
 router.get('/photos/autotag/batch', batchAutoTag);
 router.post('/photos/autotag/batch', batchAutoTag);
+
+// ============================================
+// Local Face Grouping Routes
+// ============================================
+
+router.get('/people', getFaceSuggestionsRoute);
+router.get('/people/photos', getUnscannedPhotosRoute);
+router.get('/people/reference/:photoId', getFaceReferenceRoute);
+router.post('/people/reference', assignFaceReferenceRoute);
+router.post('/people/faces', saveFaceScansRoute);
+router.post('/people/assign', assignFacesRoute);
+router.post('/people/faces/:faceId/unassign', unassignFaceRoute);
+router.post('/people/:personId/unassign', unassignPersonRoute);
 
 // ============================================
 // Social Features Routes

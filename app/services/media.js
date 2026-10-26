@@ -16,6 +16,33 @@ import which from 'which';
 const thumbnailGenerationPromises = new Map();
 let ffmpegConfigurationPromise = null;
 
+// Each job runs ffprobe+ffmpeg on large files; unbounded parallelism starves small hosts like a Raspberry Pi.
+const VIDEO_THUMBNAIL_CONCURRENCY = Math.max(1, Number.parseInt(process.env.VIDEO_THUMBNAIL_CONCURRENCY || '1', 10) || 1);
+let activeVideoThumbnailJobs = 0;
+const pendingVideoThumbnailJobs = [];
+
+const runVideoThumbnailJob = (job) => new Promise((resolveJob, rejectJob) => {
+    const start = () => {
+        activeVideoThumbnailJobs++;
+        Promise.resolve()
+            .then(job)
+            .then(resolveJob, rejectJob)
+            .finally(() => {
+                activeVideoThumbnailJobs--;
+                const next = pendingVideoThumbnailJobs.shift();
+                if (next) {
+                    next();
+                }
+            });
+    };
+
+    if (activeVideoThumbnailJobs < VIDEO_THUMBNAIL_CONCURRENCY) {
+        start();
+    } else {
+        pendingVideoThumbnailJobs.push(start);
+    }
+});
+
 // Configure FFmpeg and FFprobe paths
 const configureFfmpeg = async () => {
     try {
@@ -245,9 +272,11 @@ class Media {
 
                     const thumbnailName = path.basename(pngThumbPath);
                     const outputDir = path.dirname(pngThumbPath);
-                    const captureTime = await this.getVideoThumbnailCaptureTime(image);
 
-                    await this.captureVideoThumbnail(image, thumbnailName, outputDir, captureTime);
+                    await runVideoThumbnailJob(async () => {
+                        const captureTime = await this.getVideoThumbnailCaptureTime(image);
+                        await this.captureVideoThumbnail(image, thumbnailName, outputDir, captureTime);
+                    });
                 });
             }
 

@@ -333,7 +333,7 @@ class AdvancedSearch {
 
 // Global helper functions for search results
 window.viewPhotoDetail = function(photoId) {
-  const VIDEO_TYPES = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg', 'mpeg', 'mts', 'm4v', 'divx', 'xvid', 'webm', 'ogg', 'ogv', 'flv', 'wmv', 'asf', 'rm', 'rmvb', 'ts', 'vob', 'f4v'];
+  const VIDEO_TYPES = ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg', 'mpeg', 'mts', 'm2ts', 'm4v', 'divx', 'xvid', 'webm', 'ogg', 'ogv', 'flv', 'wmv', 'asf', 'rm', 'rmvb', 'ts', 'vob', 'f4v'];
   const AUDIO_TYPES = ['mp3', 'amr', 'wav', 'flac', 'aac', 'm4a'];
 
   const mediaUrl = photoId.startsWith('/') ? photoId : `/${photoId}`;

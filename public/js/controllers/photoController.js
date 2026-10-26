@@ -2469,6 +2469,10 @@ angular.module('photoController', [])
                 return getDataFileUrl(image.path);
             }
 
+            if (image.isVideo && ['m2ts', 'mts', 'ts'].indexOf(getFileExtension(image.path)) !== -1) {
+                return '/video-stream?id=' + encodeURIComponent(image.path);
+            }
+
             return image.path;
         };
         

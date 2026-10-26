@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { join, sep, extname } from 'path';
 import path from 'path';
 import crypto from 'crypto';
+import { spawn } from 'child_process';
 import compression from 'compression';
 import sharp from 'sharp';
 import ImageDetails from "./ImageDetails.js";
@@ -48,6 +49,8 @@ const SKIP_FILE_TYPES = [
         .map((ext) => (ext.startsWith('.') ? ext : `.${ext}`))
 ];
 
+const SKIP_FILE_TYPES_SIGNATURE = [...SKIP_FILE_TYPES].sort().join(',');
+
 const formatFileSize = (bytes) => {
     if (!bytes || bytes === 0) return '0 B';
     if (bytes < 1024) return bytes + ' B';
@@ -68,7 +71,7 @@ const PDF_THUMBNAIL_DIR = process.env.PDF_THUMBNAIL_DIR || './temp-pic/pdf-thumb
 // Thumbnail directory - separate from media files
 const THUMBNAIL_DIR = process.env.THUMBNAIL_DIR || './temp-pic/thumbnails';
 const ALLOWED_IMAGE_TYPES = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.bmp', '.webp'];
-const ALLOWED_VIDEO_TYPES = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.mpeg', '.mpg', '.ogv', '.3gp'];
+const ALLOWED_VIDEO_TYPES = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.flv', '.wmv', '.mpeg', '.mpg', '.ogv', '.3gp', '.m2ts', '.mts'];
 const ALLOWED_AUDIO_TYPES = ['.mp3', '.wav', '.aac', '.m4a', '.flac', '.ogg', '.oga', '.opus', '.wma'];
 const AUDIO_PLACEHOLDER_URL = '/music.png';
 const PDF_PLACEHOLDER_URL = '/pdf.png';
@@ -375,8 +378,8 @@ const loadPersistentCache = async () => {
     const isNewFormat = cached.imageCache !== undefined;
     
     if (isNewFormat) {
-      // Load image cache
-      if (cached.imageCache) {
+      // Cached pages built with a different skip list would still contain skipped files.
+      if (cached.imageCache && cached.skipSignature === SKIP_FILE_TYPES_SIGNATURE) {
         for (const [key, value] of Object.entries(cached.imageCache)) {
           imageCache.set(key, value);
           cacheStats.cacheSizeBytes += calculateCacheSize(value);
@@ -442,6 +445,7 @@ const savePersistentCache = async () => {
       imageCache: Object.fromEntries(imageCache),
       albumMeta: Object.fromEntries(albumMetaCache),
       savedAt: new Date().toISOString(),
+      skipSignature: SKIP_FILE_TYPES_SIGNATURE,
       stats: {
         entries: imageCache.size,
         albums: albumMetaCache.size,
@@ -1313,6 +1317,52 @@ const streamPdfHandler = (req, res) => {
 
   app.get('/pdf-stream', streamPdfHandler);
   app.get('/pdf-stream/:filename', streamPdfHandler);
+
+// Browsers cannot play MPEG-TS containers (.m2ts/.mts/.ts); remux to fragmented MP4 on the fly (needs ffmpeg in PATH).
+const REMUX_VIDEO_TYPES = new Set(['.m2ts', '.mts', '.ts']);
+
+app.get('/video-stream', (req, res) => {
+    const id = req.query.id;
+    if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: 'Missing video path' });
+    }
+
+    const resolved = getResolvedDataPath(id);
+    if (!resolved) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (!REMUX_VIDEO_TYPES.has(extname(resolved.absolutePath).toLowerCase())) {
+        return res.status(400).json({ error: 'Unsupported video type' });
+    }
+
+    if (!existsSync(resolved.absolutePath)) {
+        return res.status(404).json({ error: 'Video not found' });
+    }
+
+    // Copy video, convert audio (AC3 is common in AVCHD) to AAC for browser compatibility.
+    const ffmpegProcess = spawn('ffmpeg', [
+        '-v', 'error',
+        '-i', resolved.absolutePath,
+        '-map', '0:v:0', '-map', '0:a:0?',
+        '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k',
+        '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
+        '-f', 'mp4', 'pipe:1'
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+    ffmpegProcess.on('error', (err) => {
+        console.error('ffmpeg spawn failed:', err.message);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'ffmpeg is not available on the server' });
+        }
+    });
+    ffmpegProcess.stderr.on('data', (chunk) => console.warn('ffmpeg:', chunk.toString().trim()));
+
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Cache-Control', 'no-store');
+    ffmpegProcess.stdout.pipe(res);
+    res.on('close', () => ffmpegProcess.kill('SIGKILL'));
+});
 
 app.get('*', (req, res) => {
     const file = join(dataDir, req.path.replace(/\/$/, '/index.html'));

@@ -6,7 +6,7 @@ angular.module('photoApp.constants', [])
         
         // Media types
         IMAGE_TYPES: ['jpg', 'png', 'jpeg', 'bmp', 'gif', 'webp', 'svg'],
-        VIDEO_TYPES: ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg', 'mpeg', 'mts', 'm4v', 'divx', 'xvid', 'webm', 'ogg', 'ogv', 'flv', 'wmv', 'asf', 'rm', 'rmvb', 'ts', 'vob', 'f4v'],
+        VIDEO_TYPES: ['mp4', 'avi', 'mov', '3gp', 'mkv', 'mpg', 'mpeg', 'mts', 'm2ts', 'm4v', 'divx', 'xvid', 'webm', 'ogg', 'ogv', 'flv', 'wmv', 'asf', 'rm', 'rmvb', 'ts', 'vob', 'f4v'],
         AUDIO_TYPES: ['mp3', 'amr', 'wav', 'flac', 'aac', 'ogg', 'wma', 'm4a'],
         
         // Audio player defaults

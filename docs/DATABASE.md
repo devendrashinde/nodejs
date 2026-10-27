@@ -261,6 +261,8 @@ mysql -u root -p mydb -e "SHOW TABLES;"
 
 For face grouping on an existing v4 database, back up first, then run the matching MySQL or MariaDB `v4_to_v4.1_face_grouping` migration. It adds `people`, `face_scans`, `photo_faces`, and `person_photo_tags` without changing existing photo records.
 
+When **Scan Faces** is started for an album, any image files in that folder (non-recursive) that do not yet have a `photos` row are registered with empty tags so untagged photos are included in the scan.
+
 ### Creating New Migrations
 
 1. **Never modify existing migration files** - they've already been run

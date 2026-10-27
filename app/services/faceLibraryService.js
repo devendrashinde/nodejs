@@ -1,8 +1,12 @@
 import path from 'node:path';
+import { readdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import pool, { query } from '../models/db.js';
 import { clusterFaces, matchFacesToPeople, normalizeEmbedding } from './faceClusteringService.js';
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.bmp', '.gif', '.webp']);
+const DATA_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'data');
+const ALBUM_PATH_SQL = "CONCAT(TRIM(TRAILING '/' FROM p.path), '/', TRIM(BOTH '/' FROM p.album))";
 const MAX_SUGGESTION_FACES = 500;
 
 const queryConnection = (connection, sql, params = []) => new Promise((resolve, reject) => {
@@ -78,10 +82,47 @@ const addPersonTag = async (connection, photoId, person) => {
     }
 };
 
+// Photos only get a DB row once tagged/edited, so register untagged album images before scanning them.
+export const registerAlbumImages = async (albumScope) => {
+    const segments = albumScope.split('/');
+    const directory = path.resolve(DATA_ROOT, ...segments.slice(1));
+    if (directory !== DATA_ROOT && !directory.startsWith(DATA_ROOT + path.sep)) return 0;
+
+    let entries;
+    try {
+        entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+        if (error.code === 'ENOENT' || error.code === 'ENOTDIR') throw Object.assign(new Error('Album not found.'), { statusCode: 404 });
+        throw error;
+    }
+    const imageNames = entries
+        .filter(entry => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+        .map(entry => entry.name);
+    if (!imageNames.length) return 0;
+
+    const existing = await query(`SELECT p.name FROM photos p WHERE ${ALBUM_PATH_SQL} = ?`, [albumScope]);
+    const known = new Set(existing.map(row => row.name.toLowerCase()));
+    const missing = imageNames.filter(name => !known.has(name.toLowerCase()));
+    if (!missing.length) return 0;
+
+    const album = segments.at(-1);
+    const basePath = segments.slice(0, -1).join('/');
+    let inserted = 0;
+    for (let index = 0; index < missing.length; index += 500) {
+        const result = await query(
+            'INSERT INTO photos (name, album, path, tags) VALUES ?',
+            [missing.slice(index, index + 500).map(name => [name, album, basePath, ''])]
+        );
+        inserted += result.affectedRows || 0;
+    }
+    return inserted;
+};
+
 export const getUnscannedPhotos = async (afterId = 0, limit = 100, rawAlbumScope = null, rawPhotoId = null) => {
     const albumScope = normalizeAlbumScope(rawAlbumScope);
     if (albumScope && rawPhotoId) throw Object.assign(new Error('Choose either an album or a single photo.'), { statusCode: 400 });
-    const albumFilter = albumScope ? "AND CONCAT(TRIM(TRAILING '/' FROM p.path), '/', TRIM(BOTH '/' FROM p.album)) = ?" : '';
+    if (albumScope && afterId === 0) await registerAlbumImages(albumScope);
+    const albumFilter = albumScope ? `AND ${ALBUM_PATH_SQL} = ?` : '';
     const photoFilter = rawPhotoId ? 'AND p.id = ?' : '';
     const params = [afterId];
     if (albumScope) params.push(albumScope);

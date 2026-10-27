@@ -108,6 +108,8 @@ app.use(fileUpload({
 }));
 
 app.use(urlencoded({ extended: true }));
+// Face scan batches carry 1024-float embeddings (~21KB per face); the route caps a batch at 250 faces.
+app.use('/api/people/faces', json({ limit: '6mb' }));
 app.use(json());
 app.use('/api/maintenance/missing-media', mediaMaintenanceRoutes(() => {
   imageCache.clear();
